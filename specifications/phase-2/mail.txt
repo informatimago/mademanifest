@@ -1,0 +1,80 @@
+Hi Pascal,
+
+Thank you for your willingness to proceed with the Proof of Capability.
+
+
+As discussed, this email contains the materials and instructions for the Proof of Capability for the MadeManifest Deterministic Calculation Engine.
+
+
+This Proof of Capability is intended to validate exact execution against a fixed specification. It is not a design exercise, not a discovery phase, and not an optimization task.
+
+
+Attached you will find:
+
+The Proof of Capability V1 document
+
+The Engineering Implementation Specification (english version)
+
+The Engineer Onboarding README (english version)
+
+The Golden Test Case JSON and supporting canonical data
+
+
+Objective
+
+The objective is binary:
+Given the exact input and materials provided, your implementation must produce the exact expected output, byte for byte.
+
+
+Evaluation is pass or fail. Partial matches are not accepted.
+
+
+Key constraints (non negotiable)
+
+The provided documents are the sole sources of truth
+
+Language, runtime, environment, dependencies, and interface are fixed as specified
+
+No interpretation, optimization, or architectural decisions are allowed
+
+Golden Test Case output must match exactly, including ordering, precision, and serialization
+
+Any deviation is considered a defect
+
+
+If you encounter anything you believe to be incorrect or suboptimal, you may document it as an observation, but the implementation must still follow the specification exactly.
+
+
+Please note:
+
+No clarification questions will be answered
+
+The specification must be executed as written
+
+Uncertainty must be resolved by exact execution, not interpretation
+
+
+Deliverables
+
+You may deliver either:
+
+A working implementation that executes the Golden Test Case successfully, or
+
+A test first implementation where the Golden Test Case passes exactly
+
+
+Next step
+
+Only if the Proof of Capability is completed successfully will we proceed to discuss the full engine scope, planning, and collaboration.
+
+
+Please confirm once you have received the materials and indicate when you expect to submit your Proof of Capability.
+
+
+Warm regards,
+
+image.png	 Jaimie van den Dungen
+ Founder | Mademanifest.me
+ aligned@mademanifest.me
+ +31 6 23347976 
+ www.mademanifest.me

@@ -1,0 +1,99 @@
+Hello Jaimie,
+
+Thank you for the clarification and for sharing the Engineer Onboarding README and the Engineering Implementation Specification.
+
+Yes, this type of work suits me well. I am fully comfortable operating within a **fixed, non-negotiable specification**, with no conceptual input, redesign, or interpretation expected. I understand that the objective is an **exact, deterministic, and reproducible implementation**, and I confirm that I can implement the engine strictly according to the provided documents.
+
+### Alignment with the specifications
+
+I confirm in particular that:
+
+* The implementation will follow the specification documents as the sole source of truth.
+* Time handling will rely on the **IANA historical timezone database**, including full historical DST rules, with all internal calculations performed at second precision and input seconds fixed to `00`.
+* Swiss Ephemeris, node policies, mandala constants, gate sequence, object ordering, and metadata requirements will be implemented exactly as specified.
+* The calculation layer will remain strictly separated from any content, interpretation, or UI concerns.
+* Golden test cases and JSON fixtures will be treated as authoritative, with any mismatch considered a defect.
+
+### High-level implementation approach
+
+At a high level, my approach would be:
+
+1. **Specification lock-in**
+
+   * Translate each section of the specification into explicit invariants and test expectations.
+
+2. **Time & astronomy foundation**
+
+   * Implement timezone handling using the IANA historical timezone library.
+   * Validate local time → UTC → Julian Day conversion independently before proceeding.
+
+3. **Ephemeris and astrology layer**
+
+   * Integrate Swiss Ephemeris.
+   * Match planetary positions, houses, ASC, and MC against reference fixtures.
+
+4. **Human Design module**
+
+   * Implement the Design-time solver exactly as specified (Sun −88°, bracketing, bisection, stop criteria).
+   * Enforce strict object ordering and node policies.
+
+5. **Mandala mapping and Gene Keys**
+
+   * Implement mandala mapping as a pure mathematical transform using fixed constants and a fixed gate sequence.
+   * Derive Gene Keys strictly from Human Design output within the defined V1 scope.
+
+6. **Validation**
+
+   * Golden test cases as the primary acceptance mechanism.
+   * No tolerance for approximation or reinterpretation.
+
+### Open technical points / assumptions
+
+There are a few points that would need clarification or confirmation:
+
+* **Target platform**: For a backend deployment, I provide by default code that can compile and run on macOS and Linux systems. If you need MS-Windows code it's also possible.
+* **Programming language**: the specification does not mandate a language. I can implement this in whichever language you prefer. By default, I would propose **C**, as it offers straightforward and robust interfacing with Swiss Ephemeris and timezone libraries, and facilitates deterministic, low-level control. That said, I am flexible and can adapt to your preferred stack.
+* **External interface**: several options are possible, depending on integration needs:
+
+  * A simple **stdin/stdout interface using JSON** for inputs and outputs, suitable for batch processing and easy integration.
+  * Alternatively, a minimal **HTTP service** exposing a calculation endpoint, suitable for web-based front-ends or service-oriented architectures.
+  
+I can adapt the interface design to your preferred integration model.
+
+### Rough complexity and timeline
+
+Assuming (1) Swiss Ephemeris is available and buildable in the target environment, (2) we have the fixed gate sequence and the expected JSON fixtures / golden outputs early, and (3) no additional scope beyond what is in the documents, my estimate is:
+
+Estimated timeline:
+Week 1 (core foundations)
+    Implement input contract parsing and normalization (incl. seconds fixed to 00)
+    Implement timezone handling using the IANA historical timezone database (local time → UTC)
+    Implement UTC → Julian Day (UT)
+    Integrate Swiss Ephemeris and compute all required bodies (incl. Mean + True node, derived Earth)
+    Establish deterministic numeric formatting and rounding policy (applied only at the end, per spec)
+Week 2 (domain modules)
+    Astrology module: Placidus houses, ASC/MC, house cusps, Mean Node output formatting
+    Human Design:
+    Personality snapshot at birth
+    Design-time solver (Sun −88°; bracket −84 to −90 days; bisection; stop criteria)
+    Design snapshot calculation
+    Mandala mapping implementation with fixed constants and fixed gate sequence
+    Gene Keys derivation (V1 Activation Sequence only)
+Week 3 (interfaces + tests + validation hardening)
+    External interface implementation (either JSON stdin/stdout or minimal HTTP server, depending on your preference)
+    Test harness and fixture runner (golden test cases, strict mismatch failure)
+    Full validation pass against all fixtures (Astrology, HD Personality, HD Design, Gene Keys)
+    Edge-case coverage focused on timezone boundaries, DST transitions, and historical offsets
+Total estimate
+    Core implementation: ~10 working days (2 weeks)
+    Interfaces + tests + fixture validation: ~5 working days (1 week)
+    Total: ~15 working days (~3 weeks)
+
+This estimate assumes no scope changes and strict adherence to the current specification.
+
+I am willing to review the materials in detail and provide an initial substantive response, and I am comfortable proceeding to a Proof of Capability (just review my resume, most projects required precision and determinism), and technical validation if there is a mutual fit.
+
+Please let me know the next steps.
+
+Kind regards,
+Pascal Bourguignon

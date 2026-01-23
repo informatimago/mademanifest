@@ -1,0 +1,108 @@
+{
+  "case_id": "golden_test_case_v1_jaimie_1990_04_09_1804_schiedam",
+  "birth": {
+    "date": "1990-04-09",
+    "time_hh_mm": "18:04",
+    "seconds_policy": "assume_00",
+    "place_name": "Schiedam, Netherlands",
+    "latitude": 51.9167,
+    "longitude": 4.4000,
+    "timezone_iana": "Europe/Amsterdam"
+  },
+  "engine_contract": {
+    "ephemeris": "swiss_ephemeris",
+    "zodiac": "tropical",
+    "houses": "placidus",
+    "node_policy_by_system": {
+      "astrology": "mean",
+      "human_design": "true",
+      "gene_keys": "true"
+    },
+    "human_design_mapping": {
+      "mandala_start_deg": 313.25,
+      "gate_width_deg": 5.625,
+      "line_width_deg": 0.9375,
+      "interval_rule": "start_inclusive_end_exclusive"
+    },
+    "design_time_solver": {
+      "sun_offset_deg": 88.0,
+      "stop_if_abs_sun_diff_deg_below": 0.0001,
+      "stop_if_time_bracket_below_seconds": 1
+    }
+  },
+  "expected": {
+    "astrology": {
+      "positions": {
+        "sun": { "sign": "Aries", "deg": 19, "min": 32 },
+        "moon": { "sign": "Libra", "deg": 14, "min": 20 },
+        "mercury": { "sign": "Taurus", "deg": 8, "min": 16 },
+        "venus": { "sign": "Pisces", "deg": 3, "min": 23 },
+        "mars": { "sign": "Aquarius", "deg": 21, "min": 35 },
+        "jupiter": { "sign": "Cancer", "deg": 3, "min": 46 },
+        "saturn": { "sign": "Capricorn", "deg": 24, "min": 49 },
+        "uranus": { "sign": "Capricorn", "deg": 9, "min": 34 },
+        "neptune": { "sign": "Capricorn", "deg": 14, "min": 33 },
+        "pluto": { "sign": "Scorpio", "deg": 17, "min": 8 },
+        "chiron": { "sign": "Cancer", "deg": 11, "min": 3 },
+        "north_node_mean": { "sign": "Aquarius", "deg": 13, "min": 14 },
+        "ascendant": { "sign": "Virgo", "deg": 25, "min": 6 },
+        "mc": { "sign": "Gemini", "deg": 23, "min": 35 }
+      }
+    },
+    "human_design": {
+      "activation_object_order": [
+        "sun",
+        "earth",
+        "north_node",
+        "south_node",
+        "moon",
+        "mercury",
+        "venus",
+        "mars",
+        "jupiter",
+        "saturn",
+        "uranus",
+        "neptune",
+        "pluto"
+      ],
+      "personality": {
+        "sun": "51.5",
+        "earth": "57.5",
+        "north_node": "13.2",
+        "south_node": "7.2",
+        "moon": "48.6",
+        "mercury": "24.1",
+        "venus": "55.4",
+        "mars": "49.3",
+        "jupiter": "15.6",
+        "saturn": "61.5",
+        "uranus": "38.1",
+        "neptune": "38.6",
+        "pluto": "1.5"
+      },
+      "design": {
+        "sun": "61.1",
+        "earth": "62.1",
+        "north_node": "13.4",
+        "south_node": "7.4",
+        "moon": "31.1",
+        "mercury": "38.6",
+        "venus": "41.1",
+        "mars": "26.1",
+        "jupiter": "15.6",
+        "saturn": "54.2",
+        "uranus": "58.3",
+        "neptune": "38.4",
+        "pluto": "1.5"
+      }
+    },
+    "gene_keys": {
+      "activation_sequence": {
+        "lifes_work": { "key": 51, "line": 5 },
+        "evolution": { "key": 57, "line": 5 },
+        "radiance": { "key": 61, "line": 1 },
+        "purpose": { "key": 62, "line": 1 }
+      }
+    }
+  }
+}
