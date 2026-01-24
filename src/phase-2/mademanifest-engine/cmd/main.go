@@ -29,7 +29,7 @@ func main() {
 	// Extract birth data
 	birthDateStr := birthData["birth"].(map[string]interface{})["date"].(string)
 	birthTimeStr := birthData["birth"].(map[string]interface{})["time_hh_mm"].(string)
-	placeName := birthData["birth"].(map[string]interface{})["place_name"].(string)
+	// placeName := birthData["birth"].(map[string]interface{})["place_name"].(string)
 	timezone := birthData["birth"].(map[string]interface{})["timezone_iana"].(string)
 
 	birthDate, err := time.Parse("2006-01-02", birthDateStr)

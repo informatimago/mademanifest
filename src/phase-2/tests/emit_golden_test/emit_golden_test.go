@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/yourorg/mademanifest-engine/golden"
+	"github.com/informatimago/mademanifest-engine/golden"
 )
 
 func TestEmitGoldenJSON(t *testing.T) {

@@ -1,8 +1,8 @@
 package gene_keys
 
 import (
-	"fmt"
-	"log"
+	// "fmt"
+	// "log"
 )
 
 func DeriveGeneKeys(humanDesignData map[string]float64) map[string]int {

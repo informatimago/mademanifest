@@ -1,8 +1,8 @@
 package ephemeris
 
 import (
-	"fmt"
-	"log"
+	// "fmt"
+	// "log"
 )
 
 type Ephemeris struct {

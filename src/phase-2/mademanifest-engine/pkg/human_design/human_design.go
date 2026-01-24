@@ -1,8 +1,8 @@
 package human_design
 
 import (
-	"fmt"
-	"log"
+	// "fmt"
+	// "log"
 )
 
 const (

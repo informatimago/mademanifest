@@ -1,5 +1,6 @@
 all: tests
 
 tests:
-	- cd goldenharness ; go test
+	- cd emit_golden_test ; go test
+	- cd goldenharness    ; go test
 

@@ -1,8 +1,8 @@
 package astrology
 
 import (
-	"fmt"
-	"log"
+	// "fmt"
+	// "log"
 )
 
 func CalculateAstrology(positions map[string]float64) map[string]float64 {
