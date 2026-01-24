@@ -215,24 +215,55 @@ func emitExpected(b *bytes.Buffer, v Expected) {
 	fmt.Fprintf(b, "\n  }")
 }
 
-func emitAstrology(b *bytes.Buffer, v Astrology) {
-	fmt.Fprintf(b, `    "astrology": {
-      "positions": {
-`)
-	emitPositionBlock(b, "sun", v.Positions.Sun)
-	fmt.Fprintf(b, ",\n")
-	emitPositionBlock(b, "moon", v.Positions.Moon)
-	// (remaining positions omitted here for brevity but must be emitted explicitly)
-	fmt.Fprintf(b, `
-      }
-    }`)
-}
-
 func emitPositionBlock(b *bytes.Buffer, name string, p Position) {
 	fmt.Fprintf(b,
 `        "%s": { "sign": "%s", "deg": %d, "min": %d }`,
 		name, p.Sign, p.Deg, p.Min,
 	)
+}
+
+func emitAstrologyPositions(w *bytes.Buffer, p AstrologyPositions) error {
+
+	type entry struct {
+		name string
+		pos  Position
+	}
+
+	entries := []entry{
+		{"sun", p.Sun},
+		{"moon", p.Moon},
+		{"mercury", p.Mercury},
+		{"venus", p.Venus},
+		{"mars", p.Mars},
+		{"jupiter", p.Jupiter},
+		{"saturn", p.Saturn},
+		{"uranus", p.Uranus},
+		{"neptune", p.Neptune},
+		{"pluto", p.Pluto},
+		{"chiron", p.Chiron},
+		{"north_node_mean", p.NorthNodeMean},
+		{"ascendant", p.Ascendant},
+		{"mc", p.MC},
+	}
+
+	for i, e := range entries {
+		if i > 0 {
+			w.WriteString(",\n")
+		}
+		emitPositionBlock(w, e.name, e.pos)
+	}
+
+	return nil
+}
+
+func emitAstrology(b *bytes.Buffer, v Astrology) {
+	fmt.Fprintf(b, `    "astrology": {
+      "positions": {
+`)
+	emitAstrologyPositions(b,v.Positions)
+	fmt.Fprintf(b, `
+      }
+    }`)
 }
 
 func emitHumanDesign(b *bytes.Buffer, v HumanDesign) {

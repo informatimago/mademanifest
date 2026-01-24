@@ -1,7 +1,8 @@
 all:
 	cd mademanifest-engine ; go build -o proof-of-capability ./cmd
 
-tests: all
+
+test tests: all
 	$(MAKE) -C tests tests
 
-.PHONY: tests
+.PHONY: test tests

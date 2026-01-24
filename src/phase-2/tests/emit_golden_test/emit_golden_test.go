@@ -4,14 +4,14 @@ import (
 	"bytes"
 	"os"
 	"testing"
-
+	"log"
 	"github.com/informatimago/mademanifest-engine/golden"
 )
 
 func TestEmitGoldenJSON(t *testing.T) {
-	root := GoldenCase{
+	root := golden.GoldenCase{
 		CaseID: "golden_test_case_v1_jaimie_1990_04_09_1804_schiedam",
-		Birth: Birth{
+		Birth: golden.Birth{
 			Date:          "1990-04-09",
 			TimeHHMM:      "18:04",
 			SecondsPolicy: "assume_00",
@@ -20,47 +20,47 @@ func TestEmitGoldenJSON(t *testing.T) {
 			Longitude:     4.4000,
 			TimezoneIANA:  "Europe/Amsterdam",
 		},
-		EngineContract: EngineContract{
+		EngineContract: golden.EngineContract{
 			Ephemeris: "swiss_ephemeris",
 			Zodiac:    "tropical",
 			Houses:    "placidus",
-			NodePolicyBySystem: NodePolicyBySystem{
+			NodePolicyBySystem: golden.NodePolicyBySystem{
 				Astrology:   "mean",
 				HumanDesign: "true",
 				GeneKeys:    "true",
 			},
-			HumanDesignMapping: HumanDesignMapping{
+			HumanDesignMapping: golden.HumanDesignMapping{
 				MandalaStartDeg: 313.25,
 				GateWidthDeg:    5.625,
 				LineWidthDeg:    0.9375,
 				IntervalRule:    "start_inclusive_end_exclusive",
 			},
-			DesignTimeSolver: DesignTimeSolver{
+			DesignTimeSolver: golden.DesignTimeSolver{
 				SunOffsetDeg:                  88.0,
 				StopIfAbsSunDiffDegBelow:      0.0001,
 				StopIfTimeBracketBelowSeconds: 1,
 			},
 		},
-		Expected: Expected{
-			Astrology: Astrology{
-				Positions: AstrologyPositions{
-					Sun:           Position{"Aries", 19, 32},
-					Moon:          Position{"Libra", 14, 20},
-					Mercury:       Position{"Taurus", 8, 16},
-					Venus:         Position{"Pisces", 3, 23},
-					Mars:          Position{"Aquarius", 21, 35},
-					Jupiter:       Position{"Cancer", 3, 46},
-					Saturn:        Position{"Capricorn", 24, 49},
-					Uranus:        Position{"Capricorn", 9, 34},
-					Neptune:       Position{"Capricorn", 14, 33},
-					Pluto:         Position{"Scorpio", 17, 8},
-					Chiron:        Position{"Cancer", 11, 3},
-					NorthNodeMean: Position{"Aquarius", 13, 14},
-					Ascendant:     Position{"Virgo", 25, 6},
-					MC:            Position{"Gemini", 23, 35},
+		Expected: golden.Expected{
+			Astrology: golden.Astrology{
+				Positions: golden.AstrologyPositions{
+					Sun:           golden.Position{"Aries", 19, 32},
+					Moon:          golden.Position{"Libra", 14, 20},
+					Mercury:       golden.Position{"Taurus", 8, 16},
+					Venus:         golden.Position{"Pisces", 3, 23},
+					Mars:          golden.Position{"Aquarius", 21, 35},
+					Jupiter:       golden.Position{"Cancer", 3, 46},
+					Saturn:        golden.Position{"Capricorn", 24, 49},
+					Uranus:        golden.Position{"Capricorn", 9, 34},
+					Neptune:       golden.Position{"Capricorn", 14, 33},
+					Pluto:         golden.Position{"Scorpio", 17, 8},
+					Chiron:        golden.Position{"Cancer", 11, 3},
+					NorthNodeMean: golden.Position{"Aquarius", 13, 14},
+					Ascendant:     golden.Position{"Virgo", 25, 6},
+					MC:            golden.Position{"Gemini", 23, 35},
 				},
 			},
-			HumanDesign: HumanDesign{
+			HumanDesign: golden.HumanDesign{
 				ActivationObjectOrder: []string{
 					"sun", "earth", "north_node", "south_node", "moon",
 					"mercury", "venus", "mars", "jupiter", "saturn",
@@ -85,18 +85,18 @@ func TestEmitGoldenJSON(t *testing.T) {
 					"pluto": "1.5",
 				},
 			},
-			GeneKeys: GeneKeys{
-				ActivationSequence: ActivationSequence{
-					LifesWork: ActivationKey{Key: 51, Line: 5},
-					Evolution: ActivationKey{Key: 57, Line: 5},
-					Radiance:  ActivationKey{Key: 61, Line: 1},
-					Purpose:   ActivationKey{Key: 62, Line: 1},
+			GeneKeys: golden.GeneKeys{
+				ActivationSequence: golden.ActivationSequence{
+					LifesWork: golden.ActivationKey{Key: 51, Line: 5},
+					Evolution: golden.ActivationKey{Key: 57, Line: 5},
+					Radiance:  golden.ActivationKey{Key: 61, Line: 1},
+					Purpose:   golden.ActivationKey{Key: 62, Line: 1},
 				},
 			},
 		},
 	}
 
-	actual, err := EmitGoldenJSON(root)
+	actual, err := golden.EmitGoldenJSON(root)
 	if err != nil {
 		t.Fatalf("EmitGoldenJSON failed: %v", err)
 	}
@@ -107,6 +107,8 @@ func TestEmitGoldenJSON(t *testing.T) {
 	}
 
 	if !bytes.Equal(actual, expected) {
+		log.Printf("actual   = %+v", string(actual))
+		log.Printf("expected = %+v", string(expected))
 		t.Fatalf("golden JSON mismatch: output does not match canonical fixture")
 	}
 }
