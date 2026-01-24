@@ -1,0 +1,44 @@
+* phase-2
+
+** 1- get the dependencies
+
+#+begin_src bash
+make -C src/dependencies
+#+end_src
+
+** 2- compile phase-2
+
+make -C src/phase-2 buil
+
+** 3- run the tests
+
+make -C src/phase-2 test
+
+* Hierarchy
+
+src/phase-2/mademanifest-engine/
+├── cmd/
+│   └── main.go
+├── pkg/
+│   ├── astronomy/
+│   │   └── time.go
+│   ├── ephemeris/
+│   │   └── ephemeris.go
+│   ├── astrology/
+│   │   └── astrology.go
+│   ├── human_design/
+│   │   └── human_design.go
+│   └── gene_keys/
+│       └── gene_keys.go
+├── internal/
+│   ├── config/
+│   │   └── config.go
+│   ├── util/
+│   │   └── util.go
+└── go.mod
+
+
+#+begin_src bash
+mkdir -p mademanifest-engine/cmd/ mademanifest-engine/pkg/ mademanifest-engine/pkg/astronomy/ mademanifest-engine/pkg/ephemeris/ mademanifest-engine/pkg/astrology/ mademanifest-engine/pkg/human_design/ mademanifest-engine/pkg/gene_keys/ mademanifest-engine/internal/ mademanifest-engine/internal/config/ mademanifest-engine/internal/util/
+#+end_src
+
