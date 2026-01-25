@@ -42,3 +42,11 @@ src/phase-2/mademanifest-engine/
 mkdir -p mademanifest-engine/cmd/ mademanifest-engine/pkg/ mademanifest-engine/pkg/astronomy/ mademanifest-engine/pkg/ephemeris/ mademanifest-engine/pkg/astrology/ mademanifest-engine/pkg/human_design/ mademanifest-engine/pkg/gene_keys/ mademanifest-engine/internal/ mademanifest-engine/internal/config/ mademanifest-engine/internal/util/
 #+end_src
 
+
+
+* Scratch
+
+// (* require github.com/informatimago/mademanifest-engine v0.0.0 *)
+// (*  *)
+// (* replace github.com/informatimago/mademanifest-engine => ../../mademanifest-engine *)
+
