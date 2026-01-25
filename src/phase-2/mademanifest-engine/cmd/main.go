@@ -13,6 +13,30 @@ import (
 	"time"
 )
 
+func parseDate(dateStr string) time.Date {
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		log.Fatalf("Failed to parse birth date: %v", err)
+	}
+	return date
+}
+
+func parseTime(timeStr string) time.Time {
+	layouts := []string{"15:04:05", "15:04"}
+	var time time.Time
+	var err error
+	for _, layout := range layouts {
+		time, err = time.Parse(layout, timeStr)
+		if err == nil {
+			break
+		}
+	}
+	if err != nil {
+		log.Fatalf("Failed to parse birth time: %v", err)
+	}
+	return time
+}
+
 func main() {
 	// Load birth data from JSON
 	file, err := os.Open("golden_test_case_v1_jaimie_1990_04_09_1804_schiedam.json")
@@ -32,14 +56,8 @@ func main() {
 	// placeName := birthData["birth"].(map[string]interface{})["place_name"].(string)
 	timezone := birthData["birth"].(map[string]interface{})["timezone_iana"].(string)
 
-	birthDate, err := time.Parse("2006-01-02", birthDateStr)
-	if err != nil {
-		log.Fatalf("Failed to parse birth date: %v", err)
-	}
-	birthTime, err := time.Parse("15:04", birthTimeStr)
-	if err != nil {
-		log.Fatalf("Failed to parse birth time: %v", err)
-	}
+	birthDate := parseDate(birthDateStr)
+	birthTime := parseTime(birthTimeStr)
 
 	// Convert local time to UTC
 	utcTime := astronomy.ConvertLocalTimeToUTC(time.Date(birthDate.Year(), birthDate.Month(), birthDate.Day(), birthTime.Hour(), birthTime.Minute(), 0, 0, time.UTC), timezone)
