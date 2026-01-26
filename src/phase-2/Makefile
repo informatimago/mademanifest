@@ -1,44 +1,46 @@
 # Makefile for mademanifest-engine tests
 
+SRC = mademanifest-engine
+
 .PHONY: test test-unit test-integration
 
 all:
-	cd mademanifest-engine ; go build -o proof-of-capability ./cmd
+	cd $(SRC) ; go build -o proof-of-capability ./cmd
 
 
 test: test-unit test-integration
 	$(MAKE) -C tests tests
 
 test-unit:
-	go test ./pkg/...
+	cd $(SRC) ; go test ./pkg/...
 
 test-integration:
 	go test -run TestFullPipeline
 
 # Run all tests with coverage
 test-coverage:
-	go test -coverprofile=coverage.txt ./...
+	cd $(SRC) ; go test -coverprofile=coverage.txt ./...
 	go tool cover -html=coverage.txt
 
 # Run tests with verbose output
 test-verbose:
-	go test -v ./...
+	cd $(SRC) ; go test -v ./...
 
 # Run specific package tests
 test-astronomy:
-	go test ./pkg/astronomy
+	cd $(SRC) ; go test ./pkg/astronomy
 
 test-ephemeris:
-	go test ./pkg/ephemeris
+	cd $(SRC) ; go test ./pkg/ephemeris
 
 test-astrology:
-	go test ./pkg/astrology
+	cd $(SRC) ; go test ./pkg/astrology
 
 test-human_design:
-	go test ./pkg/human_design
+	cd $(SRC) ; go test ./pkg/human_design
 
 test-gene_keys:
-	go test ./pkg/gene_keys
+	cd $(SRC) ; go test ./pkg/gene_keys
 
 # Clean test artifacts
 clean:
