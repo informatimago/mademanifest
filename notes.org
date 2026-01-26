@@ -44,6 +44,12 @@ mkdir -p mademanifest-engine/cmd/ mademanifest-engine/pkg/ mademanifest-engine/p
 
 
 
+* Observation
+
+It seems to me there's a confusion between houses and zodiac signs.
+The specification documents as for houses to be computed,
+but the golden case file uses the label "sign" for the positions.
+
 * Scratch
 
 // (* require github.com/informatimago/mademanifest-engine v0.0.0 *)

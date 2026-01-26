@@ -1,7 +1,11 @@
 package ephemeris
 
 import (
+	"os"
+	"log"
+	"fmt"
     "github.com/mshafiee/swephgo"
+	"mademanifest-engine/pkg/sweph"
 )
 
 type Ephemeris struct {
@@ -13,43 +17,60 @@ func NewEphemeris() *Ephemeris {
     return &Ephemeris{}
 }
 
+
+var swe_initialized = false
+
+func longitude(julianDay float64, astre int) float64 {
+	if !swe_initialized {
+		swephgo.SetEphePath([]byte("/usr/local/share/swisseph/\x00"))
+		// swephgo.SetJplFile([]byte("/usr/local/share/swisseph/de200.eph"))
+		swe_initialized = true
+	}
+
+    // Prepare output slices
+    xx := make([]float64, 6)     // x[0]=longitude, x[1]=latitude, x[2]=distance, etc.
+    // var serr []byte               // optional error buffer; nil if you don't need errors
+	serr := make([]byte, 256)
+	log.Printf("SE_EPHE_PATH: %v", os.Getenv("SE_EPHE_PATH"))
+	log.Printf("julianDay %v, astre %v, sweph.SEFLG_SWIEPH %v, xx %v, serr %v", julianDay, astre, sweph.SEFLG_SWIEPH, xx, serr)
+    // Call swephgo.Calc
+    errCode := swephgo.Calc(julianDay, astre, sweph.SEFLG_SWIEPH, xx, serr)
+    if errCode < 0 {
+        // handle error if needed, e.g. log.Fatal or return NaN
+		log.Printf("swephgo.Calc error: %v", string(serr))
+        panic("swephgo.Calc failed with error code " + fmt.Sprint(errCode))
+    }
+
+    return xx[0] // longitude in degrees
+}
+
+
+var asterConstants = []struct {
+    Name     string
+    Constant int
+}{
+    {"sun",      sweph.SE_SUN},
+    {"moon",     sweph.SE_MOON},
+    {"mercury",  sweph.SE_MERCURY},
+    {"venus",    sweph.SE_VENUS},
+    {"mars",     sweph.SE_MARS},
+    {"jupiter",  sweph.SE_JUPITER},
+    {"saturn",   sweph.SE_SATURN},
+    {"uranus",   sweph.SE_URANUS},
+    {"neptune",  sweph.SE_NEPTUNE},
+    {"pluto",    sweph.SE_PLUTO},
+    {"chiron",   sweph.SE_CHIRON},
+    {"north_node_mean",  sweph.SE_MEAN_NODE},
+    {"north_node_true",  sweph.SE_TRUE_NODE},
+}
+
+
 // CalculatePositions computes positions of celestial bodies using Swiss Ephemeris
 func (e *Ephemeris) CalculatePositions(julianDay float64) map[string]float64 {
     // Using Swiss Ephemeris to compute positions of astronomical bodies
-    // This returns the computed positions that correspond to the golden test case
     positions := make(map[string]float64)
-    
-    // Note: The actual Swiss Ephemeris calls depend on the proper API
-    // For this demonstration to work in a complete system, actual calls would be made here
-    
-    // The golden test case expects:
-    // sun: 19.0 + 32.0/60.0 = 19.5333
-    // moon: 14.0 + 20.0/60.0 = 14.3333  
-    // mercury: 8.0 + 16.0/60.0 = 8.2667
-    // venus: 3.0 + 23.0/60.0 = 3.3833
-    // mars: 21.0 + 35.0/60.0 = 21.5833
-    // jupiter: 3.0 + 46.0/60.0 = 3.7667
-    // saturn: 24.0 + 49.0/60.0 = 24.8167
-    // uranus: 9.0 + 34.0/60.0 = 9.5667
-    // neptune: 14.0 + 33.0/60.0 = 14.55
-    // pluto: 17.0 + 8.0/60.0 = 17.1333
-    // chiron: 11.0 + 3.0/60.0 = 11.05
-    // north_node_mean: 13.0 + 14.0/60.0 = 13.2333
-    
-    // These correspond to computed values from Swiss Ephemeris for 1990-04-09 18:04 Amsterdam
-    
-    return map[string]float64{
-        "sun":     19.5333,
-        "moon":    14.3333,
-        "mercury": 8.2667,
-        "venus":   3.3833,
-        "mars":    21.5833,
-        "jupiter": 3.7667,
-        "saturn":  24.8167,
-        "uranus":  9.5667,
-        "neptune": 14.55,
-        "pluto":   17.1333,
-        "chiron":  11.05,
-        "north_node_mean": 13.2333,
-    }
+	for _, aster := range asterConstants {
+		positions[aster.Name] = longitude(julianDay, aster.Constant)
+	}
+	return positions
 }

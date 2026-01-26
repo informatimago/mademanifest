@@ -1,41 +1,57 @@
 package astronomy
 
 import (
-    "time"
-    "github.com/bxparks/acetimego/acetime"
-    "github.com/bxparks/acetimego/zonedb2025"
-    "github.com/mshafiee/swephgo"
+	"fmt"
+	"time"
+
+	"github.com/bxparks/acetimego/acetime"
+	"github.com/bxparks/acetimego/zonedb2025"
 )
 
-// ConvertLocalTimeToUTC converts local time to UTC using acetimego (tzdb-2025c imezone handling).
-// This timezone algorithm corrects for historical timezone quirks.
+// ConvertLocalTimeToUTC converts a local civil time in a named IANA timezone
+// to UTC using acetimego (TZDB 2025c).
 func ConvertLocalTimeToUTC(localTime time.Time, timezone string) (time.Time, error) {
-    // Initialize a zone manager using the TZDB data
-    zm := acetime.NewZoneManager(zonedb2025.DataContext)
+	// Initialize ZoneManager (note the pointer)
+	zm := acetime.ZoneManagerFromDataContext(&zonedb2025.DataContext)
 
-    // Lookup the time zone
-    z, ok := zm.Lookup(timezone)
-    if !ok {
-        return time.Time{}, fmt.Errorf("timezone not found: %s", timezone)
-    }
+	// Resolve timezone
+	tz := zm.TimeZoneFromName(timezone)
+	if tz.IsError() {
+		return time.Time{}, fmt.Errorf("timezone not found: %s", timezone)
+	}
 
-    // Create a "ZonedDateTime" from local date+time
-    // (year,month,day,hour,min,sec,nsec)
-    zdt := acetime.NewZonedDateTime(
-        int(localTime.Year()), int(localTime.Month()), localTime.Day(),
-        localTime.Hour(), localTime.Minute(), localTime.Second(), localTime.Nanosecond(),
-        z)
+	// Build PlainDateTime
+	pdt := acetime.PlainDateTime{
+		Year:   int16(localTime.Year()),
+		Month:  uint8(localTime.Month()),
+		Day:    uint8(localTime.Day()),
+		Hour:   uint8(localTime.Hour()),
+		Minute: uint8(localTime.Minute()),
+		Second: uint8(localTime.Second()),
+	}
 
-    // Convert to UTC instant
-    utcInstant := zdt.ToInstantUTC()
+	// Resolve ZonedDateTime (explicit cast required)
+	zdt := acetime.ZonedDateTimeFromPlainDateTime(
+		&pdt,
+		&tz,
+		uint8(acetime.ResolvedOverlapLater),
+	)
 
-    // Convert that instant to standard time.Time
-    return time.Unix(utcInstant.Unix(), utcInstant.Nanosecond()).UTC(), nil
+	if zdt.IsError() {
+		return time.Time{}, fmt.Errorf("invalid local time for timezone: %s", timezone)
+	}
+
+	// Convert to Unix seconds (acetime.Time → int64)
+	unixSeconds := zdt.UnixSeconds()
+
+	return time.Unix(int64(unixSeconds), int64(localTime.Nanosecond())).UTC(), nil
 }
 
-// ConvertUTCToJulianDay converts UTC time to Julian Day using the Swiss Ephemeris
+
+// ConvertUTCToJulianDay converts UTC time to Julian Day (JD).
 func ConvertUTCToJulianDay(utcTime time.Time) float64 {
-    // Use Swiss Ephemeris to perform the Julian Day calculation properly
-    jd := swephgo.JDFromUnix(utcTime.Unix())
-    return jd
+    utc := utcTime.UTC()
+    seconds := float64(utc.Unix()) + float64(utc.Nanosecond())/1e9
+    daysSinceUnixEpoch := seconds / 86400.0
+    return daysSinceUnixEpoch + 2440587.5
 }
