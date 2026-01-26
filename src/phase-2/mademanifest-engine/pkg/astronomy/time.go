@@ -1,12 +1,14 @@
 package astronomy
 
 import (
-    "fmt"
+    "time"
     "github.com/bxparks/acetimego/acetime"
     "github.com/bxparks/acetimego/zonedb2025"
-    "time"
+    "github.com/mshafiee/swephgo"
 )
 
+// ConvertLocalTimeToUTC converts local time to UTC using acetimego (tzdb-2025c imezone handling).
+// This timezone algorithm corrects for historical timezone quirks.
 func ConvertLocalTimeToUTC(localTime time.Time, timezone string) (time.Time, error) {
     // Initialize a zone manager using the TZDB data
     zm := acetime.NewZoneManager(zonedb2025.DataContext)
@@ -31,10 +33,9 @@ func ConvertLocalTimeToUTC(localTime time.Time, timezone string) (time.Time, err
     return time.Unix(utcInstant.Unix(), utcInstant.Nanosecond()).UTC(), nil
 }
 
+// ConvertUTCToJulianDay converts UTC time to Julian Day using the Swiss Ephemeris
 func ConvertUTCToJulianDay(utcTime time.Time) float64 {
-    utc := utcTime.UTC()
-    seconds := float64(utc.Unix()) + float64(utc.Nanosecond())/1e9
-    daysSinceUnixEpoch := seconds / 86400.0
-    julianDay := daysSinceUnixEpoch + 2440587.5
-    return julianDay
+    // Use Swiss Ephemeris to perform the Julian Day calculation properly
+    jd := swephgo.JDFromUnix(utcTime.Unix())
+    return jd
 }
