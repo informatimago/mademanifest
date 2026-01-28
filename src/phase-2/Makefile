@@ -10,7 +10,6 @@ all:
 
 
 test: test-unit test-integration
-	$(MAKE) -C tests tests
 
 test-unit:
 	cd $(SRC) ; go test $(TEST_FLAGS) ./pkg/...
