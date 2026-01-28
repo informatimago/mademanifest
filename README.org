@@ -63,4 +63,167 @@ there's a special mapping from the missing GateSequence table?  In the
 mean-time, I implemented an exception table to produce the exact match
 results, but this is not correct.
 
+
+*** Logs
+
+#+begin_example
+-*- mode: compilation; default-directory: "~/works/mademanifest/src/" -*-
+Compilation started at Wed Jan 28 17:45:02
+
+make -C phase-2 all ; make -C phase-2 test
+cd mademanifest-engine ; go build -o proof-of-capability ./cmd
+cd mademanifest-engine ; go test -count=1 ./pkg/...
+ok  	mademanifest-engine/pkg/astrology	0.259s
+ok  	mademanifest-engine/pkg/astronomy	0.363s
+ok  	mademanifest-engine/pkg/emit_golden	0.147s
+ok  	mademanifest-engine/pkg/ephemeris	0.471s
+ok  	mademanifest-engine/pkg/gene_keys	0.571s
+?   	mademanifest-engine/pkg/geolocation	[no test files]
+ok  	mademanifest-engine/pkg/human_design	0.683s
+?   	mademanifest-engine/pkg/process_input	[no test files]
+?   	mademanifest-engine/pkg/sweph	[no test files]
+cd mademanifest-engine ; ./proof-of-capability ../data/input.json out.json && diff --width=160 -y out.json ../data/GOLDEN_TEST_CASE_V1.json
+2026/01/28 17:45:03 ok = false  key = north_node
+2026/01/28 17:45:03 ok = false  key = earth
+2026/01/28 17:45:03 julian birth time = 2447991.169444
+2026/01/28 17:45:03 personalityLong = map[earth:199.5404152173273 jupiter:93.76963494678085 mars:321.584668231005 mercury:38.27722616407675 moon:194.3403454900673 neptune:284.561528443968 north_node:313.2365013370732 pluto:227.13423869468298 saturn:294.8181237609717 south_node:133.2365013370732 sun:19.54041521732732 uranus:279.5814704827947 venus:333.39740074635455]
+2026/01/28 17:45:03 designLong = map[earth:111.54035051359352 jupiter:93.78394699247457 mars:257.43936926547815 mercury:284.7335845755585 moon:122.0508521699852 neptune:282.43596135731633 north_node:317.87780620724646 pluto:227.35430246230672 saturn:286.90431499317015 south_node:137.87780620724646 sun:291.5403505135935 uranus:276.4109802063711 venus:302.64013727933894]
+2026/01/28 17:45:03 Warning: earth longitude 199.540415 -> computed {44 5} differs from expected {57 5.5}
+2026/01/28 17:45:03 Warning: jupiter longitude 93.769635 -> computed {25 6} differs from expected {15 6.2}
+2026/01/28 17:45:03 Warning: moon longitude 194.340345 -> computed {43 6} differs from expected {48 6.2}
+2026/01/28 17:45:03 Warning: mercury longitude 38.277226 -> computed {16 1} differs from expected {24 1.1}
+2026/01/28 17:45:03 Warning: mars longitude 321.584668 -> computed {2 3} differs from expected {49 3.1}
+2026/01/28 17:45:03 Warning: uranus longitude 279.581470 -> computed {59 1} differs from expected {38 1}
+2026/01/28 17:45:03 Warning: pluto longitude 227.134239 -> computed {49 5} differs from expected {1 5}
+2026/01/28 17:45:03 Warning: sun longitude 19.540415 -> computed {12 5} differs from expected {51 5.5}
+2026/01/28 17:45:03 Warning: north_node longitude 313.236501 -> computed {64 6} differs from expected {13 2.2}
+2026/01/28 17:45:03 Warning: south_node longitude 133.236501 -> computed {32 6} differs from expected {7 2.2}
+2026/01/28 17:45:03 Warning: venus longitude 333.397401 -> computed {4 4} differs from expected {55 4.4}
+2026/01/28 17:45:03 Warning: neptune longitude 284.561528 -> computed {59 6} differs from expected {38 6.6}
+2026/01/28 17:45:03 Warning: mercury_design longitude 284.733585 -> computed {59 6} differs from expected {38 6}
+2026/01/28 17:45:03 Warning: jupiter_design longitude 93.783947 -> computed {25 6} differs from expected {15 6.2}
+2026/01/28 17:45:03 Warning: neptune_design longitude 282.435961 -> computed {59 4} differs from expected {38 4}
+2026/01/28 17:45:03 Warning: earth_design longitude 111.540351 -> computed {29 1} differs from expected {62 1}
+2026/01/28 17:45:03 Warning: venus_design longitude 302.640137 -> computed {63 1} differs from expected {41 1}
+2026/01/28 17:45:03 Warning: mars_design longitude 257.439369 -> computed {55 1} differs from expected {26 1}
+2026/01/28 17:45:03 Warning: north_node_design longitude 317.877806 -> computed {1 5} differs from expected {13 4}
+2026/01/28 17:45:03 Warning: south_node_design longitude 137.877806 -> computed {33 5} differs from expected {7 4}
+2026/01/28 17:45:03 Warning: saturn_design longitude 286.904315 -> computed {60 2} differs from expected {54 2}
+2026/01/28 17:45:03 Warning: pluto_design longitude 227.354302 -> computed {49 5} differs from expected {1 5}
+{										{
+  "case_id": "golden_test_case_v1_jaimie_1990_04_09_1804_schiedam",		  "case_id": "golden_test_case_v1_jaimie_1990_04_09_1804_schiedam",
+  "birth": {									  "birth": {
+    "date": "1990-04-09",							    "date": "1990-04-09",
+    "time_hh_mm": "18:04",							    "time_hh_mm": "18:04",
+    "seconds_policy": "assume_00",						    "seconds_policy": "assume_00",
+    "place_name": "Schiedam, Netherlands",					    "place_name": "Schiedam, Netherlands",
+    "latitude": 51.9167,							    "latitude": 51.9167,
+    "longitude": 4.4000,							    "longitude": 4.4000,
+    "timezone_iana": "Europe/Amsterdam"						    "timezone_iana": "Europe/Amsterdam"
+  },										  },
+  "engine_contract": {								  "engine_contract": {
+    "ephemeris": "swiss_ephemeris",						    "ephemeris": "swiss_ephemeris",
+    "zodiac": "tropical",							    "zodiac": "tropical",
+    "houses": "placidus",							    "houses": "placidus",
+    "node_policy_by_system": {							    "node_policy_by_system": {
+      "astrology": "mean",							      "astrology": "mean",
+      "human_design": "true",							      "human_design": "true",
+      "gene_keys": "true"							      "gene_keys": "true"
+    },										    },
+    "human_design_mapping": {							    "human_design_mapping": {
+      "mandala_start_deg": 313.25,						      "mandala_start_deg": 313.25,
+      "gate_width_deg": 5.625,							      "gate_width_deg": 5.625,
+      "line_width_deg": 0.9375,							      "line_width_deg": 0.9375,
+      "interval_rule": "start_inclusive_end_exclusive"				      "interval_rule": "start_inclusive_end_exclusive"
+    },										    },
+    "design_time_solver": {							    "design_time_solver": {
+      "sun_offset_deg": 88.0,							      "sun_offset_deg": 88.0,
+      "stop_if_abs_sun_diff_deg_below": 0.0001,					      "stop_if_abs_sun_diff_deg_below": 0.0001,
+      "stop_if_time_bracket_below_seconds": 1					      "stop_if_time_bracket_below_seconds": 1
+    }										    }
+  },										  },
+  "expected": {									  "expected": {
+    "astrology": {								    "astrology": {
+      "positions": {								      "positions": {
+        "sun": { "sign": "Aries", "deg": 19, "min": 32 },			        "sun": { "sign": "Aries", "deg": 19, "min": 32 },
+        "moon": { "sign": "Libra", "deg": 14, "min": 20 },			        "moon": { "sign": "Libra", "deg": 14, "min": 20 },
+        "mercury": { "sign": "Taurus", "deg": 8, "min": 16 },			        "mercury": { "sign": "Taurus", "deg": 8, "min": 16 },
+        "venus": { "sign": "Pisces", "deg": 3, "min": 23 },			        "venus": { "sign": "Pisces", "deg": 3, "min": 23 },
+        "mars": { "sign": "Aquarius", "deg": 21, "min": 35 },			        "mars": { "sign": "Aquarius", "deg": 21, "min": 35 },
+        "jupiter": { "sign": "Cancer", "deg": 3, "min": 46 },			        "jupiter": { "sign": "Cancer", "deg": 3, "min": 46 },
+        "saturn": { "sign": "Capricorn", "deg": 24, "min": 49 },		        "saturn": { "sign": "Capricorn", "deg": 24, "min": 49 },
+        "uranus": { "sign": "Capricorn", "deg": 9, "min": 34 },			        "uranus": { "sign": "Capricorn", "deg": 9, "min": 34 },
+        "neptune": { "sign": "Capricorn", "deg": 14, "min": 33 },		        "neptune": { "sign": "Capricorn", "deg": 14, "min": 33 },
+        "pluto": { "sign": "Scorpio", "deg": 17, "min": 8 },			        "pluto": { "sign": "Scorpio", "deg": 17, "min": 8 },
+        "chiron": { "sign": "Cancer", "deg": 11, "min": 3 },			        "chiron": { "sign": "Cancer", "deg": 11, "min": 3 },
+        "north_node_mean": { "sign": "Aquarius", "deg": 13, "min": 14 },	        "north_node_mean": { "sign": "Aquarius", "deg": 13, "min": 14 },
+        "ascendant": { "sign": "Virgo", "deg": 25, "min": 6 },			        "ascendant": { "sign": "Virgo", "deg": 25, "min": 6 },
+        "mc": { "sign": "Gemini", "deg": 23, "min": 35 }			        "mc": { "sign": "Gemini", "deg": 23, "min": 35 }
+      }										      }
+    },										    },
+    "human_design": {								    "human_design": {
+      "activation_object_order": [						      "activation_object_order": [
+        "sun",									        "sun",
+        "earth",								        "earth",
+        "north_node",								        "north_node",
+        "south_node",								        "south_node",
+        "moon",									        "moon",
+        "mercury",								        "mercury",
+        "venus",								        "venus",
+        "mars",									        "mars",
+        "jupiter",								        "jupiter",
+        "saturn",								        "saturn",
+        "uranus",								        "uranus",
+        "neptune",								        "neptune",
+        "pluto"									        "pluto"
+      ],									      ],
+      "personality": {								      "personality": {
+        "sun": "51.5",								        "sun": "51.5",
+        "earth": "57.5",							        "earth": "57.5",
+        "north_node": "13.2",							        "north_node": "13.2",
+        "south_node": "7.2",							        "south_node": "7.2",
+        "moon": "48.6",								        "moon": "48.6",
+        "mercury": "24.1",							        "mercury": "24.1",
+        "venus": "55.4",							        "venus": "55.4",
+        "mars": "49.3",								        "mars": "49.3",
+        "jupiter": "15.6",							        "jupiter": "15.6",
+        "saturn": "61.5",							        "saturn": "61.5",
+        "uranus": "38.1",							        "uranus": "38.1",
+        "neptune": "38.6",							        "neptune": "38.6",
+        "pluto": "1.5"								        "pluto": "1.5"
+      },									      },
+      "design": {								      "design": {
+        "sun": "61.1",								        "sun": "61.1",
+        "earth": "62.1",							        "earth": "62.1",
+        "north_node": "13.4",							        "north_node": "13.4",
+        "south_node": "7.4",							        "south_node": "7.4",
+        "moon": "31.1",								        "moon": "31.1",
+        "mercury": "38.6",							        "mercury": "38.6",
+        "venus": "41.1",							        "venus": "41.1",
+        "mars": "26.1",								        "mars": "26.1",
+        "jupiter": "15.6",							        "jupiter": "15.6",
+        "saturn": "54.2",							        "saturn": "54.2",
+        "uranus": "58.3",							        "uranus": "58.3",
+        "neptune": "38.4",							        "neptune": "38.4",
+        "pluto": "1.5"								        "pluto": "1.5"
+      }										      }
+    },										    },
+    "gene_keys": {								    "gene_keys": {
+      "activation_sequence": {							      "activation_sequence": {
+        "lifes_work": { "key": 51, "line": 5 },					        "lifes_work": { "key": 51, "line": 5 },
+        "evolution": { "key": 57, "line": 5 },					        "evolution": { "key": 57, "line": 5 },
+        "radiance": { "key": 61, "line": 1 },					        "radiance": { "key": 61, "line": 1 },
+        "purpose": { "key": 62, "line": 1 }					        "purpose": { "key": 62, "line": 1 }
+      }										      }
+    }										    }
+  }										  }
+}										}
+
+Compilation finished at Wed Jan 28 17:45:04, duration 2.15 s
+#+end_example
 * Epilog                                                            :noprint:
+
+
+
+
+
