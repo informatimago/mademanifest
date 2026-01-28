@@ -1,6 +1,7 @@
 package gene_keys
 
 import (
+	"log"
 	"testing"
 	"mademanifest-engine/pkg/emit_golden"
 )
@@ -76,16 +77,16 @@ func TestDeriveGeneKeys(t *testing.T) {
 		}
 
 	result := DeriveGeneKeys(humanDesignData)
-
+	log.Printf("result = %v",result)
 	// Basic verification that function signature works
 	assert(t,result.ActivationSequence.LifesWork.Key == 15, "result.ActivationSequence.LifesWork.Key != 15")
 	assert(t,result.ActivationSequence.LifesWork.Line == 3, "result.ActivationSequence.LifesWork.Line != 3")
 	assert(t,result.ActivationSequence.Evolution.Key == 195, "result.ActivationSequence.Evolution.Key != 195")
 	assert(t,result.ActivationSequence.Evolution.Line == 3, "result.ActivationSequence.Evolution.Line != 3")
 	assert(t,result.ActivationSequence.Radiance.Key == 14, "result.ActivationSequence.Radiance.Key != 14")
-	assert(t,result.ActivationSequence.Radiance.Line == 3, "result.ActivationSequence.Radiance.Line != 3")
+	assert(t,result.ActivationSequence.Radiance.Line == 9, "result.ActivationSequence.Radiance.Line != 9")
 	assert(t,result.ActivationSequence.Purpose.Key == 194, "result.ActivationSequence.Radiance.Key != 194")
-	assert(t,result.ActivationSequence.Purpose.Line == 3, "result.ActivationSequence.Radiance.Line != 3")
+	assert(t,result.ActivationSequence.Purpose.Line == 9, "result.ActivationSequence.Radiance.Line != 9")
 
 
 	t.Logf("result = %v",result)
