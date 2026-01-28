@@ -2,28 +2,33 @@ package gene_keys
 
 import (
 	"fmt"
-	"math"
+	"mademanifest-engine/pkg/emit_golden"
 )
 
-// DeriveGeneKeys computes Gene Key values using Human Design output (string-formatted)
-func DeriveGeneKeys(humanDesignData map[string]interface{}) map[string]int {
-	result := make(map[string]int)
 
-	personality := humanDesignData["personality"].(map[string]string)
-	design := humanDesignData["design"].(map[string]string)
+func DeriveGeneKeys(humanDesignData emit_golden.HumanDesign) emit_golden.GeneKeys {
 
-	// Gene Keys mapping per specification
-	result["lifes_work"] = parseGate(personality["sun"])
-	result["evolution"] = parseGate(personality["earth"])
-	result["radiance"] = parseGate(design["sun"])
-	result["purpose"] = parseGate(design["earth"])
-
+	var result emit_golden.GeneKeys
+	result.ActivationSequence.LifesWork = parseActivationKey(humanDesignData.Personality["sun"])
+	result.ActivationSequence.Evolution = parseActivationKey(humanDesignData.Personality["earth"])
+	result.ActivationSequence.Radiance = parseActivationKey(humanDesignData.Design["sun"])
+	result.ActivationSequence.Purpose = parseActivationKey(humanDesignData.Design["earth"])
 	return result
 }
 
-// parseGate converts a Human Design string value ("61.1") into its integer gate number using floor
-func parseGate(val string) int {
-	var f float64
-	fmt.Sscanf(val, "%f", &f)
-	return int(math.Floor(f))
+// parseActivationKey converts a Human Design value like "61.1"
+// into Gene Keys ActivationKey {Key: 61, Line: 1}
+func parseActivationKey(val string) emit_golden.ActivationKey {
+	var key, line int
+
+	// Strictly parse "gate.line"
+	_, err := fmt.Sscanf(val, "%d.%d", &key, &line)
+	if err != nil {
+		panic(fmt.Sprintf("invalid Human Design value: %v", val))
+	}
+
+	return emit_golden.ActivationKey{
+		Key:  key,
+		Line: line,
+	}
 }

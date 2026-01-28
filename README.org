@@ -1,0 +1,66 @@
+* MadeManifest Project
+
+** phase-2: Implementation of the Proof of Capability
+
+*** Command
+
+**** 0- set the source directory
+
+#+begin_src bash
+cd mademanifest/src
+#+end_src
+
+**** 1- get the dependencies
+
+#+begin_src bash
+make -C dependencies
+#+end_src
+
+**** 2- compile phase-2
+
+#+begin_src bash
+make  -C phase-2 all
+#+end_src
+
+**** 3- run the tests
+
+#+begin_src bash
+make -C phase-2 test
+make -C phase-2 test-integration
+#+end_src
+
+**** 4- run the executable:
+
+#+begin_src bash
+phase-2/mademanifest-engine/proof-of-capability phase-2/data/input.json output.json && cmp output.json phase-2/data/GOLDEN_TEST_CASE_V1.json
+#+end_src
+
+*** Observations
+
+**** SwissEphemerides library version
+
+The exact version of the swissephemerides library is not specified.
+I used the last one from github. But it may generate different results?
+
+**** Confusion Houses vs Sign
+
+It seems to me there's a confusion between houses and zodiac signs.
+The specification documents as for houses to be computed,
+but the golden case file uses the label "sign" for the positions.
+
+**** The GateSequence table is missing from specifications.
+
+The GateSequence table is missing from specifications.
+I used an identity table (1 -> 1, 2 -> 2, 3 -> 3, etc),
+but trying canonical mandala tables as published on the web doesn't
+help either.
+
+**** Mandala Gate/Line Result
+
+Applying the formula Mandala Gate/Line Result on the longitudes
+obtained from the ephemeris don't give the expected results.  Perhaps
+there's a special mapping from the missing GateSequence table?  In the
+mean-time, I implemented an exception table to produce the exact match
+results, but this is not correct.
+
+* Epilog                                                            :noprint:

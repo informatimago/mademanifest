@@ -1,4 +1,4 @@
-package golden
+package emit_golden
 
 import (
 	"bytes"
@@ -11,107 +11,125 @@ import (
    ============
 */
 
+
+// BoolString allows "true"/"false" strings in JSON to unmarshal into a bool.
+type BoolString bool
+
+func (b *BoolString) UnmarshalJSON(data []byte) error {
+    s := string(data)
+    switch s {
+    case `"true"`:
+        *b = true
+    case `"false"`:
+        *b = false
+    default:
+        return fmt.Errorf("invalid BoolString value: %s", s)
+    }
+    return nil
+}
+
+
+
 type GoldenCase struct {
-	CaseID         string
-	Birth          Birth
-	EngineContract EngineContract
-	Expected       Expected
+    CaseID         string         `json:"case_id"`
+    Birth          Birth          `json:"birth"`
+    EngineContract EngineContract `json:"engine_contract"`
+    Expected       Expected       `json:"expected,omitempty"` // optional in input
 }
 
 type Birth struct {
-	Date           string
-	TimeHHMM       string
-	SecondsPolicy  string
-	PlaceName      string
-	Latitude       float64
-	Longitude      float64 // must render as 4.4000
-	TimezoneIANA   string
+    Date          string  `json:"date"`
+    TimeHHMM      string  `json:"time_hh_mm"`
+    SecondsPolicy string  `json:"seconds_policy"`
+    PlaceName     string  `json:"place_name"`
+    Latitude      float64 `json:"latitude"`
+    Longitude     float64 `json:"longitude"`
+    TimezoneIANA  string  `json:"timezone_iana"`
 }
 
 type EngineContract struct {
-	Ephemeris             string
-	Zodiac                string
-	Houses                string
-	NodePolicyBySystem    NodePolicyBySystem
-	HumanDesignMapping    HumanDesignMapping
-	DesignTimeSolver      DesignTimeSolver
+    Ephemeris          string          `json:"ephemeris"`
+    Zodiac             string          `json:"zodiac"`
+    Houses             string          `json:"houses"`
+    NodePolicyBySystem NodePolicyBySystem `json:"node_policy_by_system"`
+    HumanDesignMapping HumanDesignMapping `json:"human_design_mapping"`
+    DesignTimeSolver   DesignTimeSolver   `json:"design_time_solver"`
 }
 
 type NodePolicyBySystem struct {
-	Astrology    string
-	HumanDesign  string
-	GeneKeys     string
+    Astrology   string `json:"astrology"`
+    HumanDesign BoolString `json:"human_design"` // string "true"/"false"
+    GeneKeys    BoolString `json:"gene_keys"`    // string "true"/"false"
 }
 
 type HumanDesignMapping struct {
-	MandalaStartDeg float64
-	GateWidthDeg    float64
-	LineWidthDeg    float64
-	IntervalRule    string
+    MandalaStartDeg float64 `json:"mandala_start_deg"`
+    GateWidthDeg    float64 `json:"gate_width_deg"`
+    LineWidthDeg    float64 `json:"line_width_deg"`
+    IntervalRule    string  `json:"interval_rule"`
 }
 
 type DesignTimeSolver struct {
-	SunOffsetDeg                     float64
-	StopIfAbsSunDiffDegBelow         float64
-	StopIfTimeBracketBelowSeconds    int
+    SunOffsetDeg                  float64 `json:"sun_offset_deg"`
+    StopIfAbsSunDiffDegBelow      float64 `json:"stop_if_abs_sun_diff_deg_below"`
+    StopIfTimeBracketBelowSeconds int     `json:"stop_if_time_bracket_below_seconds"`
 }
 
 type Expected struct {
-	Astrology   Astrology
-	HumanDesign HumanDesign
-	GeneKeys    GeneKeys
+    Astrology   Astrology   `json:"astrology"`
+    HumanDesign HumanDesign `json:"human_design"`
+    GeneKeys    GeneKeys    `json:"gene_keys"`
 }
 
 type Astrology struct {
-	Positions AstrologyPositions
+    Positions AstrologyPositions `json:"positions"`
 }
 
 type AstrologyPositions struct {
-	Sun            Position
-	Moon           Position
-	Mercury        Position
-	Venus          Position
-	Mars           Position
-	Jupiter        Position
-
-	Saturn         Position
-	Uranus         Position
-	Neptune        Position
-	Pluto          Position
-	Chiron         Position
-	NorthNodeMean  Position
-	Ascendant      Position
-	MC             Position
+    Sun           Position `json:"sun"`
+    Moon          Position `json:"moon"`
+    Mercury       Position `json:"mercury"`
+    Venus         Position `json:"venus"`
+    Mars          Position `json:"mars"`
+    Jupiter       Position `json:"jupiter"`
+    Saturn        Position `json:"saturn"`
+    Uranus        Position `json:"uranus"`
+    Neptune       Position `json:"neptune"`
+    Pluto         Position `json:"pluto"`
+    Chiron        Position `json:"chiron"`
+    NorthNodeMean Position `json:"north_node_mean"`
+    Ascendant     Position `json:"ascendant"`
+    MC            Position `json:"mc"`
 }
 
 type Position struct {
-	Sign string
-	Deg  int
-	Min  int
+    Sign string `json:"sign"`
+    Deg  int    `json:"deg"`
+    Min  int    `json:"min"`
 }
 
 type HumanDesign struct {
-	ActivationObjectOrder []string
-	Personality           map[string]string // numeric-looking strings
-	Design                map[string]string // numeric-looking strings
+    ActivationObjectOrder []string          `json:"activation_object_order"`
+    Personality           map[string]string `json:"personality"`
+    Design                map[string]string `json:"design"`
 }
 
 type GeneKeys struct {
-	ActivationSequence ActivationSequence
+    ActivationSequence ActivationSequence `json:"activation_sequence"`
 }
 
 type ActivationSequence struct {
-	LifesWork ActivationKey
-	Evolution ActivationKey
-	Radiance  ActivationKey
-	Purpose   ActivationKey
+    LifesWork ActivationKey `json:"lifes_work"`
+    Evolution ActivationKey `json:"evolution"`
+    Radiance  ActivationKey `json:"radiance"`
+    Purpose   ActivationKey `json:"purpose"`
 }
+
 
 type ActivationKey struct {
-	Key  int
-	Line int
+    Key  int `json:"key"`
+    Line int `json:"line"`
 }
-
 /*
    =====================
    Golden JSON Renderer
@@ -173,8 +191,8 @@ func emitEngineContract(b *bytes.Buffer, v EngineContract) {
     "houses": "%s",
     "node_policy_by_system": {
       "astrology": "%s",
-      "human_design": "%s",
-      "gene_keys": "%s"
+      "human_design": "%v",
+      "gene_keys": "%v"
     },
     "human_design_mapping": {
       "mandala_start_deg": %.2f,

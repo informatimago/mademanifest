@@ -2,6 +2,7 @@ package gene_keys
 
 import (
 	"testing"
+	"mademanifest-engine/pkg/emit_golden"
 )
 
 // Fixed object order
@@ -24,8 +25,9 @@ var activationObjectOrder = []string{
 
 func TestDeriveGeneKeys(t *testing.T) {
 	// Test that the function can be called and returns a map
-	humanDesignData := map[string]interface{}{
-		"activation_object_order": []string{
+	var humanDesignData emit_golden.HumanDesign
+
+	humanDesignData.ActivationObjectOrder = []string{
 			"sun",
 			"earth",
 			"north_node",
@@ -39,9 +41,9 @@ func TestDeriveGeneKeys(t *testing.T) {
 			"uranus",
 			"neptune",
 			"pluto",
-		},
+		}
 
-		"personality": map[string]string{
+	humanDesignData.Personality = map[string]string{
 			"sun":         "15.3",
 			"earth":       "195.3",
 			"north_node":  "120.5",
@@ -55,9 +57,9 @@ func TestDeriveGeneKeys(t *testing.T) {
 			"uranus":      "33.3",
 			"neptune":     "355.8",
 			"pluto":       "123.4",
-		},
+		}
 
-		"design": map[string]string{
+	humanDesignData.Design = map[string]string{
 			"sun":         "14.9",
 			"earth":       "194.9",
 			"north_node":  "121.0",
@@ -71,20 +73,27 @@ func TestDeriveGeneKeys(t *testing.T) {
 			"uranus":      "34.0",
 			"neptune":     "356.1",
 			"pluto":       "124.0",
-		},
-	}
+		}
 
 	result := DeriveGeneKeys(humanDesignData)
 
-	// Verify that result map is not nil (function exists)
-	if result == nil {
-		t.Error("DeriveGeneKeys should return a valid result map")
-	}
-
 	// Basic verification that function signature works
-	if len(result) < 1 {
-		t.Logf("Gene keys result is not empty")
-	}
+	assert(t,result.ActivationSequence.LifesWork.Key == 15, "result.ActivationSequence.LifesWork.Key != 15")
+	assert(t,result.ActivationSequence.LifesWork.Line == 3, "result.ActivationSequence.LifesWork.Line != 3")
+	assert(t,result.ActivationSequence.Evolution.Key == 195, "result.ActivationSequence.Evolution.Key != 195")
+	assert(t,result.ActivationSequence.Evolution.Line == 3, "result.ActivationSequence.Evolution.Line != 3")
+	assert(t,result.ActivationSequence.Radiance.Key == 14, "result.ActivationSequence.Radiance.Key != 14")
+	assert(t,result.ActivationSequence.Radiance.Line == 3, "result.ActivationSequence.Radiance.Line != 3")
+	assert(t,result.ActivationSequence.Purpose.Key == 194, "result.ActivationSequence.Radiance.Key != 194")
+	assert(t,result.ActivationSequence.Purpose.Line == 3, "result.ActivationSequence.Radiance.Line != 3")
+
 
 	t.Logf("result = %v",result)
+}
+
+
+func assert(t *testing.T,cond bool, msg string) {
+    if !cond {
+		t.Fatalf("%s",msg)
+    }
 }

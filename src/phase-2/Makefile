@@ -15,8 +15,9 @@ test: test-unit test-integration
 test-unit:
 	cd $(SRC) ; go test $(TEST_FLAGS) ./pkg/...
 
-test-integration:
-	cd $(SRC) ; go test $(TEST_FLAGS) -run TestFullPipeline
+test-integration: $(SRC)/proof-of-capability
+	cd $(SRC) ; ./proof-of-capability ../data/input.json out.json && diff --width=160 -y out.json ../data/GOLDEN_TEST_CASE_V1.json
+
 
 # Run all tests with coverage
 test-coverage:

@@ -12,6 +12,7 @@ import (
 	"mademanifest-engine/pkg/astrology"
 	"mademanifest-engine/pkg/human_design"
 	"mademanifest-engine/pkg/gene_keys"
+	"mademanifest-engine/pkg/emit_golden"
 )
 
 func parseDate(dateStr string) time.Time {
@@ -19,6 +20,7 @@ func parseDate(dateStr string) time.Time {
 	if err != nil {
 		log.Fatalf("Failed to parse birth date: %v", err)
 	}
+	// log.Printf("Parsed date %v into %v",dateStr,date)
 	return date
 }
 
@@ -35,6 +37,7 @@ func parseTime(timeStr string) time.Time {
 	if err != nil {
 		log.Fatalf("Failed to parse birth time: %v", err)
 	}
+	// log.Printf("Parsed time %v into %v",timeStr, tyme)
 	return tyme
 }
 
@@ -44,11 +47,16 @@ func assert(cond bool, msg string) {
     }
 }
 
-func engine(decoder *json.Decoder) map[string]interface{} {
-	input, err = process_input.ProcessInput(decoder)
+func engine(decoder *json.Decoder) emit_golden.GoldenCase {
+	input, err := process_input.ProcessInput(decoder)
+	var output = *input
 	if err != nil {
 		log.Fatalf("Failed to parse the JSON file: %v", err)
 	}
+
+	// log.Printf("input = %v",input)
+	// log.Printf("output = %v",output)
+
 
 	assert(input.Birth.SecondsPolicy=="assume_00",
 		"Expected Birth.SecondsPolicy == \"assume_00\"")
@@ -58,9 +66,9 @@ func engine(decoder *json.Decoder) map[string]interface{} {
 		"Expected EngineContract.Zodiac == \"tropical\"")
 	assert(input.EngineContract.Houses == "placidus",
 		"Expected EngineContract.Houses == \"placidus\"")
-	assert(input.EngineContract.NodePolicyBySystem.HumanDesign,
+	assert(bool(input.EngineContract.NodePolicyBySystem.HumanDesign),
 		"Expected EngineContract.NodePolicyBySystem.HumanDesign")
-	assert(input.EngineContract.NodePolicyBySystem.GeneKeys,
+	assert(bool(input.EngineContract.NodePolicyBySystem.GeneKeys),
 		"Expected EngineContract.NodePolicyBySystem.GeneKeys")
 	assert(input.EngineContract.NodePolicyBySystem.Astrology == "mean",
 		"Expected EngineContract.NodePolicyBySystem.Astrology == \"mean\"")
@@ -73,10 +81,20 @@ func engine(decoder *json.Decoder) map[string]interface{} {
 
 	// Convert local time to UTC
 	var utcTime time.Time
-	utcTime, err = astronomy.ConvertLocalTimeToUTC(time.Date(birthDate.Year(), birthDate.Month(), birthDate.Day(), birthTime.Hour(), birthTime.Minute(), 0, 0, time.UTC), input.Birth.TimezoneIANA)
+	localTime := time.Date(birthDate.Year(), birthDate.Month(), birthDate.Day(),
+		birthTime.Hour(), birthTime.Minute(), 0, 0,
+		time.Local)
+	utcTime, err = astronomy.ConvertLocalTimeToUTC(localTime, input.Birth.TimezoneIANA)
+	if err != nil {
+		log.Fatalf("Error: %v localTime= %v",err,localTime)
+	}
 
 	// Convert UTC to Julian Day
 	julianDay := astronomy.ConvertUTCToJulianDay(utcTime)
+	// log.Printf("birthDate = %v",birthDate)
+	// log.Printf("birthTime = %v",birthTime)
+	// log.Printf("utcTime   = %v",utcTime)
+	// log.Printf("julianDay = %v",julianDay)
 
 	// lat, lon, err_pos := geolocation.GeographicPosition(input.Birth.PlaceName)
 	// if err_pos != nil {
@@ -87,38 +105,47 @@ func engine(decoder *json.Decoder) map[string]interface{} {
 	lon := input.Birth.Longitude
 
 	// Calculate ephemeris positions
-	ephemeris := ephemeris.NewEphemeris()
 	positions := ephemeris.CalculatePositions(julianDay)
 
 	// Calculate astrology data
 	astrologyData := astrology.CalculateAstrology(positions,julianDay,lat,lon)
 
 	// Calculate Human Design data
-	humanDesignData := human_design.CalculateHumanDesign(positions,
+	humanDesignData := human_design.CalculateHumanDesign(
+		julianDay,
+		human_design.LongitudesAt,
 		input.EngineContract.HumanDesignMapping,
-		input.EngineContract.DesignTimeSolver.SunOffsetDeg)
+		input.EngineContract.DesignTimeSolver,
+	)
 
 	// Derive Gene Keys
 	geneKeysData := gene_keys.DeriveGeneKeys(humanDesignData)
 
-	// Output results
-	output := map[string]interface{}{
-		"astrology":     astrologyData,
-		"human_design":  humanDesignData,
-		"gene_keys":     geneKeysData,
-	}
+	output.Expected.Astrology = astrologyData
+	output.Expected.HumanDesign = humanDesignData
+	output.Expected.GeneKeys = geneKeysData
 	return output
 }
 
 func main() {
+
+    if len(os.Args) < 3 {
+        fmt.Fprintf(os.Stderr, "Usage: %s $inputFile $outputFile\n", os.Args[0])
+        os.Exit(1)
+    }
+
+    inputFile := os.Args[1]
+    outputFile := os.Args[2]
+
+
+
 	// swephgo.SetEphePath([]byte("/usr/local/share/swisseph"))
 
 	// Load birth data from JSON
 	var file *os.File
 	var err error
-	var input *process_input.InputData
 
-	file, err = os.Open("golden_test_case_v1_jaimie_1990_04_09_1804_schiedam.json")
+	file, err = os.Open(inputFile)
 	if err != nil {
 		log.Fatalf("Failed to open JSON file: %v", err)
 	}
@@ -127,10 +154,14 @@ func main() {
 	var decoder = json.NewDecoder(file)
 	var output = engine(decoder)
 
-
-	outputJSON, err := json.MarshalIndent(output, "", "  ")
+	outputJSON, err := emit_golden.EmitGoldenJSON(output)
+	// log.Printf("outputJSON = %v",string(outputJSON))
 	if err != nil {
 		log.Fatalf("Failed to marshal output to JSON: %v", err)
 	}
-	fmt.Println(string(outputJSON))
+
+    if err := os.WriteFile(outputFile, outputJSON, 0644); err != nil {
+        fmt.Fprintf(os.Stderr, "Failed to write file: %v\n", err)
+        os.Exit(1)
+    }
 }
