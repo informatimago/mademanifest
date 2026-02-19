@@ -1,5 +1,5 @@
 --- swisseph-2.10.03-orig/Makefile	2022-08-27 23:52:06.000000000 +0200
-+++ swisseph-2.10.03/Makefile	2026-02-19 16:54:20.076659848 +0100
++++ swisseph-2.10.03/Makefile	2026-02-19 17:33:32.927213771 +0100
 @@ -1,6 +1,35 @@
  # this Makefile creates a SwissEph library and a swetest sample on 64-bit
  # Redhat Enterprise Linux RHEL 7.
@@ -100,13 +100,17 @@
  ###
  swecl.o: swejpl.h sweodef.h swephexp.h swedll.h sweph.h swephlib.h
  sweclips.o: sweodef.h swephexp.h swedll.h
-@@ -77,3 +108,11 @@
+@@ -77,3 +108,15 @@
  swephlib.o: swephexp.h sweodef.h swedll.h sweph.h swephlib.h
  swetest.o: swephexp.h sweodef.h swedll.h
  swevents.o: swephexp.h sweodef.h swedll.h
 +
 +install:libswe.$(DYLIB_EXT) libswe.a
++ifeq ($(OS), Darwin)
++	sudo install_name_tool -id @rpath/libswe.$(DYLIB_EXT) $(PREFIX)/lib/libswe.$(DYLIB_EXT)
++else
 +	sudo install    -m 644 libswe.$(DYLIB_EXT) libswe.a $(PREFIX)/lib
++endif
 +	sudo install    -m 644 sweph.h swephexp.h           $(PREFIX)/include
 +	[ $(PREFIX)/share/swisseph/ephe/list.zip ] || sudo rsync -HSWacvxz --progress --force --delete --delete-after ephe/* $(PREFIX)/share/swisseph/
 +force-install-data:
