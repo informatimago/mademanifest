@@ -1,0 +1,114 @@
+--- swisseph-2.10.03-orig/Makefile	2022-08-27 23:52:06.000000000 +0200
++++ swisseph-2.10.03/Makefile	2026-02-19 16:54:20.076659848 +0100
+@@ -1,6 +1,35 @@
+ # this Makefile creates a SwissEph library and a swetest sample on 64-bit
+ # Redhat Enterprise Linux RHEL 7.
+ 
++PREFIX ?= /usr/local
++
++# SE_EPHE_PATH=/usr/local/share/swisseph:/opt/local/share/swisseph:/opt/share/swisseph:/usr/share/swisseph
++SE_EPHE_PATH=$(PREFIX)/share/swisseph
++
++# Detect OS type via uname
++OS := $(shell uname)
++
++ifeq ($(OS), Darwin)
++  # macOS settings
++  LIBS             = -lm
++  LDFLAGS          = 
++  DYLIB_FLAG       = -dynamiclib
++  DYLIB_EXT        = dylib
++  STATIC_SUPPORTED = false
++  STATIC_FLAG      = 
++else
++  # Assume Linux settings
++  LIBS             = -lm -ldl
++  LDFLAGS          = -L/usr/lib/x86_64-redhat-linux6E/lib64/
++  DYLIB_FLAG       = -shared
++  DYLIB_EXT        = so
++  STATIC_SUPPORTED = true
++  STATIC_FLAG      = -static
++  STATIC_LINK_FLAGS= -Wl,-Bstatic
++  DYNAMIC_LINK_FLAGS= -Wl,-Bdynamic
++endif
++
++
+ # The mode marked as 'Linux' should also work with the GNU C compiler
+ # gcc on other systems. 
+ 
+@@ -12,14 +41,16 @@
+ # send email to the Swiss Ephemeris mailing list.
+ # 
+ 
+-CFLAGS =  -g -Wall -fPIC # for Linux and other gcc systems
+-CFLAGS =  -O2 -Wall -fPIC # for Linux and other gcc systems
++# for Linux and other gcc systems
++# CFLAGS =  -g  -Wall -fPIC -DSE_EPHE_PATH=\"$(SE_EPHE_PATH)\"
++CFLAGS =  -O2 -Wall -fPIC -DSE_EPHE_PATH=\"$(SE_EPHE_PATH)\"
++
+ OP=$(CFLAGS)  
+ CC=cc	#for Linux
+ 
+ # compilation rule for general cases
+ .o :
+-	$(CC) $(OP) -o $@ $? -lm
++	$(CC) $(OP) -o $@ $? $(LIBS)
+ .c.o:
+ 	$(CC) -c $(OP) $<     
+ 
+@@ -30,19 +61,19 @@
+ 
+ # build swetest with SE linked in, using dynamically linked system libraries libc, libm, libdl.
+ swetest: swetest.o libswe.a
+-	$(CC) $(OP) -o swetest swetest.o -L. -lswe -lm -ldl
++	$(CC) $(OP) -o swetest swetest.o -L. -lswe $(LIBS)
+ 
+ # build a statically linked version of swetest. first find out where libc.a and libm.a reside,
+ # and add this path with -L like below
+ # a statically linked program will run on any Linux variant, independent of dynamic system libraries.
+ swetests: swetest.o $(SWEOBJ)
+-	$(CC)  $(OP) -static -L/usr/lib/x86_64-redhat-linux6E/lib64/ -o swetests swetest.o $(SWEOBJ) -lm -ldl
++	$(CC) $(OP) $(STATIC_FLAG) $(LDFLAGS) -o swetests swetest.o $(SWEOBJ) $(LIBS)
+ 
+ swevents: swevents.o libswe.a
+-	$(CC) $(OP) -o swevents swevents.o -L. -lswe -lm -ldl
++	$(CC) $(OP) -o swevents swevents.o -L. -lswe $(LIBS)
+ 
+ swemini: swemini.o libswe.a
+-	$(CC) $(OP) -o swemini swemini.o -L. -lswe -lm -ldl
++	$(CC) $(OP) -o swemini swemini.o -L. -lswe $(LIBS)
+ 
+ # create an archive and a dynamic link libary fro SwissEph
+ # a user of this library will inlcude swephexp.h  and link with -lswe
+@@ -50,8 +81,8 @@
+ libswe.a: $(SWEOBJ)
+ 	ar r libswe.a	$(SWEOBJ)
+ 
+-libswe.so: $(SWEOBJ)
+-	$(CC) -shared -o libswe.so $(SWEOBJ)
++libswe.$(DYLIB_EXT): $(SWEOBJ)
++	$(CC) $(DYLIB_FLAG) -o libswe.$(DYLIB_EXT) $(SWEOBJ)
+ 
+ test:
+ 	cd setest && make && ./setest t
+@@ -62,7 +93,7 @@
+ clean:
+ 	rm -f *.o swetest libswe*
+ 	cd setest && make clean
+-	
++
+ ###
+ swecl.o: swejpl.h sweodef.h swephexp.h swedll.h sweph.h swephlib.h
+ sweclips.o: sweodef.h swephexp.h swedll.h
+@@ -77,3 +108,11 @@
+ swephlib.o: swephexp.h sweodef.h swedll.h sweph.h swephlib.h
+ swetest.o: swephexp.h sweodef.h swedll.h
+ swevents.o: swephexp.h sweodef.h swedll.h
++
++install:libswe.$(DYLIB_EXT) libswe.a
++	sudo install    -m 644 libswe.$(DYLIB_EXT) libswe.a $(PREFIX)/lib
++	sudo install    -m 644 sweph.h swephexp.h           $(PREFIX)/include
++	[ $(PREFIX)/share/swisseph/ephe/list.zip ] || sudo rsync -HSWacvxz --progress --force --delete --delete-after ephe/* $(PREFIX)/share/swisseph/
++force-install-data:
++	sudo rsync -HSWacvxz --progress --force --delete --delete-after ephe/* $(PREFIX)/share/swisseph/
++
