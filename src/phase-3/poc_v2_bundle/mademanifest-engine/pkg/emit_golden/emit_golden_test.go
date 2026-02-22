@@ -100,7 +100,7 @@ func TestEmitGoldenJSON(t *testing.T) {
 		t.Fatalf("EmitGoldenJSON failed: %v", err)
 	}
 
-	expected, err := os.ReadFile("../../../data/GOLDEN_TEST_CASE_V1.json")
+	expected, err := os.ReadFile("../../../golden/GOLDEN_TEST_CASE_V1.json")
 	if err != nil {
 		t.Fatalf("failed to read golden fixture: %v", err)
 	}

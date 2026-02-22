@@ -91,6 +91,34 @@ Do:
 Constraints:
 - Keep diffs minimal.
 - Do not change golden JSON fixtures.
+
+CalculateHumanDesign() in human_design.go needs to be updated.
+
+- Read again human_design.go (I removed duplicate definitions).
+
+- Note the panic error when running the program:
+
+cd /Users/pjb/works/mademanifest/src/phase-3/poc_v2_bundle/mademanifest-engine ; ./proof-of-capability-2 ../golden/GOLDEN_TEST_CASE_V1.json out.json ; cat out.json
+panic: open ../../canon/gate_sequence_v1.json: no such file or directory
+
+goroutine 1 [running]:
+mademanifest-engine/pkg/human_design.init.0()
+	/Users/pjb/works/mademanifest/src/phase-3/poc_v2_bundle/mademanifest-engine/pkg/human_design/human_design.go:20 +0xc4
+
+It comes from:
+
+    data, err := os.ReadFile("../../canon/gate_sequence_v1.json")
+
+the file cannot be found.
+
+Therefore we must centralize all the paths to resource files, allow
+them to be specified  by default as environment variables, or by
+command-line options, or else keep a global default value. The paths
+must be given as parameters at run-time (environment variables or
+command-line options, never hardwired in the code. Only default values
+for the data can be hardwired.
+
+Do this for the 3 files/global variables  in canon/.
 ```
 
 ---

@@ -15,7 +15,7 @@ func longitude(julianDay float64, astre int) float64 {
 	if !swe_initialized {
 		ephePath := os.Getenv("SE_EPHE_PATH")
 		if ephePath == "" {
-			ephePath = "./ephemeris/data/REQUIRED_EPHEMERIS_FILES/"
+			ephePath = "../ephemeris/data/REQUIRED_EPHEMERIS_FILES/"
 		}
 		swephgo.SetEphePath([]byte(ephePath + "\x00"))
 		swe_initialized = true

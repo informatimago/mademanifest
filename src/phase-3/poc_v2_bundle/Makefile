@@ -35,8 +35,7 @@ prepare: swisseph-install swisseph-install-data
 compile: $(SRC)/$(NAME)
 run:	 compile
 	cd $(SRC) ; ./$(NAME) ../golden/GOLDEN_TEST_CASE_V1.json out.json ; cat out.json
-diff:    compile
-	cd $(SRC) ; ./$(NAME) ../golden/GOLDEN_TEST_CASE_V1.json out.json ; diff $(DIFF_RELAX) --width=160 -y out.json ../golden/GOLDEN_TEST_CASE_V1.json
+diff:    test-integration
 
 swisseph-prepare:
 	cd ephemeris/swisseph ; rm -rf swisseph-2.10.03 ; tar zxf swisseph-2.10.03.tar.gz
@@ -63,7 +62,9 @@ test-unit:
 	cd $(SRC) ; go test $(TEST_FLAGS) ./pkg/...
 
 test-integration: $(SRC)/$(NAME)
-	cd $(SRC) ; ./$(NAME) ../golden/GOLDEN_TEST_CASE_V1.json out.json && diff $(DIFF_RELAX) -twb --width=160 -y out.json ../golden/GOLDEN_TEST_CASE_V1.json
+	cd $(SRC) ; ./$(NAME) ../golden/GOLDEN_TEST_CASE_V1.json out.json \
+	&& tr -d '\015' < ../golden/GOLDEN_TEST_CASE_V1.json > expected.json \
+	&& diff $(DIFF_RELAX) -twb --width=160 -y out.json expected.json
 
 
 # Run all tests with coverage
