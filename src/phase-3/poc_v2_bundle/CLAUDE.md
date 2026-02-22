@@ -4,6 +4,9 @@ This repository is a deterministic calculation engine (Astrology, Human Design, 
 
 ## Repo layout
 
+Work inside the subdirectory `src/phase-3/poc_v2_bundle/` of this git repo.
+DO NOT modify any file outside of `src/phase-3/poc_v2_bundle/`.
+
 - `mademanifest-engine/` — Go module and executable
   - `cmd/main.go` — CLI entrypoint (reads JSON input, writes JSON output)
   - `pkg/` — engine packages (`ephemeris`, `astrology`, `human_design`, `gene_keys`, …)
