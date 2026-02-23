@@ -1,0 +1,89 @@
+
+How to run:
+====================
+
+- Source code written in Go:
+
+
+    git clone https://github.com/informatimago/mademanifest.git
+
+    # or:
+
+    tar zxf mademanifest-phase-3-poc-2.tar.bz2
+
+  The sources are in mademanifest/src/phase-3/poc_v2_bundle/mademanifest-engine/
+
+
+- One command that produces an output JSON file from the Golden Test input
+
+    make -C mademanifest/src/phase-3/poc_v2_bundle/ clean compile run
+
+  The generated file is:
+     mademanifest/src/phase-3/poc_v2_bundle/mademanifest-engine/out.json
+
+  It's also printed out on the terminal.
+
+
+- One command that diffs the produced output against the Golden Test
+  expected output with no differences
+
+    make -C mademanifest/src/phase-3/poc_v2_bundle/ clean compile diff ; echo $?
+
+  While executing the program issues this one log message:
+    2026/02/23 21:47:24 julian birth time = 2447991.169444
+  And the status of the diff expected is:
+    0
+  (no difference).
+
+
+
+
+Validation:
+====================
+
+- Bit exact numeric values                 ✓
+- Exact JSON structure and ordering        ✓
+- No tolerance or rounding freedom         ✓
+- Deterministic output on repeated runs    ✓
+
+
+Documentation & Requirement Tracking:
+====================
+
+The user manual of the proof-of-concept-v2 command:
+
+    doc/user-manual.md
+    doc/user-manual.pdf
+
+
+Tracking of requirements is documented in:
+
+    doc/requirement-tracking.org
+
+(sorry for the wide tables).
+In particular see note (2).
+
+
+Docker:
+====================
+
+There are also targets to make and run with the docker image:
+
+Create the docker image:
+
+    make -C mademanifest/src/phase-3/poc_v2_bundle/  docker-image
+
+Build the program in the docker image:
+
+    make -C mademanifest/src/phase-3/poc_v2_bundle/  docker-compile
+
+Run (diff) the program in the docker image:
+
+    make -C mademanifest/src/phase-3/poc_v2_bundle/  docker-run
+    
+
+
+It's possible to get a new version from github without rebuilding the
+whole docker image with
+
+    make -C mademanifest/src/phase-3/poc_v2_bundle/  docker-update

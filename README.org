@@ -1,7 +1,6 @@
 * MadeManifest Project
 
 ** phase-2: Implementation of the Proof of Capability
-
 *** Command
 
 **** 0- set the source directory
@@ -62,7 +61,6 @@ obtained from the ephemeris don't give the expected results.  Perhaps
 there's a special mapping from the missing GateSequence table?  In the
 mean-time, I implemented an exception table to produce the exact match
 results, but this is not correct.
-
 
 *** Logs
 
@@ -221,6 +219,113 @@ cd mademanifest-engine ; ./proof-of-capability ../data/input.json out.json && di
 
 Compilation finished at Wed Jan 28 17:45:04, duration 2.15 s
 #+end_example
+
+** phase-3:
+*** How to run
+
+- Source code written in Go:
+
+
+    #+begin_src bash
+    git clone https://github.com/informatimago/mademanifest.git
+
+    # or:
+
+    tar zxf mademanifest-phase-3-poc-2.tar.bz2
+    #+end_src
+
+  The sources are in mademanifest/src/phase-3/poc_v2_bundle/mademanifest-engine/
+
+
+- One command that produces an output JSON file from the Golden Test input
+
+    #+begin_src bash
+    make -C mademanifest/src/phase-3/poc_v2_bundle/ clean compile run
+    #+end_src
+
+  The generated file is:
+
+     `mademanifest/src/phase-3/poc_v2_bundle/mademanifest-engine/out.json`
+
+  It's also printed out on the terminal.
+
+
+- One command that diffs the produced output against the Golden Test
+  expected output with no differences
+
+    #+begin_src bash
+    make -C mademanifest/src/phase-3/poc_v2_bundle/ clean compile diff ; echo $?
+    #+end_src
+
+  While executing the program issues this one log message:
+    #+begin_quote
+    2026/02/23 21:47:24 julian birth time = 2447991.169444
+    #+end_quote
+  And the status of the diff expected is:
+    #+begin_quote
+    0
+    #+end_quote
+  (no difference).
+
+*** Validation
+
+| Item                                  | Check |
+|---------------------------------------+-------|
+| Bit exact numeric values              | ✓     |
+| Exact JSON structure and ordering     | ✓     |
+| No tolerance or rounding freedom      | ✓     |
+| Deterministic output on repeated runs | ✓     |
+
+*** Documentation & Requirement Tracking:
+
+
+The user manual of the proof-of-concept-v2 command:
+
+    #+begin_quote
+    doc/user-manual.md
+    doc/user-manual.pdf
+    #+end_quote
+
+
+Tracking of requirements is documented in:
+
+    #+begin_quote
+    doc/requirement-tracking.org
+    #+end_quote
+
+(sorry for the wide tables).
+In particular see note (2).
+
+*** Docker
+
+There are also targets to make and run with the docker image:
+
+Create the docker image:
+
+    #+begin_src bash
+    make -C mademanifest/src/phase-3/poc_v2_bundle/  docker-image
+    #+end_src
+
+Build the program in the docker image:
+
+    #+begin_src bash
+    make -C mademanifest/src/phase-3/poc_v2_bundle/  docker-compile
+    #+end_src
+
+Run (diff) the program in the docker image:
+
+    #+begin_src bash
+    make -C mademanifest/src/phase-3/poc_v2_bundle/  docker-run
+    #+end_src
+
+
+It's possible to get a new version from github without rebuilding the
+whole docker image with
+
+    #+begin_src bash
+    make -C mademanifest/src/phase-3/poc_v2_bundle/  docker-update
+    #+end_src
+
 * Epilog                                                            :noprint:
 
 
