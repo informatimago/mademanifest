@@ -1,0 +1,38 @@
+
+| Requirement                                                  | Code refs                                                                                                                                                              | Status/Notes                                                                                            |
+|--------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------|
+| Swiss Ephemeris version: 2.10.03                             | `mademanifest-engine/pkg/ephemeris/ephemeris.go:16` `mademanifest-engine/pkg/ephemeris/ephemeris.go:18-31`                                                             | Enforced via explicit version check.                                                                    |
+| Source archive: swisseph-2.10.03.zip (GitHub release)        | N/A                                                                                                                                                                    | Not enforced in code (no source-archive provenance check in runtime).                                   |
+| Ephemeris data path: ephemeris/data/REQUIRED_EPHEMERIS_FILES | `mademanifest-engine/pkg/ephemeris/ephemeris.go:36-40`                                                                                                                 | Partially enforced: defaults to required path, but `SE_EPHE_PATH` env var can override.                 |
+| Tropical zodiac only                                         | `mademanifest-engine/pkg/ephemeris/ephemeris.go:49-51` `mademanifest-engine/pkg/human_design/human_design.go:109` `mademanifest-engine/pkg/astrology/astrology.go:41`  | Implicit (uses `SEFLG_SWIEPH` only, no `SEFLG_SIDEREAL`), so tropical default. Not explicitly locked.   |
+| No sidereal modes                                            | `mademanifest-engine/pkg/ephemeris/ephemeris.go:49-51` `mademanifest-engine/pkg/human_design/human_design.go:109` `mademanifest-engine/pkg/astrology/astrology.go:41`  | Implicit by absence of `SEFLG_SIDEREAL` / `swephgo.SetSidMode`, not explicitly enforced.                |
+| No ayanamsha                                                 | N/A                                                                                                                                                                    | Not enforced in code (no explicit prohibition; no ayanamsha calls found).                               |
+| No topocentric corrections                                   | N/A                                                                                                                                                                    | Not enforced explicitly (no `SEFLG_TOPOCTR`/`SetTopo` usage found).                                     |
+| No heliocentric mode                                         | N/A                                                                                                                                                                    | Not enforced explicitly (no `SEFLG_HELCTR` usage found).                                                |
+| No nutation suppression                                      | `mademanifest-engine/pkg/astrology/astrology.go:41`                                                                                                                    | Contradicted: `SEFLG_NONUT` is set in house calculations.                                           (2) |
+| Default Swiss Ephemeris precision                            | `mademanifest-engine/pkg/ephemeris/ephemeris.go:49-51` `mademanifest-engine/pkg/human_design/human_design.go:109` `mademanifest-engine/pkg/astrology/astrology.go:41`  | Implicit: only `SEFLG_SWIEPH` (and `SEFLG_NONUT` for houses), no `SEFLG_SPEED`/`SEFLG_SPEED3`.          |
+| Use ephemeris data files only from provided data directory   | `mademanifest-engine/pkg/ephemeris/ephemeris.go:36-40`                                                                                                                 | Partially enforced: default path set, but override allowed via `SE_EPHE_PATH`.                      (3) |
+| Mean Node for astrology outputs                              | `mademanifest-engine/pkg/ephemeris/ephemeris.go:77-78` `mademanifest-engine/pkg/ephemeris/ephemeris.go:100-108` `mademanifest-engine/pkg/astrology/astrology.go:68-70` | Enforced by default mean node mapping and handling; can be overridden if `SE_NODE_POLICY=true`.         |
+| True Node for Human Design outputs                           | `mademanifest-engine/pkg/human_design/human_design.go:106-114` `mademanifest-engine/pkg/human_design/human_design.go:145-148`                                          | Enforced: explicit true-node calc for Human Design.                                                     |
+
+
+(2): The `HouseEx` call, to compute ascendent and mc, explicitly sets
+     `SEFLG_NONUT` in `mademanifest-engine/pkg/astrology/astrology.go:41`,
+     which contradicts `ephemeris/swisseph/FLAGS.md` (“No nutation
+     suppression”) and is flagged as a contradiction in
+     `doc/requirement-tracking.org`. Also, Swiss Ephemeris docs state
+     that `SEFLG_NONUT` switches to the **mean** equator/equinox and
+     explicitly recommend using the **true** equator/equinox instead.
+
+     This is done to compute the expected ascendent and mc houses.
+     Without SEFLG_NONUT we get wrong houses.
+     
+     Relevant refs:
+     - Code: `mademanifest-engine/pkg/astrology/astrology.go:41`
+     - Spec: `ephemeris/swisseph/FLAGS.md:7-15`
+     - Swiss Ephemeris doc recommendation: `ephemeris/swisseph/swisseph-2.10.03/doc/swephprg.md:4272-4280`  
+
+
+(3): cf. swisseph-makefile-install.patch and modified
+     ephemeris/swisseph/swisseph-2.10.03/Makefile for the targets
+     installating the data files and libswe library.
