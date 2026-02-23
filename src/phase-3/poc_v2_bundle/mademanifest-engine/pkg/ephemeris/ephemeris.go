@@ -44,15 +44,10 @@ func longitude(julianDay float64, astre int) float64 {
 
 	// Prepare output slices
 	xx := make([]float64, 6)     // x[0]=longitude, x[1]=latitude, x[2]=distance, etc.
-	// var serr []byte               // optional error buffer; nil if you don't need errors
-	// var serr []byte //
 	serr := make([]byte, 256)
-	// log.Printf("SE_EPHE_PATH: %v", os.Getenv("SE_EPHE_PATH"))
-	// log.Printf("julianDay %v, astre %v, sweph.SEFLG_SWIEPH %v, xx %v, serr %v", julianDay, astre, sweph.SEFLG_SWIEPH, xx, serr)
 	// Call swephgo.Calc
 	errCode := swephgo.Calc(julianDay, astre,
 		sweph.SEFLG_SWIEPH,
-		// sweph.SEFLG_SWIEPH | sweph.SEFLG_TRUEPOS | sweph.SEFLG_NONUT,
 		xx, serr)
 	if errCode < 0 {
 		// handle error if needed, e.g. log.Fatal or return NaN
