@@ -5,8 +5,8 @@ SRC         := $(ROOT)mademanifest-engine
 GOLDEN      := $(ROOT)golden
 TEST_FLAGS   = -count=1
 NAME         = proof-of-capability-2
-DIFF_RELAX   = -twb
-# DIFF_RELAX=
+# DIFF_RELAX   = -twb
+DIFF_RELAX   =
 
 export SE_EPHE_PATH
 
@@ -63,10 +63,14 @@ test: test-unit test-integration
 test-unit:
 	cd $(SRC) ; go test $(TEST_FLAGS) ./pkg/...
 
-test-integration: $(SRC)/$(NAME)
+test-integration-unix: $(SRC)/$(NAME)
 	cd $(SRC) ; ./$(NAME) -cd ../canon ../golden/GOLDEN_TEST_CASE_V1.json out.json \
 	&& tr -d '\015' < ../golden/GOLDEN_TEST_CASE_V1.json > expected.json \
-	&& diff $(DIFF_RELAX) -twb --width=160 -y out.json expected.json
+	&& diff $(DIFF_RELAX) --width=160 -y out.json expected.json
+
+test-integration: $(SRC)/$(NAME)
+	cd $(SRC) ; ./$(NAME) -dos -cd ../canon ../golden/GOLDEN_TEST_CASE_V1.json out.json \
+	&& diff $(DIFF_RELAX) --width=160 -y out.json ../golden/GOLDEN_TEST_CASE_V1.json
 
 
 # Run all tests with coverage

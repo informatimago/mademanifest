@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -151,13 +152,15 @@ func main() {
 	versionFlag := flag.Bool("version", false, "print version")
 	flag.BoolVar(versionFlag, "v", false, "print version")
 
+	dosFlag := flag.Bool("dos", false, "write CRLF line endings to output file")
+
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s \\\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "           [--canon-directory|-cd        $canon_directory] \\\n")
 		fmt.Fprintf(os.Stderr, "           [--gate-sequence-file|-gs     $gate_sequence_file] \\\n")
 		fmt.Fprintf(os.Stderr, "           [--mandala-constants-file|-mc $mandala_constants_file] \\\n")
 		fmt.Fprintf(os.Stderr, "           [--node-policy-file|-np       $node_policy_file] \\\n")
-		fmt.Fprintf(os.Stderr, "           [--help|-h] [--version|-v] \\\n")
+		fmt.Fprintf(os.Stderr, "           [--dos] [--help|-h] [--version|-v] \\\n")
 		fmt.Fprintf(os.Stderr, "           $inputFile $outputFile\n")
 	}
 
@@ -239,6 +242,11 @@ func main() {
 	// log.Printf("outputJSON = %v",string(outputJSON))
 	if err != nil {
 		log.Fatalf("Failed to marshal output to JSON: %v", err)
+	}
+
+	if *dosFlag {
+		normalized := bytes.ReplaceAll(outputJSON, []byte("\r\n"), []byte("\n"))
+		outputJSON = bytes.ReplaceAll(normalized, []byte("\n"), []byte("\r\n"))
 	}
 
 	if err := os.WriteFile(outputFile, outputJSON, 0644); err != nil {
