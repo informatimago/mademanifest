@@ -1,15 +1,35 @@
 package ephemeris
 
 import (
-	"os"
-	"log"
+	"bytes"
 	"fmt"
+	"log"
 	"math"
+	"os"
+	"strings"
+
 	"github.com/mshafiee/swephgo"
 	"mademanifest-engine/pkg/sweph"
 )
 
 var swe_initialized = false
+const requiredSwissEphVersion = "2.10.03"
+
+func requireSwissEphVersion() {
+	buf := make([]byte, 256)
+	swephgo.Version(buf)
+	n := bytes.IndexByte(buf, 0)
+	if n < 0 {
+		n = len(buf)
+	}
+	version := strings.TrimSpace(string(buf[:n]))
+	if version == "" {
+		log.Fatal("Swiss Ephemeris version check failed: empty version string")
+	}
+	if version != requiredSwissEphVersion {
+		log.Fatalf("Swiss Ephemeris version mismatch: got %q, want %q", version, requiredSwissEphVersion)
+	}
+}
 
 func longitude(julianDay float64, astre int) float64 {
 	if !swe_initialized {
@@ -18,6 +38,7 @@ func longitude(julianDay float64, astre int) float64 {
 			ephePath = "../ephemeris/data/REQUIRED_EPHEMERIS_FILES/"
 		}
 		swephgo.SetEphePath([]byte(ephePath + "\x00"))
+		requireSwissEphVersion()
 		swe_initialized = true
 	}
 

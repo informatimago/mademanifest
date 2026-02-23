@@ -1,12 +1,14 @@
-PREFIX      = /usr/local
-ROOT       := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
-SRC        := $(ROOT)mademanifest-engine
-GOLDEN     := $(ROOT)golden
-TEST_FLAGS  = -count=1
-NAME        = proof-of-capability-2
-DIFF_RELAX  = -twb
+PREFIX       = /usr/local
+SE_EPHE_PATH = $(PREFIX)/share/swisseph
+ROOT        := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+SRC         := $(ROOT)mademanifest-engine
+GOLDEN      := $(ROOT)golden
+TEST_FLAGS   = -count=1
+NAME         = proof-of-capability-2
+DIFF_RELAX   = -twb
 # DIFF_RELAX=
 
+export SE_EPHE_PATH
 
 # export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/usr/local/lib
 

@@ -267,6 +267,20 @@ In main.go:
 
 ```
 
+```
+Task 2.5 remove swephgo_stub
+
+Assume that we have:
+  1. Pined a real version of github.com/mshafiee/swephgo.
+  2. Installed the Swiss Ephemeris native library and data files.
+  3. Ensured SE_EPHE_PATH points to ephemeris data (or use the repo’s default path logic).
+     (cf. export in Makefile)
+
+Therefore remove the replace in mademanifest-engine/go.mod, and ensure that the project uses the real Swiss Ephemeris library that is installed.
+
+Question: we have swisseph-2.10.03 installed. Is there a way (an API) to check that we're linked with the exact version number 2.10.03?  If yes, please implement the check in ephemeris, and fatal if not the right vresion.
+```
+
 ---
 
 ## Task 3 — Implement normal mandala gate sequence from canon (and populate canon table)
