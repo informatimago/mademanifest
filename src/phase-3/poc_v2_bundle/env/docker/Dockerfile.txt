@@ -2,6 +2,9 @@ FROM golang:1.22.0-bookworm
 
 ARG DEBIAN_FRONTEND=noninteractive
 
+ENV PATH=/usr/local/go/bin:$PATH
+RUN printf 'export PATH=/usr/local/go/bin:$PATH\n' > /etc/profile.d/go.sh
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
@@ -20,12 +23,12 @@ RUN printf '#!/bin/sh\nexit 0\n' > /usr/local/bin/install_name_tool \
     && chmod +x /usr/local/bin/install_name_tool
 
 WORKDIR /opt/src
-COPY . /opt/src
+# COPY . /opt/src
 
 # Clone repository into a stable workspace path inside the image.
-RUN git clone /opt/src /workspace/poc_v2_bundle
+RUN git clone https://github.com/informatimago/mademanifest.git /workspace/mademanifest
 
-WORKDIR /workspace/poc_v2_bundle
+WORKDIR /workspace/mademanifest/src/phase-3/poc_v2_bundle
 
 # Build and install Swiss Ephemeris and its data into /usr/local.
 RUN make swisseph-install swisseph-install-data
