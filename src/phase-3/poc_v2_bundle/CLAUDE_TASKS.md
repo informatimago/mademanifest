@@ -197,18 +197,21 @@ Constraints:
 ```
 
 ```
-Task 2.4 add options to specify the path to the canon files.
+Task 2.4: add command-line options to specify the path to the canon files.
 
 Current:
+
     Usage: ./proof-of-capability-2 $inputFile $outputFile
 
 We want:
+
     Usage: ./proof-of-capability-2 \
                [--canon-directory|-cd        $canon_directory] \
                [--gate-sequence-file|-gs     $gate_sequence_file] \
 	           [--mandala-constants-file|-mc $mandala_constants_file] \
 	           [--node-policy-file|-np       $node_policy_file] \
                [--help|-h] \
+               [--version|-v] \
                $inputFile $outputFile
 
 The canon_directory argument may be an absolute path, or a relative
@@ -233,6 +236,35 @@ for the files).
 and exits.
 
 Otherwise the input and output file arguments are used and processed.
+
+In main.go:
+
+- Define an option structure with the parameters:
+
+    canon_directory string
+    gate_sequence_file string
+    mandala_constants_file string
+    node_policy_file string
+    help boolean
+    version boolean
+    input_file string
+    output_file string
+
+- Implement a function to fill this structure with default values.
+
+- Implement a function to parse the command-line options and fill this
+  option structure.
+
+- Implement a function that takes this option structure, and compute
+  the absolute (or relative) pathnames to the 3 files.
+
+- Add to the main function calls to these functions, tests of version
+  and help boolean to issue the corresponding messages, and
+  call the function to compute the absolute (or relative) pathnames to
+  the 3 files otherwise. Then call the functions to load the data, and
+  fill the global variables, before continuing with the main
+  processing.
+
 ```
 
 ---
