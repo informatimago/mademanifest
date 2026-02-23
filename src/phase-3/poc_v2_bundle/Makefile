@@ -70,7 +70,7 @@ test-integration-unix: $(SRC)/$(NAME)
 
 test-integration: $(SRC)/$(NAME)
 	cd $(SRC) ; ./$(NAME) -dos -cd ../canon ../golden/GOLDEN_TEST_CASE_V1.json out.json \
-	&& diff $(DIFF_RELAX) --width=160 -y out.json ../golden/GOLDEN_TEST_CASE_V1.json
+	&& ( diff $(DIFF_RELAX) --width=160 -y out.json ../golden/GOLDEN_TEST_CASE_V1.json > diff ; status=$$? ; if [ $$status -ne 0 ] ; then cat diff ; fi ; )
 
 
 # Run all tests with coverage
