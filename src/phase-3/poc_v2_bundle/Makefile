@@ -12,7 +12,6 @@ IMAGE_WORK_DIR = /workspace/mademanifest/src/phase-3/poc_v2_bundle
 
 export SE_EPHE_PATH
 
-# export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/usr/local/lib
 
 help::
 
@@ -24,6 +23,7 @@ help::
 	test-human_design test-gene_keys \
 	clean \
 	docker-image \
+	docker-update \
 	docker-compile \
 	docker-run
 
@@ -41,7 +41,7 @@ all: prepare compile run diff
 prepare: swisseph-install swisseph-install-data
 compile: $(SRC)/$(NAME)
 run:	 compile
-	cd $(SRC) ; ./$(NAME) -cd ../canon ../golden/GOLDEN_TEST_CASE_V1.json out.json ; cat out.json
+	cd $(SRC) ; LIBRARY_PATH=$${LIBRARY_PATH}:/usr/local/lib ./$(NAME) -cd ../canon ../golden/GOLDEN_TEST_CASE_V1.json out.json ; cat out.json
 diff:    compile test-integration
 
 swisseph-prepare:
@@ -59,7 +59,7 @@ swisseph-install-data:
 		ephemeris/data/REQUIRED_EPHEMERIS_FILES/ $(PREFIX)/share/swisseph/
 
 $(SRC)/$(NAME):
-	cd $(SRC) ; go build -o $(NAME) ./cmd
+	cd $(SRC) ; CGO_LDFLAGS="-lm" go build -o $(NAME) ./cmd
 	install_name_tool -change libswe.dylib @rpath/libswe.dylib $(SRC)/$(NAME)
 	install_name_tool -add_rpath /usr/local/lib                $(SRC)/$(NAME)
 
@@ -69,12 +69,12 @@ test-unit:
 	cd $(SRC) ; go test $(TEST_FLAGS) ./pkg/...
 
 test-integration-unix: $(SRC)/$(NAME)
-	cd $(SRC) ; ./$(NAME) -cd ../canon ../golden/GOLDEN_TEST_CASE_V1.json out.json \
+	cd $(SRC) ; LIBRARY_PATH=$${LIBRARY_PATH}:/usr/local/lib ./$(NAME) -cd ../canon ../golden/GOLDEN_TEST_CASE_V1.json out.json \
 	&& tr -d '\015' < ../golden/GOLDEN_TEST_CASE_V1.json > expected.json \
 	&& diff $(DIFF_RELAX) --width=160 -y out.json expected.json
 
 test-integration: $(SRC)/$(NAME)
-	cd $(SRC) ; ./$(NAME) -dos -cd ../canon ../golden/GOLDEN_TEST_CASE_V1.json out.json \
+	cd $(SRC) ; LIBRARY_PATH=$${LIBRARY_PATH}:/usr/local/lib ./$(NAME) -dos -cd ../canon ../golden/GOLDEN_TEST_CASE_V1.json out.json \
 	&& ( diff $(DIFF_RELAX) --width=160 -y out.json ../golden/GOLDEN_TEST_CASE_V1.json > diff ; status=$$? ; if [ $$status -ne 0 ] ; then cat diff ; fi ; )
 
 
@@ -110,6 +110,14 @@ clean:
 
 docker-image:
 	docker build -f env/docker/Dockerfile.txt -t "$(IMAGE_NAME)" .
+
+docker-update:
+	docker run --rm -t \
+	  -v "$$(pwd)":$(IMAGE_WORK_DIR) \
+	  -w $(IMAGE_WORK_DIR) \
+	  "$(IMAGE_NAME)" \
+	  bash -lc "git pull ; make clean compile"
+
 
 docker-compile:
 	docker run --rm -t \
