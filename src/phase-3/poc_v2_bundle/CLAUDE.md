@@ -2,6 +2,8 @@
 
 This repository is a deterministic calculation engine (Astrology, Human Design, Gene Keys). It is designed to be *golden-test driven*: any output mismatch is a failure.
 
+The source files are encoded in utf-8-unix coding system (utf-8 with line-feed line separators).
+
 ## Repo layout
 
 Work inside the subdirectory `src/phase-3/poc_v2_bundle/` of this git repo.

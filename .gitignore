@@ -35,3 +35,8 @@ go.sum
 
 *~
 proof-of-capability
+proof-of-capability-2
+tarballs/
+
+expected.json
+out.json

@@ -49,10 +49,10 @@ func assert(cond bool, msg string) {
 
 func engine(decoder *json.Decoder) emit_golden.GoldenCase {
 	input, err := process_input.ProcessInput(decoder)
-	var output = *input
 	if err != nil {
 		log.Fatalf("Failed to parse the JSON file: %v", err)
 	}
+	var output = *input
 
 	// log.Printf("input = %v",input)
 	// log.Printf("output = %v",output)

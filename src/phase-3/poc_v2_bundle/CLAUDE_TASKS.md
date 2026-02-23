@@ -173,7 +173,7 @@ The current Go structs do not distinguish “missing field” vs “zero value�
 
 **Acceptance**
 - Document the merge behavior in `pkg/process_input` or `pkg/canon` docstring.
-
+t
 ### Claude prompt (Task 2)
 
 ```
@@ -194,6 +194,45 @@ Do:
 Constraints:
 - Do not change golden fixtures.
 - Keep diffs minimal and readable.
+```
+
+```
+Task 2.4 add options to specify the path to the canon files.
+
+Current:
+    Usage: ./proof-of-capability-2 $inputFile $outputFile
+
+We want:
+    Usage: ./proof-of-capability-2 \
+               [--canon-directory|-cd        $canon_directory] \
+               [--gate-sequence-file|-gs     $gate_sequence_file] \
+	           [--mandala-constants-file|-mc $mandala_constants_file] \
+	           [--node-policy-file|-np       $node_policy_file] \
+               [--help|-h] \
+               $inputFile $outputFile
+
+The canon_directory argument may be an absolute path, or a relative
+path. If it is a relative path it's looked up in the current working
+directory. If it is absent, it's considered to be the subdirectory
+named "canon/" in  current working directory.
+
+The file arguments may be absolute path, or relative paths. If they're
+relative paths, they're looked up in the canon_directory.
+
+When a file argument is given, it specifies the corresponding file. If
+no file is found at this path, an error is signaled and the program
+exits. If a json file is found, it's loaded and overrides the
+corresponding default global variable value.
+When a file argument is not given, the default file name is used, and
+searched in the canon directory. (adjust the default relative paths
+for the files).
+
+--help or -h prints the usage and exits.
+
+--version or -v prints the program version (phase-3 poc-2 version 0.1)
+and exits.
+
+Otherwise the input and output file arguments are used and processed.
 ```
 
 ---
