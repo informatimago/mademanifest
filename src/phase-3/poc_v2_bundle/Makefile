@@ -41,7 +41,7 @@ all: prepare compile run diff
 prepare: swisseph-install swisseph-install-data
 compile: $(SRC)/$(NAME)
 run:	 compile
-	cd $(SRC) ; LIBRARY_PATH=$${LIBRARY_PATH}:/usr/local/lib ./$(NAME) -cd ../canon ../golden/GOLDEN_TEST_CASE_V1.json out.json ; cat out.json
+	cd $(SRC) ; LD_LIBRARY_PATH=$${LD_LIBRARY_PATH}:/usr/local/lib ./$(NAME) -cd ../canon ../golden/GOLDEN_TEST_CASE_V1.json out.json ; cat out.json
 diff:    compile test-integration
 
 swisseph-prepare:
@@ -69,12 +69,12 @@ test-unit:
 	cd $(SRC) ; go test $(TEST_FLAGS) ./pkg/...
 
 test-integration-unix: $(SRC)/$(NAME)
-	cd $(SRC) ; LIBRARY_PATH=$${LIBRARY_PATH}:/usr/local/lib ./$(NAME) -cd ../canon ../golden/GOLDEN_TEST_CASE_V1.json out.json \
+	cd $(SRC) ; LD_LIBRARY_PATH=$${LD_LIBRARY_PATH}:/usr/local/lib ./$(NAME) -cd ../canon ../golden/GOLDEN_TEST_CASE_V1.json out.json \
 	&& tr -d '\015' < ../golden/GOLDEN_TEST_CASE_V1.json > expected.json \
 	&& diff $(DIFF_RELAX) --width=160 -y out.json expected.json
 
 test-integration: $(SRC)/$(NAME)
-	cd $(SRC) ; LIBRARY_PATH=$${LIBRARY_PATH}:/usr/local/lib ./$(NAME) -dos -cd ../canon ../golden/GOLDEN_TEST_CASE_V1.json out.json \
+	cd $(SRC) ; LD_LIBRARY_PATH=$${LD_LIBRARY_PATH}:/usr/local/lib ./$(NAME) -dos -cd ../canon ../golden/GOLDEN_TEST_CASE_V1.json out.json \
 	&& ( diff $(DIFF_RELAX) --width=160 -y out.json ../golden/GOLDEN_TEST_CASE_V1.json > diff ; status=$$? ; if [ $$status -ne 0 ] ; then cat diff ; fi ; )
 
 
