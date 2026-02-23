@@ -1,0 +1,31 @@
+FROM golang:1.22.0-bookworm
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        git \
+        make \
+        gcc \
+        g++ \
+        libc6-dev \
+        patch \
+        rsync \
+        sudo \
+    && rm -rf /var/lib/apt/lists/*
+
+# macOS-only tool referenced by Makefile; no-op on Linux.
+RUN printf '#!/bin/sh\nexit 0\n' > /usr/local/bin/install_name_tool \
+    && chmod +x /usr/local/bin/install_name_tool
+
+WORKDIR /opt/src
+COPY . /opt/src
+
+# Clone repository into a stable workspace path inside the image.
+RUN git clone /opt/src /workspace/poc_v2_bundle
+
+WORKDIR /workspace/poc_v2_bundle
+
+# Build and install Swiss Ephemeris and its data into /usr/local.
+RUN make swisseph-install swisseph-install-data

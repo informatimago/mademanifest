@@ -7,6 +7,7 @@ TEST_FLAGS   = -count=1
 NAME         = proof-of-capability-2
 # DIFF_RELAX   = -twb
 DIFF_RELAX   =
+IMAGE_NAME   = mademanifest-poc-v2
 
 export SE_EPHE_PATH
 
@@ -20,7 +21,10 @@ help::
     test-coverage test-verbose test-astronomy \
 	test-ephemeris test-astrology \
 	test-human_design test-gene_keys \
-	clean
+	clean \
+	docker-image \
+	docker-compile \
+	docker-run
 
 help::
 	@printf 'make prepare  # compiles swisseph and install it.\n'
@@ -101,3 +105,21 @@ test-gene_keys:
 # Clean test artifacts
 clean:
 	rm -f coverage.txt out.json $(SRC)/$(NAME)
+
+
+docker-image:
+	docker build -f env/docker/Dockerfile.txt -t "$(IMAGE_NAME)" .
+
+docker-compile:
+	docker run --rm -t \
+	  -v "$(pwd)":/workspace/poc_v2_bundle \
+	  -w /workspace/poc_v2_bundle \
+	  "$(IMAGE_NAME)" \
+	  bash -lc "make clean compile"
+
+docker-run:
+	docker run --rm -t \
+	  -v "$(pwd)":/workspace/poc_v2_bundle \
+	  -w /workspace/poc_v2_bundle \
+	  "$(IMAGE_NAME)" \
+	  bash -lc "make run diff"
