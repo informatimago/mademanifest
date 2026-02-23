@@ -72,6 +72,19 @@ func LoadGateSequenceV1(path string) error {
 	if err := json.Unmarshal(data, &payload); err != nil {
 		return fmt.Errorf("%w: %s", err, path)
 	}
+	if len(payload.GateSequence) != 64 {
+		return fmt.Errorf("gate sequence must have 64 entries, got %d: %s", len(payload.GateSequence), path)
+	}
+	seen := make(map[int]bool, 64)
+	for i, v := range payload.GateSequence {
+		if v < 1 || v > 64 {
+			return fmt.Errorf("gate sequence entry out of range at index %d: %d: %s", i, v, path)
+		}
+		if seen[v] {
+			return fmt.Errorf("gate sequence has duplicate entry %d at index %d: %s", v, i, path)
+		}
+		seen[v] = true
+	}
 	GateSequenceV1 = payload.GateSequence
 	return nil
 }

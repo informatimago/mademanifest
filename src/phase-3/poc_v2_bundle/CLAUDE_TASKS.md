@@ -295,6 +295,8 @@ Use the standard mandala mapping algorithm (already in spec) with a 64-element g
   - a *GoldenPersonalityTable* override that forces expected values for the golden test
 
 ### Subtasks
+#### 3.0 Check that we get the gate_sequence variable from the canon/gate_sequence_v1.json file
+If not, implement the missing code.
 
 #### 3.1 Populate `canon/gate_sequence_v1.json`
 **Implementation idea**
@@ -335,6 +337,9 @@ Use the standard mandala mapping algorithm (already in spec) with a 64-element g
 ```
 Implement Task 3 from CLAUDE_TASKS.md.
 
+Check CLAUDE.md for general instructions.
+See CLAUDE_TASKS.md for task and subtasks details.
+
 Requirements:
 - Populate canon/gate_sequence_v1.json with the correct 64-gate sequence for PoC V2.
 - Load gate sequence from canon at runtime (via pkg/canon).
@@ -350,5 +355,9 @@ Do:
 Constraints:
 - No interpretation text.
 - Keep diffs minimal.
+
+Test:
+  Run: make clean compile diff
+  to validate; the diff should be identical.
 ```
 
