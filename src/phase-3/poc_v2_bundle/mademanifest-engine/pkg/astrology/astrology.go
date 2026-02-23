@@ -60,7 +60,7 @@ func CalculateAstrology(positions map[string]float64, julianDay float64, latitud
         pos := emit_golden.Position{Sign: sign, Deg: deg, Min: min}
         ok := setByJSONTag(&result.Positions, key, pos)
         if !ok {
-            log.Printf("ok = %v  key = %v", ok, key)
+            // log.Printf("ok = %v  key = %v", ok, key)
             switch key {
             case "earth":
                 // derived from sun elsewhere, ignore here
