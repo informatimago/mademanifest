@@ -37,7 +37,7 @@ prepare: swisseph-install swisseph-install-data
 compile: $(SRC)/$(NAME)
 run:	 compile
 	cd $(SRC) ; ./$(NAME) -cd ../canon ../golden/GOLDEN_TEST_CASE_V1.json out.json ; cat out.json
-diff:    test-integration
+diff:    compile test-integration
 
 swisseph-prepare:
 	cd ephemeris/swisseph ; rm -rf swisseph-2.10.03 ; tar zxf swisseph-2.10.03.tar.gz

@@ -4,6 +4,9 @@ import (
     "log"
     "reflect"
     "math"
+
+    "github.com/mshafiee/swephgo"
+    "mademanifest-engine/pkg/sweph"
     "mademanifest-engine/pkg/emit_golden"
 )
 
@@ -31,15 +34,16 @@ func setByJSONTag(ptr any, tag string, val any) bool {
 // CalculateAstrology computes complete astrology data using position data
 func CalculateAstrology(positions map[string]float64, julianDay float64, latitude, longitude float64) emit_golden.Astrology {
     var result emit_golden.Astrology
-    // Dummy house cusps and ascmc values – all zeros for tests
-    // cusps := make([]float64, 13)  // 12 house cusps + index 0 unused
-
-    // Ascendant and MC derived from ascmc slice
+    // Compute house cusps and ascmc values via Swiss Ephemeris (Placidus)
+    cusps := make([]float64, 13)  // 12 house cusps + index 0 unused
     ascmc := make([]float64, 10)  // 0=ascendant, 1=MC, 2=ARMC, etc.
+    hsys := int('P')              // Placidus
+    swephgo.HousesEx(julianDay, sweph.SEFLG_SWIEPH|sweph.SEFLG_NONUT, latitude, longitude, hsys, cusps, ascmc)
+
     ascendant := ascmc[0]
+    mc := ascmc[1]
 
     ascDeg, ascMin := convertLongitudeToDegMinAstro(ascendant)
-    mc := ascmc[1]
     mcDeg, mcMin := convertLongitudeToDegMinAstro(mc)
 
     result.Positions.Ascendant.Sign = getZodiacSign(ascendant)
@@ -84,8 +88,15 @@ func convertLongitudeToDegMinAstro(longitude float64) (int, int) {
     totalMinutes := z * 60.0
     deg := int(totalMinutes / 60.0)
     min := int(math.Floor(totalMinutes - float64(deg*60) - 0.5))
-    if min == 60 {
-        min = 0
+    if min < 0 {
+        min += 60
+        deg--
+        if deg < 0 {
+            deg = 29
+        }
+    }
+    if min >= 60 {
+        min -= 60
         deg++
         if deg == 30 {
             deg = 0
