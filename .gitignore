@@ -40,3 +40,5 @@ tarballs/
 
 expected.json
 out.json
+
+*.tex

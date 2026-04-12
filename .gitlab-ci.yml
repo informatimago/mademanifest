@@ -1,0 +1,39 @@
+stages:
+  - test
+
+variables:
+  PHASE4_DIR: src/phase-4
+  ENGINE_DIR: src/phase-4/mademanifest-engine
+
+test-http-service:
+  stage: test
+  image: golang:1.22-bookworm
+  before_script:
+    - apt-get update
+    - apt-get install -y --no-install-recommends build-essential ca-certificates curl patch rsync
+    - cd "$PHASE4_DIR/ephemeris/swisseph"
+    - rm -rf swisseph-2.10.03
+    - tar zxf swisseph-2.10.03.tar.gz
+    - cd swisseph-2.10.03
+    - patch -p1 < ../../../swisseph-makefile-install.patch
+    - make PREFIX=/usr/local
+    - make PREFIX=/usr/local install
+    - mkdir -p /usr/local/share/swisseph
+    - rsync -a "$CI_PROJECT_DIR/$PHASE4_DIR/ephemeris/data/REQUIRED_EPHEMERIS_FILES/" /usr/local/share/swisseph/
+  script:
+    - cd "$CI_PROJECT_DIR/$ENGINE_DIR"
+    - go test ./pkg/...
+    - CGO_LDFLAGS="-lm" go build -o mademanifest-http ./cmd/httpserver
+    - PORT=18080 CANON_DIRECTORY="$CI_PROJECT_DIR/$PHASE4_DIR/canon" SE_EPHE_PATH=/usr/local/share/swisseph ./mademanifest-http &
+    - SERVER_PID=$!
+    - trap 'kill $SERVER_PID' EXIT
+    - sleep 3
+    - curl --fail --silent --show-error http://127.0.0.1:18080/healthz
+    - curl --fail --silent --show-error -X POST -H 'Content-Type: application/json' --data-binary @"$CI_PROJECT_DIR/$PHASE4_DIR/golden/GOLDEN_TEST_CASE_V1.json" http://127.0.0.1:18080/manifest -o out-http.json
+    - test -s out-http.json
+
+validate-kubernetes:
+  stage: test
+  image: ghcr.io/yannh/kubeconform:latest
+  script:
+    - kubeconform -strict -summary "$PHASE4_DIR/deploy/kubernetes/configmap.yaml" "$PHASE4_DIR/deploy/kubernetes/deployment.yaml" "$PHASE4_DIR/deploy/kubernetes/service.yaml"

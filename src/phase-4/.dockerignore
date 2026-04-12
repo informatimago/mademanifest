@@ -1,0 +1,6 @@
+ephemeris/swisseph/swisseph-2.10.03
+mademanifest-engine/out.json
+mademanifest-engine/expected.json
+mademanifest-engine/diff
+doc/user-manual.pdf
+spec/*.pdf

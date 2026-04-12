@@ -1,0 +1,108 @@
+
+Phase 4 HTTP Service:
+====================
+
+This phase contains the deterministic engine plus a prototype HTTP wrapper.
+The service accepts a JSON document with `POST /manifest` and returns the
+resulting JSON payload. A `GET /healthz` endpoint is also exposed for probes.
+
+
+Local engine run:
+====================
+
+Build and run the file-based engine:
+
+    make -C src/phase-4 clean compile run
+
+Diff the generated output against the golden case:
+
+    make -C src/phase-4 clean compile diff
+
+
+Package the HTTP service:
+====================
+
+Build the Linux Docker image from the repository root:
+
+    docker build -t mademanifest-phase-4:latest src/phase-4
+
+Run it locally:
+
+    docker run --rm -p 8080:8080 mademanifest-phase-4:latest
+
+Test it with the golden input:
+
+    src/phase-4/scripts/request_cloud_service.sh \
+        http://localhost:8080/manifest \
+        src/phase-4/out/cloud-service-output.json
+
+
+Install on Kubernetes:
+====================
+
+1. Push the image to a registry your cluster can pull from:
+
+       docker tag mademanifest-phase-4:latest registry.example.com/mademanifest/phase-4:latest
+       docker push registry.example.com/mademanifest/phase-4:latest
+
+2. Update the image reference in:
+
+       src/phase-4/deploy/kubernetes/deployment.yaml
+
+3. Apply the prototype manifests:
+
+       kubectl apply -f src/phase-4/deploy/kubernetes/configmap.yaml
+       kubectl apply -f src/phase-4/deploy/kubernetes/deployment.yaml
+       kubectl apply -f src/phase-4/deploy/kubernetes/service.yaml
+
+   Or apply them as one rendered bundle:
+
+       kubectl kustomize src/phase-4/deploy/kubernetes | kubectl apply -f -
+
+4. Wait for the pod to become ready:
+
+       kubectl rollout status deployment/mademanifest
+
+5. Access the service:
+
+       kubectl port-forward service/mademanifest 8080:80
+
+6. Send the golden request through the cluster endpoint:
+
+       src/phase-4/scripts/request_cloud_service.sh \
+           http://localhost:8080/manifest \
+           src/phase-4/out/cloud-service-output.json
+
+
+Linux image libraries:
+====================
+
+The Linux image installs the Swiss Ephemeris runtime pieces in the standard
+locations expected by the Go binary:
+
+- shared library: `/usr/local/lib/libswe.so`
+- ephemeris data files: `/usr/local/share/swisseph`
+- canon files: `/app/canon`
+
+The container also sets:
+
+- `SE_EPHE_PATH=/usr/local/share/swisseph`
+- `CANON_DIRECTORY=/app/canon`
+
+This is the correct layout for a Linux Docker image. The one important fix was
+to avoid `make install` in the builder stage because the patched Swiss
+Ephemeris install target still shells out through `sudo`. The Dockerfile now
+copies the library and headers into `/usr/local` directly during the build.
+
+
+Documentation & Requirement Tracking:
+====================
+
+The user manual of the proof-of-concept command:
+
+    doc/user-manual.md
+    doc/user-manual.pdf
+
+Tracking of requirements is documented in:
+
+    doc/requirement-tracking.org

@@ -1,0 +1,5 @@
+Swiss Ephemeris source archive.
+Version: 2.10.03
+Source: https://github.com/aloistr/swisseph/releases/tag/v2.10.03
+Artifact format: zip (GitHub auto-generated)
+This archive must be used exactly as provided.

@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mademanifest-config
+data:
+  PORT: "8080"
+  CANON_DIRECTORY: /app/canon
+  SE_EPHE_PATH: /usr/local/share/swisseph

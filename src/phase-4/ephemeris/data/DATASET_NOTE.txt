@@ -1,0 +1,8 @@
+Swiss Ephemeris data files included for PoC V2:
+
+- sepl_18.se1 (planets)
+- semo_18.se1 (moon)
+- seas_18.se1 (main asteroids incl. Chiron)
+
+Fixed star ephemeris files (e.g. sefi_*.se1) are intentionally excluded.
+No fixed star calculations are part of PoC V2 or the Golden Test.
