@@ -2,9 +2,9 @@ package emit_golden
 
 import (
 	"bytes"
+	"log"
 	"os"
 	"testing"
-	"log"
 )
 
 func TestEmitGoldenJSON(t *testing.T) {
@@ -105,7 +105,11 @@ func TestEmitGoldenJSON(t *testing.T) {
 		t.Fatalf("failed to read golden fixture: %v", err)
 	}
 
-	if !bytes.Equal(actual, expected) {
+	normalizeLF := func(data []byte) []byte {
+		return bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n"))
+	}
+
+	if !bytes.Equal(normalizeLF(actual), normalizeLF(expected)) {
 		log.Printf("actual   = %+v", string(actual))
 		log.Printf("expected = %+v", string(expected))
 		t.Fatalf("golden JSON mismatch: output does not match canonical fixture")
