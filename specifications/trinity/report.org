@@ -1,0 +1,210 @@
+#+TITLE: Trinity Engine Canon Review Report
+#+DATE: 2026-03-24
+
+* Executive Assessment
+| Question | Assessment | Summary |
+|----------+------------+---------|
+| Is the canon complete enough to support implementation without interpretation? | No, not fully. | The package is unusually detailed and much stronger than a normal prose spec, but a few implementation-critical points still require interpretation. |
+| Does ambiguity, conflict, or missing implementation-critical detail remain? | Yes. | The most important remaining gaps are timezone source version pinning, house interval ownership, design-time second-selection, and canonical error-message policy. |
+| Is the package sufficient to begin deterministic implementation under the agreed scope? | Yes, with reservations. | Work can begin on most of the engine, but some areas should be treated as blocked until clarifications are folded back into the governing canon. |
+
+- High-level judgment:
+  - The package is strong enough to begin engineering work.
+  - The package is not yet strong enough to claim a fully interpretation-free implementation.
+  - The package is not yet strong enough to support final acceptance without clarifying a small number of critical issues.
+
+* Strengths Of The Package
+- Scope is explicit and narrow.
+  - The package is disciplined about what is in scope and what is excluded.
+  - The engine boundary is clear: normalized input only.
+- Core domain mechanics are substantially pinned.
+  - Human Design gate order, anchor, line width, center list, channel table, Type rules, and Authority priority are all explicitly formalized.
+  - Astrology source stack, supported objects, sign mapping, and output structure are explicit.
+- Determinism governance is strong.
+  - Canon precedence, versioning, regression obligations, and no-hidden-state rules are unusually well documented.
+- Transparency is good.
+  - Document 09 and Document 12 make the decision history and prior rejected assumptions visible, which materially reduces hidden-context risk.
+
+* Critical Ambiguities And Blockers
+** A1. Timezone Source Version Is Not Actually Pinned
+- Documents:
+  - Document 03, section 3.2
+  - Document 08, sections 4.3 and 6.4
+- Problem:
+  - The canon says the IANA Time Zone Database is authoritative, and Document 08 says source versions must be pinned where they affect outcomes.
+  - However, no exact tzdb release is named anywhere in the reviewed package.
+- Why this matters:
+  - Historical DST rules do change across tzdb releases.
+  - A different tzdb release can change UTC conversion, Julian Day, planetary positions, house cusps, and every downstream Human Design and Gene Keys result.
+- Assessment:
+  - This is implementation-critical.
+  - A deterministic engine cannot be fully reproducible across environments without this pin.
+
+** A2. House Interval Ownership Rules Are Missing
+- Documents:
+  - Document 05, section 5.6
+  - Document 06, section 3.4
+- Problem:
+  - Document 05 says house placement must follow "house interval rules defined elsewhere in the canon."
+  - No governing document found in the reviewed package actually defines those interval rules.
+  - The canon defines sign interval ownership and gate/line interval ownership, but not house interval ownership.
+- Why this matters:
+  - Every astrology object output requires a house value.
+  - Without a canonical cusp-ownership rule, cusp-boundary cases can vary by implementation or by library convention.
+  - This is especially important around wraparound between House 12 and House 1.
+- Assessment:
+  - This is a direct blocker for exact, interpretation-free astrology house assignment.
+
+** A3. Design-Time Search Result Selection Is Underspecified At Whole-Second Precision
+- Documents:
+  - Document 05, sections 6.4.5 through 6.4.7
+  - Document 05, section 11.2
+  - Document 07, sections 10.3 and 10.4
+- Problem:
+  - The canon pins bisection and the stop conditions.
+  - It does not pin what timestamp is returned when stop condition 2 is met: "remaining interval width is less than 1 second."
+  - It also does not pin whether emission to whole-second precision should use floor, ceiling, nearest, or another rule.
+- Why this matters:
+  - Human Design and Gene Keys outputs depend on =design_time_utc=.
+  - A one-second difference can change gate or line at a boundary.
+  - Two compliant-looking implementations could stop on different final bracket endpoints and emit different values.
+- Assessment:
+  - This is implementation-critical for exact fixtures and deterministic interoperability.
+
+** A4. Canonical Error Messages Are Not Pinned
+- Documents:
+  - Document 07, section 9.5
+  - Document 10, section 6.3
+- Problem:
+  - Output Specification only says the message must be a machine-readable developer-facing string.
+  - Golden Test Pack says exact message matching is preferred for v1.
+  - No authoritative message catalog or message-construction rule was found.
+- Why this matters:
+  - If fixtures require exact message strings, the implementer must invent them.
+  - That makes exact fixture matching depend on non-canonical wording choices.
+- Assessment:
+  - This is a blocker for exact error-fixture authoring unless the review process explicitly limits matching to =error_type=.
+
+* Significant But Potentially Non-Blocking Ambiguities
+** A5. Unsupported Input Classification Is Not Fully Operationalized
+- Documents:
+  - Document 04, sections 6.2 and 11
+  - Document 07, section 9.4
+  - Document 10, section 9.3
+- Problem:
+  - The package clearly distinguishes =invalid_input=, =incomplete_input=, and =unsupported_input=.
+  - But the exact decision boundary for some cases remains loose.
+  - Example: seconds in =birth_time= are rejected, but section 6.2 says minute-level absence may be rejected as =IncompleteInput= or =UnsupportedInput= "according to the final error handling rules."
+- Why this matters:
+  - The implementation can still start, but some error classifications could drift.
+  - Fixture authoring becomes inconsistent unless those cases are normalized.
+
+** A6. Valid Timezone Identifier Set Is Not Tight Enough
+- Documents:
+  - Document 04, section 6.3
+  - Document 03, section 3.2
+- Problem:
+  - The canon says the field must be an IANA timezone identifier and rejects abbreviations like =CET=.
+  - It does not clearly state whether IANA link names and aliases such as =US/Eastern= are accepted if supplied directly.
+- Why this matters:
+  - Validation behavior can differ even when both implementations use IANA data.
+  - This affects both input acceptance and historical time conversion.
+
+** A7. Golden Fixture Bootstrap Is Methodologically Weak
+- Documents:
+  - Document 10, Appendix A
+  - Document 12, decision D18
+- Problem:
+  - The implementer is expected to populate the first full fixture set from a "canon compliant engine run" and then freeze it.
+  - That means the initial fixture oracle is produced by the same implementation under review unless an external review step exists.
+- Why this matters:
+  - Golden fixtures then enforce regression consistency, but they do not independently prove initial correctness.
+  - The package is sufficient for regression discipline, but not by itself for first-principles truth establishment.
+- Assessment:
+  - This is more of an acceptance-process risk than a coding blocker, but it matters for review credibility.
+
+** A8. The Canon Itself Admits The Final Consistency Pass Is Not Fully Folded Back
+- Documents:
+  - Document 00
+  - Document 09 item O02
+- Problem:
+  - The package still records a pending fold-back/completeness step for Documents 05-07.
+  - That means identifier hygiene and cross-document wording drift remain known risks.
+- Why this matters:
+  - An engineer can proceed, but should expect some late canon edits.
+
+* Potential Conflict Or Tension Points
+** C1. "Byte For Byte" Exactness Versus Partially Unpinned Serialization
+- Source context:
+  - Earlier email language emphasizes exact expected output "byte for byte."
+  - Output Specification focuses on canonical structure, field presence, ordered arrays, and pinned numeric/date formatting.
+- Tension:
+  - The package does not fully pin object member order or a canonical JSON serializer.
+  - Document 07 explicitly allows some serialization variation such as trailing zeros depending on implementation serialization.
+- Assessment:
+  - If review is semantic JSON comparison, this is fine.
+  - If review is literal byte-level comparison, this remains under-specified.
+
+* Readiness By Workstream
+| Workstream | Readiness | Notes |
+|------------+-----------+-------|
+| Input validation | Ready | Strongest part of the canon. |
+| Source stack setup | Partially ready | Swiss Ephemeris is pinned; timezone source version is not. |
+| Astrology signs and object ordering | Ready | Sign mapping and object set/order are clear. |
+| Astrology house placement | Blocked | House interval ownership is not pinned. |
+| Human Design gate/line mapping | Ready | Gate order, widths, anchor, and interval rules are explicit. |
+| Human Design structural derivation | Ready | Channels, centers, definition, Type, and Authority are formalized. |
+| Gene Keys derivation | Ready | Scope is narrow and mapping is explicit. |
+| Error handling | Partially ready | Error types are clear; exact messages are not. |
+| Golden test scaffolding | Ready | Structure and coverage are defined. |
+| Golden fixture truth establishment | Partially ready | First fixture population lacks an independent oracle. |
+
+* Overall Conclusion
+- The package is good enough to start deterministic implementation of most of the agreed scope.
+- It is not good enough to promise a fully interpretation-free implementation from start to finish.
+- The missing details are relatively small in number, but they hit high-leverage areas:
+  - timezone conversion reproducibility
+  - astrology house placement
+  - design-time exact second selection
+  - error-fixture exactness
+- My recommendation:
+  - begin implementation now for the clearly pinned areas
+  - explicitly mark a few areas as blocked pending canon clarification
+  - require the clarifications to be folded back into the governing canon before final fixture freeze and acceptance review
+
+* Ambiguities List
+- Critical:
+  - exact IANA Time Zone Database release is not pinned
+  - house interval ownership / cusp-boundary rule is not pinned
+  - design-time search final timestamp selection and second-rounding rule are not pinned
+  - canonical error messages are not pinned despite exact fixture ambitions
+- Significant:
+  - =unsupported_input= versus =invalid_input= boundary is not fully operationalized
+  - acceptance policy for IANA aliases/link names is not explicit
+  - first golden fixture oracle is not independent of the implementation
+  - final consistency pass across Documents 05, 06, and 07 is not fully folded back
+- Moderate:
+  - if literal bytewise JSON comparison is still intended, serialization rules remain under-specified
+
+* Questions For Jaimie / Canon Owner
+1. Which exact IANA Time Zone Database release is authoritative for v1?
+2. What are the canonical house interval ownership rules for house placement?
+3. When the design-time bisection stops with interval width under 1 second, which timestamp is canonical: lower bound, upper bound, midpoint, or nearest whole second?
+4. What rounding rule is canonical for emitting =design_time_utc= at whole-second precision?
+5. Is there an authoritative catalog of error messages, or should fixtures match only =error_type= and not exact =message= text?
+6. Are IANA alias/link identifiers such as =US/Eastern= valid if submitted directly, or are only canonical =Area/Location= zone names accepted?
+7. Which exact scenarios are intended to produce =unsupported_input= rather than =invalid_input= in v1?
+8. How should the first golden expected outputs be reviewed and approved so they are not merely self-frozen output from the implementation under test?
+9. Is semantic JSON comparison acceptable for success fixtures, or is literal byte-for-byte serialized output still the intended acceptance basis?
+
+* Recommended Next Step
+- Ask for canon clarification on questions 1-5 before finalizing house placement, timezone handling, design-time output emission, and error fixtures.
+- Proceed immediately with:
+  - input validation
+  - source-stack pinning except tzdb release
+  - astrology longitude/sign/object calculation
+  - Human Design gate/line mapping
+  - Human Design structural derivation
+  - Gene Keys derivation
+  - output shape and metadata scaffolding
+  - golden test harness structure

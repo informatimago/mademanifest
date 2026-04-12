@@ -1,0 +1,974 @@
+% Created 2026-03-24 Tue 20:33
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\author{Pascal Bourguignon}
+\date{2026-03-24}
+\title{Trinity Engine Canon Extract}
+\hypersetup{
+ pdfauthor={Pascal Bourguignon},
+ pdftitle={Trinity Engine Canon Extract},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 30.2 (Org mode 9.7.11)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\section{Overview}
+\label{sec:org42dc89e}
+\begin{itemize}
+\item Trinity Engine v1 is a deterministic, stateless calculation engine.
+\item Governing implementation canon: Documents 01-08 and 11.
+\item Test canon: Document 10.
+\item Control and transparency documents: Document 00, Document 09, Document 12.
+\item Canon precedence order:
+\begin{itemize}
+\item Document 04 Input Specification
+\item Document 05 Calculation Canon
+\item Document 06 Mapping Canon
+\item Document 07 Output Specification
+\item Document 03 Canonical Source Stack
+\item Document 02 Supported Objects and Scope
+\item Document 01 Purpose and System Boundary
+\item Document 09 Ambiguity Register
+\item Document 00 Canon Build Status
+\end{itemize}
+\end{itemize}
+\section{Package State}
+\label{sec:org10738c0}
+\begin{itemize}
+\item Document 00: Draft control document.
+\item Document 01: Near Final.
+\item Document 02: Near Final.
+\item Document 03: Near Final.
+\item Document 04: Final.
+\item Document 05: Near Final.
+\item Document 06: Near Final.
+\item Document 07: Near Final.
+\item Document 08: Near Final.
+\item Document 09: Draft Approved, actively in use.
+\item Document 10: Draft Approved, awaiting fixture population.
+\item Document 11: Near Final.
+\item Major active package risk recorded in the canon itself: final consistency pass across Documents 05, 06, and 07.
+\end{itemize}
+\section{Scope And Boundary}
+\label{sec:org134b9ea}
+\begin{itemize}
+\item In scope:
+\begin{itemize}
+\item input validation against canonical normalized input
+\item astrology calculations
+\item Human Design calculations
+\item Gene Keys derivation
+\item application of pinned mappings, thresholds, ordering, and formatting
+\item structured success and error responses
+\item deterministic metadata for reproducibility
+\end{itemize}
+\item Out of scope:
+\begin{itemize}
+\item birthplace search, geocoding, and timezone determination
+\item UI and presentation behavior
+\item persistence and operational logging
+\item narrative, content, recommendations, coaching, and translation
+\item any calculation or output not explicitly enumerated in the canon
+\end{itemize}
+\item Supported domains:
+\begin{itemize}
+\item Astrology
+\item Human Design
+\item Gene Keys
+\end{itemize}
+\item No separate "Trinity derived calculations" category exists in v1.
+\item Engine boundary rule:
+\begin{itemize}
+\item input reaches the engine only after normalization
+\item raw birthplace strings, unresolved timezone data, free-text dates/times, and ambiguous location data are outside scope
+\end{itemize}
+\end{itemize}
+\section{Authoritative Sources And Version Pins}
+\label{sec:orgb97f8b4}
+\begin{itemize}
+\item Swiss Ephemeris is the authoritative astronomical source.
+\item Swiss Ephemeris version pin: \texttt{2.10.03}.
+\item IANA Time Zone Database is the authoritative timezone standard.
+\item Gregorian calendar is the authoritative civil calendar basis.
+\item Tropical zodiac is authoritative across domains.
+\item Placidus is the authoritative astrology house system.
+\item Node policy by domain:
+\begin{itemize}
+\item Astrology uses Mean Node.
+\item Human Design uses True Node.
+\item Gene Keys inherits the Human Design basis.
+\end{itemize}
+\item External libraries are implementation vehicles only; library defaults are non-authoritative unless canon explicitly adopts them.
+\item Third-party platforms may be used only for sanity checking, not as truth.
+\end{itemize}
+\section{Supported Objects And Outputs}
+\label{sec:org4cafe82}
+\subsection{Astrology}
+\label{sec:orgfc2dc9d}
+\begin{itemize}
+\item Raw objects:
+\begin{itemize}
+\item sun
+\item moon
+\item mercury
+\item venus
+\item mars
+\item jupiter
+\item saturn
+\item uranus
+\item neptune
+\item pluto
+\item chiron
+\item north\textsubscript{node}\textsubscript{mean}
+\item earth
+\end{itemize}
+\item Additional supported outputs:
+\begin{itemize}
+\item ascendant
+\item midheaven
+\item house cusps 1-12
+\end{itemize}
+\item Per-object supported attributes:
+\begin{itemize}
+\item object\textsubscript{id}
+\item longitude
+\item sign
+\item house
+\end{itemize}
+\item Explicitly out of scope:
+\begin{itemize}
+\item aspects
+\item dignities
+\item dispositors
+\item house rulers
+\item elemental or modality synthesis
+\item asteroids beyond Chiron
+\item fixed stars
+\item interpretive text
+\end{itemize}
+\end{itemize}
+\subsection{Human Design}
+\label{sec:org622c0ea}
+\begin{itemize}
+\item Two snapshots:
+\begin{itemize}
+\item personality at birth
+\item design at design\textsubscript{time}\textsubscript{utc}
+\end{itemize}
+\item Snapshot object identifiers and order:
+\begin{enumerate}
+\item sun
+\item earth
+\item north\textsubscript{node}
+\item south\textsubscript{node}
+\item moon
+\item mercury
+\item venus
+\item mars
+\item jupiter
+\item saturn
+\item uranus
+\item neptune
+\item pluto
+\end{enumerate}
+\item Activation output for each snapshot object:
+\begin{itemize}
+\item object\textsubscript{id}
+\item gate
+\item line
+\end{itemize}
+\item Structural outputs:
+\begin{itemize}
+\item channels
+\item centers
+\item definition
+\item type
+\item authority
+\item profile
+\item incarnation\textsubscript{cross}
+\end{itemize}
+\end{itemize}
+\subsection{Gene Keys}
+\label{sec:org77c55f7}
+\begin{itemize}
+\item Not an independent astronomical system.
+\item Derived strictly from Human Design gate and line outputs.
+\item Supported positions:
+\begin{itemize}
+\item life\textsubscript{work} = Personality Sun
+\item evolution = Personality Earth
+\item radiance = Design Sun
+\item purpose = Design Earth
+\end{itemize}
+\item Supported fields per position:
+\begin{itemize}
+\item key
+\item line
+\end{itemize}
+\item Out of scope:
+\begin{itemize}
+\item shadow, gift, and essence text
+\item sequence prose
+\item semantic states
+\end{itemize}
+\end{itemize}
+\section{Input Contract}
+\label{sec:org2cbbb99}
+\subsection{Canonical Payload}
+\label{sec:org1d558b1}
+\begin{itemize}
+\item One person per payload.
+\item Required fields:
+\begin{center}
+\begin{tabular}{lll}
+field & type & format / rule\\
+\hline
+birth\textsubscript{date} & string & YYYY-MM-DD\\
+birth\textsubscript{time} & string & HH:MM, 24-hour, minute only\\
+timezone & string & IANA timezone identifier\\
+latitude & number & decimal degrees, -90.0..90.0\\
+longitude & number & decimal degrees, -180.0..180.0\\
+\end{tabular}
+\end{center}
+\item Canonical logical shape:
+\end{itemize}
+\begin{verbatim}
+{
+  "birth_date": "YYYY-MM-DD",
+  "birth_time": "HH:MM",
+  "timezone": "Area/Location",
+  "latitude": 0.000000,
+  "longitude": 0.000000
+}
+\end{verbatim}
+\subsection{Validation Rules}
+\label{sec:org93c34bd}
+\begin{itemize}
+\item Validate before any calculation:
+\begin{itemize}
+\item presence of all required fields
+\item exact field format compliance
+\item type compliance
+\item numeric range compliance
+\item IANA-compliant timezone format
+\item Gregorian date validity
+\item 24-hour minute time validity
+\end{itemize}
+\item Strict numeric typing:
+\begin{itemize}
+\item numeric fields must be numeric values, not strings
+\item no silent coercion of numeric-looking strings
+\end{itemize}
+\item No optional canonical input fields in v1.
+\item Extra upstream fields are non-authoritative and must not affect results.
+\end{itemize}
+\subsection{Normalization Assumptions}
+\label{sec:org6493c92}
+\begin{itemize}
+\item Before engine submission:
+\begin{itemize}
+\item location already resolved to unique latitude and longitude
+\item timezone already resolved to a valid IANA identifier
+\item date already resolved to Gregorian YYYY-MM-DD
+\item time already normalized to HH:MM
+\item ambiguity, alias handling, and UI cleaning already completed upstream
+\item payload already reduced to one birth event
+\end{itemize}
+\end{itemize}
+\subsection{Rejection Rules}
+\label{sec:org8ced39f}
+\begin{itemize}
+\item \texttt{incomplete\_input}
+\begin{itemize}
+\item missing one or more required fields
+\end{itemize}
+\item \texttt{invalid\_input}
+\begin{itemize}
+\item malformed date or time
+\item invalid timezone string
+\item out-of-range latitude or longitude
+\item numeric field supplied as string
+\end{itemize}
+\item \texttt{unsupported\_input}
+\begin{itemize}
+\item structurally valid input outside supported v1 scope
+\end{itemize}
+\end{itemize}
+\subsection{No Silent Repair}
+\label{sec:org8bc81f6}
+\begin{itemize}
+\item The engine must not silently:
+\begin{itemize}
+\item infer missing fields
+\item correct malformed values
+\item coerce ambiguous inputs
+\item map timezone aliases
+\item resolve place names
+\item truncate unexpected time formats
+\item substitute defaults
+\end{itemize}
+\end{itemize}
+\section{Calculation Canon}
+\label{sec:orga339fec}
+\subsection{Shared Pre-Calculation Steps}
+\label{sec:org61486c3}
+\begin{itemize}
+\item Validate input.
+\item Construct local birth datetime from date, time, timezone.
+\item Convert to UTC using the pinned timezone standard.
+\item Derive Julian Day or equivalent astronomical time input.
+\item Use provided latitude and longitude as authoritative coordinates.
+\end{itemize}
+\subsection{Angular Mechanics}
+\label{sec:org879c29f}
+\begin{itemize}
+\item Canonical longitude range: \texttt{[0.0, 360.0)}.
+\item Normalize by modular arithmetic.
+\item \texttt{360.0} normalizes to \texttt{0.0}.
+\item Opposition derivation uses canonical 180-degree opposition logic.
+\item Cyclic interval handling must be deterministic.
+\end{itemize}
+\subsection{Astrology}
+\label{sec:org1ca15cc}
+\begin{itemize}
+\item Query or derive longitudes at the birth moment.
+\item Earth longitude = Sun longitude + 180 degrees modulo 360.
+\item Sign placement is derived from the tropical zodiac intervals.
+\item House calculation uses:
+\begin{itemize}
+\item birth moment
+\item latitude
+\item longitude
+\item Placidus
+\end{itemize}
+\item Return:
+\begin{itemize}
+\item ascendant
+\item midheaven
+\item house cusps 1-12
+\item supported astrology objects in canonical order
+\end{itemize}
+\end{itemize}
+\subsection{Human Design Design-Time Derivation}
+\label{sec:org668f1b0}
+\begin{itemize}
+\item Design time is a second astronomical moment before birth.
+\item Design-time target rule:
+\begin{itemize}
+\item find the prior moment where Sun longitude is exactly 88.0 degrees earlier than at birth
+\item target longitude = normalize(birth\textsubscript{sun}\textsubscript{longitude} - 88.0)
+\end{itemize}
+\item Search direction:
+\begin{itemize}
+\item backward in time only
+\end{itemize}
+\item Initial bracket:
+\begin{itemize}
+\item centered around approximately 88 days before birth
+\end{itemize}
+\item Root-finding method:
+\begin{itemize}
+\item iterative bisection
+\end{itemize}
+\item Stop conditions:
+\begin{itemize}
+\item absolute Sun-longitude difference from target < 0.0001 degrees
+\item or remaining interval width < 1 second
+\end{itemize}
+\item Forbidden shortcuts:
+\begin{itemize}
+\item fixed 88-day subtraction
+\item fixed 3-month subtraction
+\item rough platform imitation
+\item average ephemeris approximation
+\item precomputed lookup shortcut
+\end{itemize}
+\end{itemize}
+\subsection{Human Design Gate And Line Mapping}
+\label{sec:org09af851}
+\begin{itemize}
+\item Mandala parameters:
+\begin{itemize}
+\item anchor defined in Document 06
+\item gate width = 5.625 degrees
+\item line width = 0.9375 degrees
+\item direction = ascending ecliptic longitude
+\item intervals are start-inclusive and end-exclusive
+\item gate order is a fixed lookup list
+\end{itemize}
+\item Relative mandala position:
+\begin{itemize}
+\item normalize longitude
+\item subtract canonical anchor
+\item normalize result into \texttt{[0.0, 360.0)}
+\end{itemize}
+\item Gate assignment:
+\begin{itemize}
+\item floor(relative\textsubscript{position} / 5.625)
+\item use result as zero-based index into canonical gate order
+\end{itemize}
+\item Line assignment:
+\begin{itemize}
+\item compute offset inside gate segment
+\item floor(offset / 0.9375)
+\item convert to line number 1..6
+\end{itemize}
+\item Boundary rule:
+\begin{itemize}
+\item an interval end belongs to the next segment
+\end{itemize}
+\item Gene Keys uses exactly the same gate and line results as Human Design.
+\end{itemize}
+\subsection{Canonical Human Design Gate Order}
+\label{sec:orgd62462b}
+\begin{itemize}
+\item Gate 38 begins at \texttt{277.5°}.
+\item Gate 41 begins at \texttt{300.0°}.
+\item Canonical 64-gate sequence:
+\begin{itemize}
+\item {[}38, 54, 61, 60, 41, 19, 13, 49, 30, 55, 37, 63, 22, 36, 25, 17, 21, 51, 42, 3, 27, 24, 2, 23, 8, 20, 16, 35, 45, 12, 15, 52, 39, 53, 62, 56, 31, 33, 7, 4, 29, 59, 40, 64, 47, 6, 46, 18, 48, 57, 32, 50, 28, 44, 1, 43, 14, 34, 9, 5, 26, 11, 10, 58]
+\end{itemize}
+\end{itemize}
+\subsection{Human Design Structural Derivation}
+\label{sec:org1166655}
+\begin{itemize}
+\item Combined activation set:
+\begin{itemize}
+\item all valid personality activations
+\item all valid design activations
+\end{itemize}
+\item Channels:
+\begin{itemize}
+\item active only when both gates of a canonical pair are active
+\item each active channel returned once
+\end{itemize}
+\item Centers:
+\begin{itemize}
+\item defined if they participate in at least one active canonical channel
+\item otherwise undefined
+\end{itemize}
+\item Definition classes:
+\begin{itemize}
+\item none
+\item single
+\item split
+\item triple\textsubscript{split}
+\item quadruple\textsubscript{split}
+\end{itemize}
+\item Type derivation:
+\begin{itemize}
+\item reflector if definition = none
+\item if sacral defined:
+\begin{itemize}
+\item manifesting\textsubscript{generator} if at least one motor-to-throat path exists
+\item generator otherwise
+\end{itemize}
+\item if sacral undefined and a non-sacral motor connects to throat:
+\begin{itemize}
+\item manifestor
+\end{itemize}
+\item projector otherwise
+\end{itemize}
+\item Authority derivation priority:
+\begin{enumerate}
+\item emotional if solar\textsubscript{plexus} defined
+\item sacral if type is generator or manifesting\textsubscript{generator}
+\item splenic if spleen defined
+\item ego\textsubscript{manifested} if type is manifestor and ego defined
+\item ego\textsubscript{projected} if type is projector and ego defined
+\item self\textsubscript{projected} if type is projector and g defined
+\item mental if type is projector
+\item lunar if type is reflector
+\end{enumerate}
+\item Profile:
+\begin{itemize}
+\item \texttt{personality\_sun\_line/design\_sun\_line}
+\end{itemize}
+\item Incarnation Cross:
+\begin{itemize}
+\item structural encoding of personality\textsubscript{sun}, personality\textsubscript{earth}, design\textsubscript{sun}, design\textsubscript{earth}
+\item no human-readable cross name required
+\end{itemize}
+\end{itemize}
+\subsection{Gene Keys}
+\label{sec:org46ba7cc}
+\begin{itemize}
+\item life\textsubscript{work} = Personality Sun
+\item evolution = Personality Earth
+\item radiance = Design Sun
+\item purpose = Design Earth
+\item Key number equals Human Design gate number.
+\item Line equals Human Design line number.
+\end{itemize}
+\section{Mapping Canon}
+\label{sec:orgef5e73f}
+\subsection{Astrology Mappings}
+\label{sec:org937123d}
+\begin{itemize}
+\item Sign order:
+\begin{itemize}
+\item aries, taurus, gemini, cancer, leo, virgo, libra, scorpio, sagittarius, capricorn, aquarius, pisces
+\end{itemize}
+\item Sign interval rule:
+\begin{itemize}
+\item each sign spans 30 degrees
+\item interval start inclusive, end exclusive
+\end{itemize}
+\item Astrology object identifiers:
+\begin{itemize}
+\item sun
+\item moon
+\item mercury
+\item venus
+\item mars
+\item jupiter
+\item saturn
+\item uranus
+\item neptune
+\item pluto
+\item chiron
+\item north\textsubscript{node}\textsubscript{mean}
+\item earth
+\end{itemize}
+\item House identifiers:
+\begin{itemize}
+\item integers 1..12
+\end{itemize}
+\end{itemize}
+\subsection{Human Design Centers}
+\label{sec:org3304e42}
+\begin{itemize}
+\item Canonical center list and order:
+\begin{enumerate}
+\item head
+\item ajna
+\item throat
+\item g
+\item ego
+\item solar\textsubscript{plexus}
+\item sacral
+\item spleen
+\item root
+\end{enumerate}
+\item Motor centers:
+\begin{itemize}
+\item root
+\item sacral
+\item solar\textsubscript{plexus}
+\item ego
+\end{itemize}
+\end{itemize}
+\subsection{Canonical Channel Table}
+\label{sec:org211b370}
+\begin{center}
+\begin{tabular}{rrrll}
+channel\textsubscript{id} & gate\textsubscript{a} & gate\textsubscript{b} & center\textsubscript{a} & center\textsubscript{b}\\
+\hline
+1-8 & 1 & 8 & g & throat\\
+2-14 & 2 & 14 & g & sacral\\
+3-60 & 3 & 60 & sacral & root\\
+4-63 & 4 & 63 & ajna & head\\
+5-15 & 5 & 15 & sacral & g\\
+6-59 & 6 & 59 & solar\textsubscript{plexus} & sacral\\
+7-31 & 7 & 31 & g & throat\\
+9-52 & 9 & 52 & sacral & root\\
+10-20 & 10 & 20 & g & throat\\
+10-34 & 10 & 34 & g & sacral\\
+10-57 & 10 & 57 & g & spleen\\
+11-56 & 11 & 56 & ajna & throat\\
+12-22 & 12 & 22 & throat & solar\textsubscript{plexus}\\
+13-33 & 13 & 33 & g & throat\\
+16-48 & 16 & 48 & throat & spleen\\
+17-62 & 17 & 62 & ajna & throat\\
+18-58 & 18 & 58 & spleen & root\\
+19-49 & 19 & 49 & root & solar\textsubscript{plexus}\\
+20-34 & 20 & 34 & throat & sacral\\
+20-57 & 20 & 57 & throat & spleen\\
+21-45 & 21 & 45 & ego & throat\\
+23-43 & 23 & 43 & throat & ajna\\
+24-61 & 24 & 61 & ajna & head\\
+25-51 & 25 & 51 & g & ego\\
+26-44 & 26 & 44 & ego & spleen\\
+27-50 & 27 & 50 & sacral & spleen\\
+28-38 & 28 & 38 & spleen & root\\
+29-46 & 29 & 46 & sacral & g\\
+30-41 & 30 & 41 & solar\textsubscript{plexus} & root\\
+32-54 & 32 & 54 & spleen & root\\
+34-57 & 34 & 57 & sacral & spleen\\
+35-36 & 35 & 36 & throat & solar\textsubscript{plexus}\\
+37-40 & 37 & 40 & solar\textsubscript{plexus} & ego\\
+39-55 & 39 & 55 & root & solar\textsubscript{plexus}\\
+42-53 & 42 & 53 & sacral & root\\
+47-64 & 47 & 64 & ajna & head\\
+\end{tabular}
+\end{center}
+\subsection{Identifier Normalization}
+\label{sec:orgb65d28f}
+\begin{itemize}
+\item Canonical case:
+\begin{itemize}
+\item lowercase snake\textsubscript{case} for named identifiers
+\item integers for gate and line values
+\item hyphen-joined ascending gate pairs for channel identifiers
+\end{itemize}
+\item No alias drift:
+\begin{itemize}
+\item \texttt{ego} is canonical
+\item \texttt{will} must not appear as a separate engine identifier
+\end{itemize}
+\end{itemize}
+\section{Output Contract}
+\label{sec:orgb07c0f4}
+\subsection{Success Response}
+\label{sec:org33105b0}
+\begin{itemize}
+\item Top-level fields:
+\begin{itemize}
+\item status
+\item metadata
+\item input\textsubscript{echo}
+\item astrology
+\item human\textsubscript{design}
+\item gene\textsubscript{keys}
+\end{itemize}
+\item Success status:
+\begin{itemize}
+\item \texttt{success}
+\end{itemize}
+\end{itemize}
+\subsection{Metadata}
+\label{sec:org244b4ed}
+\begin{itemize}
+\item Required string fields:
+\begin{itemize}
+\item engine\textsubscript{version}
+\item canon\textsubscript{version}
+\item source\textsubscript{stack}\textsubscript{version}
+\item input\textsubscript{schema}\textsubscript{version}
+\item mapping\textsubscript{version}
+\end{itemize}
+\item Metadata must not include:
+\begin{itemize}
+\item random run ids
+\item environment names
+\item operational log ids
+\item timestamps unless later added by canon revision
+\end{itemize}
+\end{itemize}
+\subsection{Input Echo}
+\label{sec:org0e07a79}
+\begin{itemize}
+\item Required fields:
+\begin{itemize}
+\item birth\textsubscript{date}
+\item birth\textsubscript{time}
+\item timezone
+\item latitude
+\item longitude
+\end{itemize}
+\item Input echo must use canonical formats and must not include excluded intake fields.
+\end{itemize}
+\subsection{Astrology Output}
+\label{sec:org7015eb4}
+\begin{itemize}
+\item Required sections:
+\begin{itemize}
+\item system
+\item angles
+\item house\textsubscript{cusps}
+\item objects
+\end{itemize}
+\item Astrology system values:
+\begin{itemize}
+\item zodiac = \texttt{tropical}
+\item house\textsubscript{system} = \texttt{placidus}
+\item node\textsubscript{type} = \texttt{mean}
+\end{itemize}
+\item Angles:
+\begin{itemize}
+\item ascendant \{longitude, sign\}
+\item midheaven \{longitude, sign\}
+\end{itemize}
+\item House cusps:
+\begin{itemize}
+\item ordered houses 1..12
+\item each cusp \{house, longitude, sign\}
+\end{itemize}
+\item Astrology object order:
+\begin{enumerate}
+\item sun
+\item moon
+\item mercury
+\item venus
+\item mars
+\item jupiter
+\item saturn
+\item uranus
+\item neptune
+\item pluto
+\item chiron
+\item north\textsubscript{node}\textsubscript{mean}
+\item earth
+\end{enumerate}
+\end{itemize}
+\subsection{Human Design Output}
+\label{sec:org0dbd91b}
+\begin{itemize}
+\item Required sections:
+\begin{itemize}
+\item system
+\item personality\textsubscript{activations}
+\item design\textsubscript{activations}
+\item channels
+\item centers
+\item definition
+\item type
+\item authority
+\item profile
+\item incarnation\textsubscript{cross}
+\end{itemize}
+\item Human Design system:
+\begin{itemize}
+\item node\textsubscript{type} = \texttt{true}
+\item design\textsubscript{time}\textsubscript{utc}
+\end{itemize}
+\item Channels:
+\begin{itemize}
+\item ordered lexicographically by \texttt{channel\_id}
+\item each channel \{channel\textsubscript{id}, gate\textsubscript{a}, gate\textsubscript{b}, center\textsubscript{a}, center\textsubscript{b}\}
+\end{itemize}
+\item Centers:
+\begin{itemize}
+\item ordered as head, ajna, throat, g, ego, solar\textsubscript{plexus}, sacral, spleen, root
+\item each center \{center\textsubscript{id}, state\}
+\end{itemize}
+\item Allowed definition values:
+\begin{itemize}
+\item none
+\item single
+\item split
+\item triple\textsubscript{split}
+\item quadruple\textsubscript{split}
+\end{itemize}
+\item Allowed type values:
+\begin{itemize}
+\item reflector
+\item generator
+\item manifesting\textsubscript{generator}
+\item manifestor
+\item projector
+\end{itemize}
+\item Allowed authority values:
+\begin{itemize}
+\item emotional
+\item sacral
+\item splenic
+\item ego\textsubscript{manifested}
+\item ego\textsubscript{projected}
+\item self\textsubscript{projected}
+\item mental
+\item lunar
+\end{itemize}
+\end{itemize}
+\subsection{Gene Keys Output}
+\label{sec:org0381448}
+\begin{itemize}
+\item Required sections:
+\begin{itemize}
+\item system
+\item activations
+\end{itemize}
+\item Gene Keys system:
+\begin{itemize}
+\item derivation\textsubscript{basis} = \texttt{human\_design}
+\end{itemize}
+\item Activation keys:
+\begin{itemize}
+\item life\textsubscript{work}
+\item evolution
+\item radiance
+\item purpose
+\end{itemize}
+\item Each activation = \{key, line\}=.
+\end{itemize}
+\subsection{Error Output}
+\label{sec:org9275160}
+\begin{itemize}
+\item Top-level fields:
+\begin{itemize}
+\item status
+\item metadata
+\item error
+\end{itemize}
+\item Error status:
+\begin{itemize}
+\item \texttt{error}
+\end{itemize}
+\item Error object:
+\begin{itemize}
+\item error\textsubscript{type}
+\item message
+\end{itemize}
+\item Allowed error types:
+\begin{itemize}
+\item invalid\textsubscript{input}
+\item incomplete\textsubscript{input}
+\item unsupported\textsubscript{input}
+\item canon\textsubscript{conflict}
+\item execution\textsubscript{failure}
+\end{itemize}
+\end{itemize}
+\subsection{Formatting Rules}
+\label{sec:org840a52b}
+\begin{itemize}
+\item Longitude fields:
+\begin{itemize}
+\item numeric JSON values
+\item rounded to 6 decimal places
+\end{itemize}
+\item \texttt{design\_time\_utc}:
+\begin{itemize}
+\item ISO 8601 UTC with trailing \texttt{Z}
+\item whole-second precision
+\end{itemize}
+\end{itemize}
+\section{Determinism And Versioning}
+\label{sec:org0e2a13e}
+\begin{itemize}
+\item Reproducibility requires identical:
+\begin{itemize}
+\item normalized input
+\item canon\textsubscript{version}
+\item source\textsubscript{stack}\textsubscript{version}
+\item mapping\textsubscript{version}
+\item input\textsubscript{schema}\textsubscript{version}
+\item engine\textsubscript{version} where behavior depends on implementation
+\end{itemize}
+\item No hidden state:
+\begin{itemize}
+\item no mutable cache state
+\item no implicit environment defaults
+\item no third-party service responses
+\item no stored run history
+\end{itemize}
+\item Any behavioral change requires:
+\begin{itemize}
+\item canon review
+\item canon revision where applicable
+\item regression updates where applicable
+\item version impact decision
+\end{itemize}
+\item Version changes:
+\begin{itemize}
+\item canon\textsubscript{version} changes for scope, calculation, mapping, output, precedence, formatting, or input behavior changes
+\item input\textsubscript{schema}\textsubscript{version} changes for field/format/type/validation changes
+\item mapping\textsubscript{version} changes for gate order, channel table, center list, channel-to-center mapping, identifier schemes, or deterministic mapping changes
+\item source\textsubscript{stack}\textsubscript{version} changes for authoritative external source changes
+\item engine\textsubscript{version} changes for any production implementation change
+\end{itemize}
+\end{itemize}
+\section{Golden Test Pack Requirements}
+\label{sec:orgc30e71e}
+\begin{itemize}
+\item Minimum active cases:
+\begin{itemize}
+\item valid\textsubscript{baseline}: 3
+\item valid\textsubscript{edge}: 5
+\item invalid\textsubscript{input}: 5
+\item incomplete\textsubscript{input}: 5
+\item unsupported\textsubscript{input}: 2
+\item regression\textsubscript{sentinel}: 3
+\end{itemize}
+\item Baseline coverage must include:
+\begin{itemize}
+\item accepted normalized input
+\item astrology output
+\item Human Design output
+\item Gene Keys output
+\item metadata
+\item input\textsubscript{echo}
+\item ordering
+\item formatting
+\end{itemize}
+\item Edge coverage must include:
+\begin{itemize}
+\item sign boundaries
+\item house boundaries where testable
+\item gate boundaries
+\item line boundaries
+\item longitude normalization
+\item Earth opposition
+\item South Node opposition
+\item design-time target precision behavior
+\end{itemize}
+\item Regression sentinels must include at least:
+\begin{itemize}
+\item strict numeric typing
+\item gate interval ownership
+\item line interval ownership
+\item design-time derivation
+\item channel deduplication
+\item center definition logic
+\item definition assignment
+\item type priority
+\item authority priority
+\item rejected old gate anchor assumptions
+\end{itemize}
+\item Golden comparison is exact for pinned structure, identifiers, ordering, precision, and datetime formatting.
+\end{itemize}
+\section{Delivery And Acceptance}
+\label{sec:orgbb59167}
+\begin{itemize}
+\item Required deliverables:
+\begin{itemize}
+\item Trinity Engine implementation
+\item deterministic execution entry point
+\item pinned dependency specification
+\item build and run instructions
+\item golden test execution support
+\item implementation notes for canon-sensitive areas
+\item versioned release identifier
+\end{itemize}
+\item Minimum acceptance conditions:
+\begin{itemize}
+\item all required in-scope features implemented
+\item no canon-critical ambiguity remains unresolved in delivered scope
+\item required metadata present and correct
+\item required golden tests pass
+\item output matches canon exactly
+\item no undisclosed canon deviation
+\item no out-of-scope shortcuts simulating compliance
+\end{itemize}
+\item Automatic rejection conditions include:
+\begin{itemize}
+\item wrong gate or line assignment
+\item wrong design-time method
+\item wrong node policy
+\item wrong channel, Type, or Authority derivation
+\item wrong output contract
+\item acceptance of invalid engine-boundary input
+\end{itemize}
+\end{itemize}
+\section{Canon-Control Items Worth Tracking During Implementation}
+\label{sec:org9e7b182}
+\begin{itemize}
+\item Document 09 item O02 says the consistency pass across Documents 05, 06, and 07 is resolved but not yet fully folded back.
+\item Document 10 is structurally defined but operationally incomplete until fixtures are created and frozen.
+\item Document 00 still treats final consistency, identifier hygiene, and fixture population as active risks.
+\end{itemize}
+\end{document}
