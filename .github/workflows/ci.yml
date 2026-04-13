@@ -9,8 +9,8 @@ on:
   workflow_dispatch:
 
 env:
-  PHASE4_DIR: src/phase-4
-  ENGINE_DIR: src/phase-4/mademanifest-engine
+  SRC_DIR: src
+  ENGINE_DIR: src/mademanifest-engine
 
 jobs:
   test-http-service:
@@ -24,8 +24,8 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version-file: src/phase-4/mademanifest-engine/go.mod
-          cache-dependency-path: src/phase-4/mademanifest-engine/go.sum
+          go-version-file: src/mademanifest-engine/go.mod
+          cache-dependency-path: src/mademanifest-engine/go.sum
 
       - name: Install system packages
         run: |
@@ -35,7 +35,7 @@ jobs:
       - name: Build and install Swiss Ephemeris
         run: |
           set -euo pipefail
-          cd "$PHASE4_DIR/ephemeris/swisseph"
+          cd "$SRC_DIR/ephemeris/swisseph"
           rm -rf swisseph-2.10.03
           tar zxf swisseph-2.10.03.tar.gz
           cd swisseph-2.10.03
@@ -44,7 +44,7 @@ jobs:
           sudo install -d /usr/local/lib /usr/local/include /usr/local/share/swisseph
           sudo install -m 644 libswe.so libswe.a /usr/local/lib/
           sudo install -m 644 sweph.h swephexp.h /usr/local/include/
-          sudo rsync -a "$GITHUB_WORKSPACE/$PHASE4_DIR/ephemeris/data/REQUIRED_EPHEMERIS_FILES/" /usr/local/share/swisseph/
+          sudo rsync -a "$GITHUB_WORKSPACE/$SRC_DIR/ephemeris/data/REQUIRED_EPHEMERIS_FILES/" /usr/local/share/swisseph/
           sudo ldconfig
 
       - name: Run Go tests
@@ -66,7 +66,7 @@ jobs:
         working-directory: ${{ env.ENGINE_DIR }}
         env:
           PORT: "18080"
-          CANON_DIRECTORY: ${{ github.workspace }}/src/phase-4/canon
+          CANON_DIRECTORY: ${{ github.workspace }}/src/canon
           SE_EPHE_PATH: /usr/local/share/swisseph
           LD_LIBRARY_PATH: /usr/local/lib
         run: |
@@ -83,7 +83,7 @@ jobs:
           curl --fail --silent --show-error \
             -X POST \
             -H 'Content-Type: application/json' \
-            --data-binary @"$GITHUB_WORKSPACE/$PHASE4_DIR/golden/GOLDEN_TEST_CASE_V1.json" \
+            --data-binary @"$GITHUB_WORKSPACE/$SRC_DIR/golden/GOLDEN_TEST_CASE_V1.json" \
             http://127.0.0.1:18080/manifest \
             -o "$RUNNER_TEMP/out-http.json"
           test -s "$RUNNER_TEMP/out-http.json"
@@ -108,6 +108,6 @@ jobs:
       - name: Validate manifests
         run: |
           kubeconform -strict -summary \
-            "$PHASE4_DIR/deploy/kubernetes/configmap.yaml" \
-            "$PHASE4_DIR/deploy/kubernetes/deployment.yaml" \
-            "$PHASE4_DIR/deploy/kubernetes/service.yaml"
+            "$SRC_DIR/deploy/kubernetes/configmap.yaml" \
+            "$SRC_DIR/deploy/kubernetes/deployment.yaml" \
+            "$SRC_DIR/deploy/kubernetes/service.yaml"
