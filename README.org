@@ -1,35 +1,33 @@
 * MadeManifest
 
-This commit captures the phase-2 repository state: the first proof-of-capability specification set together with the matching Go implementation.
+This commit captures the phase-3 repository state: the deterministic Proof of Capability V2 bundle with its pinned canon, golden test, environment, and matching engineering specifications.
 
 * Repository Layout
 
 - =specifications/Engineer_Onboarding_README_EN.pdf=
 - =specifications/Engineering_Implementation_Specification_EN.pdf=
-- =specifications/Proof_of_Capability_V1_ENG.pdf=
-- =specifications/GOLDEN_TEST_CASE_V1.json=
 - =specifications/GOLDEN_TEST_CASE_V1.pdf=
-- =src/dependencies/=
-- =src/data/=
-- =src/mademanifest-engine/=
+- =specifications/Proof_of_Capability_V1_ENG.pdf=
 - =src/Makefile=
+- =src/README=
+- =src/README_RUN.md=
+- =src/canon/=
+- =src/golden/=
+- =src/ephemeris/=
+- =src/env/=
+- =src/mademanifest-engine/=
+- =src/tools/=
 
-* Build And Test
+* Build And Validation
 
 #+begin_src bash
-make -C src/dependencies
-make -C src all
-make -C src test
-make -C src test-integration
+make -C src clean compile run
+make -C src clean compile diff
 #+end_src
 
-To run the proof-of-capability executable directly:
-
-#+begin_src bash
-src/mademanifest-engine/proof-of-capability src/data/input.json output.json
-#+end_src
+The engine reads the canonical rules from =src/canon/= and validates against =src/golden/GOLDEN_TEST_CASE_V1.json=.
 
 * Notes
 
-- The PDF names are kept stable so later commits can replace documents in place.
-- This version still reflects the exploratory phase documented by the existing test and implementation notes.
+- The specification PDFs live under =specifications/= with stable filenames across the successive repository snapshots.
+- The previous phase-2 layout has been replaced by the self-contained PoC v2 bundle.

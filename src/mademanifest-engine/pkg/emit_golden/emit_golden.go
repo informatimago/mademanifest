@@ -151,7 +151,7 @@ func EmitGoldenJSON(root GoldenCase) ([]byte, error) {
 	emitEngineContract(&b, root.EngineContract)
 	w(",\n")
 	emitExpected(&b, root.Expected)
-	w("\n}\n")
+	w("\n}")
 
 	return b.Bytes(), nil
 }
