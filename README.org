@@ -1,15 +1,35 @@
 * MadeManifest
 
-This commit captures the phase-1 repository state: specification documents only.
+This commit captures the phase-2 repository state: the first proof-of-capability specification set together with the matching Go implementation.
 
 * Repository Layout
 
 - =specifications/Engineer_Onboarding_README_EN.pdf=
 - =specifications/Engineering_Implementation_Specification_EN.pdf=
+- =specifications/Proof_of_Capability_V1_ENG.pdf=
+- =specifications/GOLDEN_TEST_CASE_V1.json=
+- =specifications/GOLDEN_TEST_CASE_V1.pdf=
+- =src/dependencies/=
+- =src/data/=
+- =src/mademanifest-engine/=
+- =src/Makefile=
 
-The PDF names are normalized so the successive revisions of the same documents can keep stable paths across later commits.
+* Build And Test
+
+#+begin_src bash
+make -C src/dependencies
+make -C src all
+make -C src test
+make -C src test-integration
+#+end_src
+
+To run the proof-of-capability executable directly:
+
+#+begin_src bash
+src/mademanifest-engine/proof-of-capability src/data/input.json output.json
+#+end_src
 
 * Notes
 
-- There is no implementation bundle in this version yet.
-- The repository is intentionally limited to the two translated phase-1 engineering documents.
+- The PDF names are kept stable so later commits can replace documents in place.
+- This version still reflects the exploratory phase documented by the existing test and implementation notes.

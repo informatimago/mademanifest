@@ -1,0 +1,33 @@
+{
+  "case_id": "golden_test_case_v1_jaimie_1990_04_09_1804_schiedam",
+  "birth": {
+    "date": "1990-04-09",
+    "time_hh_mm": "18:04",
+    "seconds_policy": "assume_00",
+    "place_name": "Schiedam, Netherlands",
+    "latitude": 51.9167,
+    "longitude": 4.4000,
+    "timezone_iana": "Europe/Amsterdam"
+  },
+  "engine_contract": {
+    "ephemeris": "swiss_ephemeris",
+    "zodiac": "tropical",
+    "houses": "placidus",
+    "node_policy_by_system": {
+      "astrology": "mean",
+      "human_design": "true",
+      "gene_keys": "true"
+    },
+    "human_design_mapping": {
+      "mandala_start_deg": 313.25,
+      "gate_width_deg": 5.625,
+      "line_width_deg": 0.9375,
+      "interval_rule": "start_inclusive_end_exclusive"
+    },
+    "design_time_solver": {
+      "sun_offset_deg": 88.0,
+      "stop_if_abs_sun_diff_deg_below": 0.0001,
+      "stop_if_time_bracket_below_seconds": 1
+    }
+  }
+}

@@ -1,0 +1,57 @@
+diff --git a/Makefile b/Makefile
+index b549f6d..76960c9 100644
+--- a/Makefile
++++ b/Makefile
+@@ -28,21 +28,27 @@
+ # To customize, modify the CFLAGS, LIBS, or any other variables as needed.
+ ################################################################################
+ 
++PREFIX ?= /usr/local
++
+ # Detect OS type via uname
+ OS := $(shell uname)
+ 
+ ifeq ($(OS), Darwin)
+   # macOS settings
++  # SE_EPHE_PATH=/usr/local/share/swisseph:/opt/local/share/swisseph:/opt/share/swisseph:/usr/share/swisseph
++  SE_EPHE_PATH=$(PREFIX)/share/swisseph
+   CC               = cc
+-  CFLAGS           = -g -Wall -fPIC
++  CFLAGS           = -g -Wall -fPIC -DSE_EPHE_PATH=\"$(SE_EPHE_PATH)\"
+   LIBS             = -lm
+   DYLIB_FLAG       = -dynamiclib
+   DYLIB_EXT        = dylib
+   STATIC_SUPPORTED = false
+ else
+   # Assume Linux settings
++  # SE_EPHE_PATH=/usr/local/share/swisseph:/opt/local/share/swisseph:/opt/share/swisseph:/usr/share/swisseph
++  SE_EPHE_PATH=$(PREFIX)/share/swisseph
+   CC               = cc
+-  CFLAGS           = -g -Wall -fPIC
++  CFLAGS           = -g -Wall -fPIC -DSE_EPHE_PATH=\"$(SE_EPHE_PATH)\"
+   LIBS             = -lm -ldl
+   DYLIB_FLAG       = -shared
+   DYLIB_EXT        = so
+@@ -64,6 +70,13 @@ endif
+ 
+ all: $(ALL_TARGETS)
+ 
++install:libswe.$(DYLIB_EXT) libswe.a
++	sudo install    -m 644 libswe.$(DYLIB_EXT) libswe.a $(PREFIX)/lib
++	sudo install    -m 644 sweph.h swephexp.h           $(PREFIX)/include
++	[ $(PREFIX)/share/swisseph/ephe/list.zip ] || sudo rsync -HSWacvxz --progress --force --delete --delete-after ephe/* $(PREFIX)/share/swisseph/
++force-install-data:
++	sudo rsync -HSWacvxz --progress --force --delete --delete-after ephe/* $(PREFIX)/share/swisseph/
++
+ # Compile .c files to .o files
+ %.o: %.c
+ 	$(CC) $(CFLAGS) -c $< -o $@
+@@ -102,7 +115,7 @@ libswe.a: $(SWEOBJ)
+ 
+ # Create a shared library
+ libswe.$(DYLIB_EXT): $(SWEOBJ)
+-	$(CC) $(DYLIB_FLAG) -o libswe.$(DYLIB_EXT) $(SWEOBJ)
++	$(CC) $(DYLIB_FLAG) -Wl,-install_name,$(PREFIX)/lib/$@ -o libswe.$(DYLIB_EXT) $(SWEOBJ)
+ 
+ # Test targets (requires a "setest" subdirectory with its own Makefile)
+ test:
