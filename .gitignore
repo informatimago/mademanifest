@@ -41,6 +41,7 @@ expected.json
 out.json
 
 *.tex
+*.zip
 
 
 src/dependencies/swisseph/
