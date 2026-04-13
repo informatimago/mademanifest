@@ -1,107 +1,63 @@
 package main
 
 import (
-	"encoding/json"
+	"bytes"
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
-	"time"
 
-	"mademanifest-engine/pkg/astronomy"
-	"mademanifest-engine/pkg/ephemeris"
-	"mademanifest-engine/pkg/astrology"
-	"mademanifest-engine/pkg/human_design"
-	"mademanifest-engine/pkg/gene_keys"
+	"mademanifest-engine/pkg/engine"
 )
 
-func TestFullPipeline(t *testing.T) {
-	// Simulate reading from the golden test case
-	birthData := map[string]interface{}{
-		"birth": map[string]interface{}{
-			"date": "1990-04-09",
-			"time_hh_mm": "18:04",
-			"timezone_iana": "Europe/Amsterdam",
-		},
+func testRepoPath(parts ...string) string {
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		panic("failed to resolve caller path")
 	}
-
-	// Parse date and time
-	birthDateStr := birthData["birth"].(map[string]interface{})["date"].(string)
-	birthTimeStr := birthData["birth"].(map[string]interface{})["time_hh_mm"].(string)
-	timezone := birthData["birth"].(map[string]interface{})["timezone_iana"].(string)
-
-	// Parse birth date and time
-	birthDate := parseDate(birthDateStr)
-	birthTime := parseTime(birthTimeStr)
-
-	// Convert local time to UTC
-	utcTime, err := astronomy.ConvertLocalTimeToUTC(time.Date(birthDate.Year(), birthDate.Month(), birthDate.Day(), birthTime.Hour(), birthTime.Minute(), 0, 0, time.UTC), timezone)
-	if err != nil {
-		t.Fatalf("Failed to convert to UTC: %v", err)
-	}
-
-	// Convert UTC to Julian Day
-	julianDay := astronomy.ConvertUTCToJulianDay(utcTime)
-
-	// Calculate ephemeris positions
-	ephemeris := ephemeris.NewEphemeris()
-	positions := ephemeris.CalculatePositions(julianDay)
-
-	// Calculate astrology data
-	astrologyData := astrology.CalculateAstrology(positions)
-
-	// Calculate Human Design data
-	humanDesignData := human_design.CalculateHumanDesign(positions, 88.0)
-
-	// Derive Gene Keys
-	geneKeysData := gene_keys.DeriveGeneKeys(humanDesignData)
-
-	// Verify all components were calculated
-	if astrologyData == nil {
-		t.Error("Astrology data should not be nil")
-	}
-
-	if humanDesignData == nil {
-		t.Error("Human design data should not be nil")
-	}
-
-	if geneKeysData == nil {
-		t.Error("Gene keys data should not be nil")
-	}
-
-	// Verify the structure of output
-	output := map[string]interface{}{
-		"astrology":     astrologyData,
-		"human_design":  humanDesignData,
-		"gene_keys":     geneKeysData,
-	}
-
-	// Verify output is valid JSON
-	_, err = json.MarshalIndent(output, "", "  ")
-	if err != nil {
-		t.Errorf("Output should be valid JSON: %v", err)
-	}
+	base := filepath.Dir(filename)
+	allParts := append([]string{base}, parts...)
+	return filepath.Clean(filepath.Join(allParts...))
 }
 
-// Helper function to parse date - copied from main.go
-func parseDate(dateStr string) time.Date {
-	date, err := time.Parse("2006-01-02", dateStr)
-	if err != nil {
-		panic(err)
-	}
-	return date
+func normalizeLF(data []byte) []byte {
+	return bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n"))
 }
 
-// Helper function to parse time - copied from main.go
-func parseTime(timeStr string) time.Time {
-	layouts := []string{"15:04:05", "15:04"}
-	var time time.Time
-	var err error
-	for _, layout := range layouts {
-		time, err = time.Parse(layout, timeStr)
-		if err == nil {
-			break
-		}
-	}
+func TestFullPipelineMatchesGoldenFixture(t *testing.T) {
+	inputPath := testRepoPath("..", "golden", "GOLDEN_TEST_CASE_V1.json")
+	canonDir := testRepoPath("..", "canon")
+	ephePath := testRepoPath("..", "ephemeris", "data", "REQUIRED_EPHEMERIS_FILES")
+
+	t.Setenv("SE_EPHE_PATH", ephePath)
+
+	canonPaths, err := engine.ResolveCanonPaths(canonDir, "", "", "")
 	if err != nil {
-		panic(err)
+		t.Fatalf("resolve canon paths: %v", err)
 	}
-	return time
+
+	file, err := os.Open(inputPath)
+	if err != nil {
+		t.Fatalf("open golden input: %v", err)
+	}
+	defer file.Close()
+
+	output, err := engine.Run(file, canonPaths)
+	if err != nil {
+		t.Fatalf("engine run: %v", err)
+	}
+
+	actual, err := engine.Render(output, false)
+	if err != nil {
+		t.Fatalf("render output: %v", err)
+	}
+
+	expected, err := os.ReadFile(inputPath)
+	if err != nil {
+		t.Fatalf("read golden fixture: %v", err)
+	}
+
+	if !bytes.Equal(normalizeLF(actual), normalizeLF(expected)) {
+		t.Fatalf("rendered output does not match golden fixture")
+	}
 }

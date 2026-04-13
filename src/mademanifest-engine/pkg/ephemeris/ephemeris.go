@@ -6,6 +6,8 @@ import (
 	"log"
 	"math"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/mshafiee/swephgo"
@@ -14,6 +16,31 @@ import (
 
 var swe_initialized = false
 const requiredSwissEphVersion = "2.10.03"
+
+func resolveEphemerisPath() string {
+	if ephePath := os.Getenv("SE_EPHE_PATH"); ephePath != "" {
+		return ephePath
+	}
+
+	candidates := []string{
+		"../ephemeris/data/REQUIRED_EPHEMERIS_FILES/",
+		"/usr/local/share/swisseph/",
+	}
+
+	if _, filename, _, ok := runtime.Caller(0); ok {
+		candidates = append([]string{
+			filepath.Join(filepath.Dir(filename), "..", "..", "..", "ephemeris", "data", "REQUIRED_EPHEMERIS_FILES"),
+		}, candidates...)
+	}
+
+	for _, candidate := range candidates {
+		if info, err := os.Stat(candidate); err == nil && info.IsDir() {
+			return candidate
+		}
+	}
+
+	return "../ephemeris/data/REQUIRED_EPHEMERIS_FILES/"
+}
 
 func requireSwissEphVersion() {
 	buf := make([]byte, 256)
@@ -33,10 +60,7 @@ func requireSwissEphVersion() {
 
 func longitude(julianDay float64, astre int) float64 {
 	if !swe_initialized {
-		ephePath := os.Getenv("SE_EPHE_PATH")
-		if ephePath == "" {
-			ephePath = "../ephemeris/data/REQUIRED_EPHEMERIS_FILES/"
-		}
+		ephePath := resolveEphemerisPath()
 		swephgo.SetEphePath([]byte(ephePath + "\x00"))
 		requireSwissEphVersion()
 		swe_initialized = true
