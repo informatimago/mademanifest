@@ -41,3 +41,7 @@ expected.json
 out.json
 
 *.tex
+
+
+src/dependencies/swisseph/
+src/dependencies/tzdb-2025c/
