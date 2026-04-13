@@ -9,7 +9,7 @@ What is provided
 This bundle contains:
 - Canonical calculation rules (canon/)
 - The unchanged Golden Test Case (golden/)
-- Engineering specifications (spec/)
+- Engineering specifications (../specifications/)
 - A pinned Swiss Ephemeris source and dataset (ephemeris/)
 - A pinned Go environment (env/)
 - Utility scripts for validation (tools/)
@@ -41,10 +41,22 @@ Your submission must demonstrate:
 - No tolerance or rounding freedom
 - Deterministic output on repeated runs
 
-Rules
-- No clarification questions will be answered
-- One submission only
-- No revisions
-- Any deviation from the Golden Test constitutes failure
+Prototype HTTP service
+The phase-4 bundle now includes a thin HTTP wrapper around the engine.
 
-If all requirements are met, the Proof of Capability is considered passed.
+Build the service container:
+- `cd src`
+- `docker build -t mademanifest-phase-4 .`
+
+Run it locally:
+- `docker run --rm -p 8080:8080 mademanifest-phase-4`
+
+Call it with the golden input:
+- `src/scripts/request_cloud_service.sh`
+
+Kubernetes prototype
+Prototype Kubernetes manifests live in:
+- `src/deploy/kubernetes`
+
+Validate the manifests locally:
+- `kubectl kustomize src/deploy/kubernetes | kubectl apply --dry-run=client --validate=false -f -`

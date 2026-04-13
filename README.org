@@ -1,13 +1,13 @@
 * MadeManifest
 
-This commit captures the phase-3 repository state: the deterministic Proof of Capability V2 bundle with its pinned canon, golden test, environment, and matching engineering specifications.
+This commit captures the phase-4 repository state: the deterministic engine, its HTTP wrapper, and the final architecture and Trinity specification sets.
 
 * Repository Layout
 
 - =specifications/Engineer_Onboarding_README_EN.pdf=
 - =specifications/Engineering_Implementation_Specification_EN.pdf=
-- =specifications/GOLDEN_TEST_CASE_V1.pdf=
-- =specifications/Proof_of_Capability_V1_ENG.pdf=
+- =specifications/architecture/=
+- =specifications/trinity/=
 - =src/Makefile=
 - =src/README=
 - =src/README_RUN.md=
@@ -15,19 +15,26 @@ This commit captures the phase-3 repository state: the deterministic Proof of Ca
 - =src/golden/=
 - =src/ephemeris/=
 - =src/env/=
+- =src/deploy/kubernetes/=
 - =src/mademanifest-engine/=
-- =src/tools/=
+- =src/scripts/=
 
-* Build And Validation
+* Build And Service Run
+
+Build and validate the file-based engine:
 
 #+begin_src bash
 make -C src clean compile run
 make -C src clean compile diff
 #+end_src
 
-The engine reads the canonical rules from =src/canon/= and validates against =src/golden/GOLDEN_TEST_CASE_V1.json=.
+Build the HTTP service container:
+
+#+begin_src bash
+docker build -t mademanifest-phase-4:latest src
+#+end_src
 
 * Notes
 
-- The specification PDFs live under =specifications/= with stable filenames across the successive repository snapshots.
-- The previous phase-2 layout has been replaced by the self-contained PoC v2 bundle.
+- The former =phase-4= directory has been flattened into =src/=.
+- The engineering specification PDFs remain at the repository root under =specifications/=, while the final architecture and Trinity material lives in subdirectories there.

@@ -38,7 +38,7 @@
      ephemeris/swisseph/swisseph-2.10.03/Makefile for the targets
      installating the data files and libswe library.
 
-* General Requirement Tracking (spec/*.pdf)
+* General Requirement Tracking (../specifications/*.pdf)
 
 | Requirement                                                                                   | Code refs                                                                                                                      | Status/Notes                                                                                                                                                  |
 |-----------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------|
