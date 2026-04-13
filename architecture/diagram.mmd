@@ -1,0 +1,55 @@
+
+flowchart TB
+    U["Validated Input / Generation Request"]
+    G["Generation Driver\n(inferred orchestrator)"]
+
+    subgraph Core["Deterministic Core"]
+        P["Profile Service"]
+        S["Selection Service"]
+        B["Blueprint Service"]
+        C["Content Service\n(Block Library)"]
+        A["Assembly Service"]
+    end
+
+    subgraph Optional["Optional AI Layer"]
+        M["Smoothing Service"]
+        V["Meaning Validation / Fallback"]
+    end
+
+    subgraph Delivery["Delivery Layer"]
+        D["Delivery Integration Layer"]
+        X["External Delivery System"]
+    end
+
+    T["Audit Layer"]
+
+    U --> P
+    P -->|"profile"| S
+    U -->|"product / format request"| B
+    S -->|"selected variables"| A
+    P -->|"profile variables"| A
+    B -->|"blueprint"| A
+    C -->|"content blocks / variants"| A
+    A -->|"deterministic output"| M
+    M -->|"smoothed candidate"| V
+    V -->|"accepted output or original deterministic output"| D
+    D -->|"provider payload"| X
+
+    G -.-> P
+    G -.-> S
+    G -.-> B
+    G -.-> A
+    G -.-> M
+    G -.-> D
+
+    A -.-> C
+
+    U -. event .-> T
+    P -. event .-> T
+    S -. event .-> T
+    B -. event .-> T
+    C -. event .-> T
+    A -. event .-> T
+    M -. event .-> T
+    D -. event .-> T
+
