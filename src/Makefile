@@ -18,6 +18,7 @@ help::
 .PHONY: swisseph-prepare swisseph-compile swisseph-install swisseph-install-data \
 	help prepare compile run diff all \
 	test test-unit test-integration \
+	test-integration-local test-integration-docker test-integration-k8s test-all \
     test-coverage test-verbose test-astronomy \
 	test-ephemeris test-astrology \
 	test-human_design test-gene_keys \
@@ -28,13 +29,17 @@ help::
 	docker-run
 
 help::
-	@printf 'make prepare  # compiles swisseph and install it.\n'
-	@printf 'make compile  # compiles the go program.\n'
-	@printf 'make run      # produces an output JSON file from the Golden Test input.\n'
-	@printf 'make diff     # diffs the produced output against the Golden Test expected output with no differences.\n'
-	@printf 'make all      # all of the above.\n'
-	@printf 'make test     # run tests.\n'
-	@printf 'make help     # prints this help.\n'
+	@printf 'make prepare                 # compiles swisseph and install it.\n'
+	@printf 'make compile                 # compiles the go program.\n'
+	@printf 'make run                     # produces an output JSON file from the Golden Test input.\n'
+	@printf 'make diff                    # diffs the produced output against the Golden Test expected output with no differences.\n'
+	@printf 'make all                     # all of the above.\n'
+	@printf 'make test                    # run unit + PoC integration tests.\n'
+	@printf 'make test-integration-local  # Trinity harness: launch cmd/httpserver as subprocess.\n'
+	@printf 'make test-integration-docker # Trinity harness: docker build + docker run.\n'
+	@printf 'make test-integration-k8s    # Trinity harness: kind + kubectl (long-running).\n'
+	@printf 'make test-all                # unit + local + docker + kubernetes.\n'
+	@printf 'make help                    # prints this help.\n'
 
 all: prepare compile run diff
 
@@ -76,6 +81,25 @@ test-integration-unix: $(SRC)/$(NAME)
 test-integration: $(SRC)/$(NAME)
 	cd $(SRC) ; LD_LIBRARY_PATH=$${LD_LIBRARY_PATH}:/usr/local/lib ./$(NAME) -dos -cd ../canon ../golden/GOLDEN_TEST_CASE_V1.json out.json \
 	&& ( diff $(DIFF_RELAX) --width=160 -y out.json ../golden/GOLDEN_TEST_CASE_V1.json > diff ; status=$$? ; if [ $$status -ne 0 ] ; then cat diff ; fi ; )
+
+
+# Trinity harness tests (Phase 0+).  Each target builds its own runtime
+# surface and drives it through the shared integration helpers.  The
+# helper self-tests (no build tag) run as part of the ordinary `test`
+# target above; the harness targets below opt into the runtime launch
+# via build tags.
+
+test-integration-local:
+	cd $(SRC) ; LD_LIBRARY_PATH=$${LD_LIBRARY_PATH}:/usr/local/lib \
+		go test $(TEST_FLAGS) -tags integration_local -timeout 120s ./integration/...
+
+test-integration-docker:
+	cd $(SRC) ; go test $(TEST_FLAGS) -tags integration_docker -timeout 600s ./integration/...
+
+test-integration-k8s:
+	cd $(SRC) ; go test $(TEST_FLAGS) -tags integration_k8s -timeout 900s ./integration/...
+
+test-all: test-unit test-integration-local test-integration-docker test-integration-k8s
 
 
 # Run all tests with coverage

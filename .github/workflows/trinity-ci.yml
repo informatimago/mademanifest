@@ -1,0 +1,143 @@
+name: Trinity CI
+
+# Phase 0 harness runner.  Adds a four-way matrix:
+#
+#   unit               - Go unit tests + integration helper self-tests
+#                        (no build tags, no external runtime).
+#   integration-local  - -tags integration_local; builds cmd/httpserver
+#                        and drives it as a subprocess over HTTP.
+#   integration-docker - -tags integration_docker; builds the production
+#                        image and drives a container over HTTP.
+#   integration-k8s    - -tags integration_k8s; kind + kubectl; drives
+#                        the Service via kubectl port-forward.
+#
+# Later phases extend each leg with Trinity-specific fixtures, but the
+# harness wiring stays in this file.
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  workflow_dispatch:
+
+env:
+  SRC_DIR: src
+  ENGINE_DIR: src/mademanifest-engine
+
+jobs:
+  unit:
+    name: Unit + helper self-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: src/mademanifest-engine/go.mod
+          cache-dependency-path: src/mademanifest-engine/go.sum
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential ca-certificates patch rsync
+      - name: Build and install Swiss Ephemeris
+        run: |
+          set -euo pipefail
+          cd "$SRC_DIR/ephemeris/swisseph"
+          rm -rf swisseph-2.10.03
+          tar zxf swisseph-2.10.03.tar.gz
+          cd swisseph-2.10.03
+          patch -p1 < ../../../swisseph-makefile-install.patch
+          make PREFIX=/usr/local libswe.so libswe.a
+          sudo install -d /usr/local/lib /usr/local/include /usr/local/share/swisseph
+          sudo install -m 644 libswe.so libswe.a /usr/local/lib/
+          sudo install -m 644 sweph.h swephexp.h /usr/local/include/
+          sudo rsync -a "$GITHUB_WORKSPACE/$SRC_DIR/ephemeris/data/REQUIRED_EPHEMERIS_FILES/" /usr/local/share/swisseph/
+          sudo ldconfig
+      - name: go test ./pkg/... + helper self-tests
+        working-directory: ${{ env.ENGINE_DIR }}
+        env:
+          LD_LIBRARY_PATH: /usr/local/lib
+          SE_EPHE_PATH: /usr/local/share/swisseph
+        run: |
+          go mod download
+          go vet ./...
+          go test -count=1 ./pkg/... ./integration/...
+
+  integration-local:
+    name: Integration (local subprocess)
+    needs: unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: src/mademanifest-engine/go.mod
+          cache-dependency-path: src/mademanifest-engine/go.sum
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential ca-certificates patch rsync
+      - name: Build and install Swiss Ephemeris
+        run: |
+          set -euo pipefail
+          cd "$SRC_DIR/ephemeris/swisseph"
+          rm -rf swisseph-2.10.03
+          tar zxf swisseph-2.10.03.tar.gz
+          cd swisseph-2.10.03
+          patch -p1 < ../../../swisseph-makefile-install.patch
+          make PREFIX=/usr/local libswe.so libswe.a
+          sudo install -d /usr/local/lib /usr/local/include /usr/local/share/swisseph
+          sudo install -m 644 libswe.so libswe.a /usr/local/lib/
+          sudo install -m 644 sweph.h swephexp.h /usr/local/include/
+          sudo rsync -a "$GITHUB_WORKSPACE/$SRC_DIR/ephemeris/data/REQUIRED_EPHEMERIS_FILES/" /usr/local/share/swisseph/
+          sudo ldconfig
+      - name: make test-integration-local
+        working-directory: ${{ env.SRC_DIR }}
+        env:
+          LD_LIBRARY_PATH: /usr/local/lib
+          SE_EPHE_PATH: /usr/local/share/swisseph
+        run: make test-integration-local
+
+  integration-docker:
+    name: Integration (docker)
+    needs: unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: make test-integration-docker
+        working-directory: ${{ env.SRC_DIR }}
+        run: make test-integration-docker
+
+  integration-k8s:
+    name: Integration (kubernetes via kind)
+    needs: unit
+    runs-on: ubuntu-latest
+    # Only run on merges to main/master and manual dispatch.  kind cluster
+    # startup is long (~60s); we don't want it on every PR push.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' &&
+       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'))
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: src/mademanifest-engine/go.mod
+          cache-dependency-path: src/mademanifest-engine/go.sum
+      - name: Install kind
+        run: |
+          set -euo pipefail
+          version="v0.24.0"
+          curl -fsSL -o kind "https://kind.sigs.k8s.io/dl/${version}/kind-linux-amd64"
+          chmod +x kind
+          sudo mv kind /usr/local/bin/kind
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: "v1.30.0"
+      - name: make test-integration-k8s
+        working-directory: ${{ env.SRC_DIR }}
+        run: make test-integration-k8s

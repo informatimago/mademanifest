@@ -1,40 +1,253 @@
-* MadeManifest
+#+TITLE: MadeManifest
+#+OPTIONS: toc:2 num:nil
 
-This commit captures the phase-4 repository state: the deterministic engine, its HTTP wrapper, and the final architecture and Trinity specification sets.
+MadeManifest is a deterministic calculation engine for astrology, Human
+Design, and Gene Keys.  The project is on its way from a Golden Test
+proof-of-capability to the Trinity Engine v1 runtime contract described
+in [[file:specifications/trinity/trinity.org][specifications/trinity/trinity.org]].
+
+The Go engine runs as a command-line tool and as an HTTP service.  The
+service is packaged for Docker and Kubernetes, and a shared test
+harness exercises it in all three runtimes.
+
+* Current Status
+
+| Area                                    | State                                                            |
+|-----------------------------------------+------------------------------------------------------------------|
+| Calculation core                        | Works – UTC + Julian Day, Swiss Ephemeris 2.10.03, HD gates/lines, Gene Keys |
+| Golden PoC contract (pre-Trinity)       | Green on local, docker, and kind                                 |
+| Trinity input / output contract         | Not yet implemented                                              |
+| Trinity Human Design structural layer   | Not yet implemented (channels, centers, definition, type, authority, profile, incarnation cross) |
+| Trinity Golden Test Pack                | Not yet implemented                                              |
+| Phase 0 integration harness (this repo) | Done – see =src/doc/trinity-implementation-plan.org=             |
+| Canon ambiguities A1..A7                | Open – tracked in =specifications/trinity/report.org=            |
+
+The next phase is Phase 1: canonical constants and version pins.  The
+full plan is in [[file:src/doc/trinity-implementation-plan.org][src/doc/trinity-implementation-plan.org]].
 
 * Repository Layout
 
-- =specifications/Engineer_Onboarding_README_EN.pdf=
-- =specifications/Engineering_Implementation_Specification_EN.pdf=
-- =specifications/architecture/=
-- =specifications/trinity/=
-- =src/Makefile=
-- =src/README=
-- =src/README_RUN.md=
-- =src/canon/=
-- =src/golden/=
-- =src/ephemeris/=
-- =src/env/=
-- =src/deploy/kubernetes/=
-- =src/mademanifest-engine/=
-- =src/scripts/=
+- =specifications/=
+  - =Engineer_Onboarding_README_EN.pdf=, =Engineering_Implementation_Specification_EN.pdf=
+  - =trinity/= – Trinity v1 canon package (Documents 00–12, =trinity.org=, =report.org=)
+- =architecture/= – hybrid architecture + system flow diagrams (PDF + Mermaid)
+- =src/= – everything that is built and shipped
+  - =Makefile=, =Dockerfile=
+  - =canon/= – pinned canonical inputs loaded at boot
+  - =golden/= – Golden Test Case v1 fixture (the PoC oracle)
+  - =ephemeris/= – Swiss Ephemeris source tarball + =.se1= data files
+  - =env/= – pinned Go version, Docker dev container (=env/docker/=)
+  - =deploy/kubernetes/= – kustomize base for the cluster deploy
+  - =scripts/request_cloud_service.sh= – send the golden fixture at a running service
+  - =tools/= – placeholder =diff.sh= / =validate_json.sh= (reserved for later phases)
+  - =doc/= – user manual, requirement tracking, Trinity implementation plan
+  - =mademanifest-engine/= – Go module
+    - =cmd/= – file-based CLI (=main.go=) and HTTP server (=httpserver/main.go=)
+    - =pkg/= – engine packages (see below)
+    - =integration/= – Trinity test harness added in Phase 0
 
-* Build And Service Run
+* Go Engine Packages
 
-Build and validate the file-based engine:
+=src/mademanifest-engine/pkg/=:
+
+- =canon= – loads =gate_sequence_v1.json=, =mandala_constants.json=, =node_policy.json=
+- =process_input= – current (PoC) input decoder
+- =engine= – orchestrator that wires inputs to calculators and emits output
+- =astronomy= – local time → UTC, UTC → Julian Day
+- =ephemeris=, =sweph= – Swiss Ephemeris (cgo) wrappers, pinned to 2.10.03
+- =astrology= – tropical-zodiac positions, Placidus ascendant / MC
+- =human_design= – personality / design snapshots, design-time bisection, gate/line mapping
+- =gene_keys= – four-position derivation from Human Design
+- =httpservice= – =/healthz= and =/manifest= HTTP handlers
+- =geolocation=, =emit_golden= – PoC helpers (retired at Phase 12)
+
+* Build And Run
+
+** Prerequisites
+
+- macOS or Linux
+- Go 1.22 (see =src/env/GO_VERSION.txt=)
+- A C toolchain for cgo
+- Docker (for the container and Kubernetes harnesses)
+- =kind= and =kubectl= (for the Kubernetes harness)
+
+** Swiss Ephemeris
+
+Build and install Swiss Ephemeris 2.10.03 and its data files (one-time
+step; uses =sudo= for =rsync= into =/usr/local/share/swisseph=):
 
 #+begin_src bash
-make -C src clean compile run
-make -C src clean compile diff
+make -C src swisseph-install swisseph-install-data
 #+end_src
 
-Build the HTTP service container:
+** File-Based CLI
+
+Compile, run against the golden input, and diff against the golden
+expected output:
 
 #+begin_src bash
-docker build -t mademanifest-phase-4:latest src
+make -C src compile
+make -C src run    # writes src/mademanifest-engine/out.json
+make -C src diff   # compiles, runs, and compares to golden
 #+end_src
+
+The binary is =src/mademanifest-engine/proof-of-capability-2=.  It
+takes =$inputFile $outputFile= arguments plus optional flags (see
+=main --help=).
+
+** HTTP Service (Local Binary)
+
+Build the HTTP server directly:
+
+#+begin_src bash
+cd src/mademanifest-engine
+CGO_LDFLAGS="-lm" go build -o mademanifest-http ./cmd/httpserver
+PORT=8080 \
+CANON_DIRECTORY=$(pwd)/../canon \
+SE_EPHE_PATH=/usr/local/share/swisseph \
+./mademanifest-http
+#+end_src
+
+Endpoints:
+- =GET /healthz= – liveness probe
+- =POST /manifest= – JSON in, JSON out
+
+Drive it with the golden fixture:
+
+#+begin_src bash
+src/scripts/request_cloud_service.sh \
+    http://localhost:8080/manifest \
+    src/out/cloud-service-output.json
+#+end_src
+
+** HTTP Service (Docker)
+
+Build the production image:
+
+#+begin_src bash
+docker build -t mademanifest:latest src
+#+end_src
+
+Run it locally:
+
+#+begin_src bash
+docker run --rm -p 8080:8080 mademanifest:latest
+#+end_src
+
+The image installs Swiss Ephemeris at the canonical locations:
+
+- =/usr/local/lib/libswe.so=
+- =/usr/local/share/swisseph/= – =.se1= data files
+- =/app/canon= – canon JSON files
+- =SE_EPHE_PATH=/usr/local/share/swisseph=, =CANON_DIRECTORY=/app/canon=
+
+The Dockerfile copies the compiled library and headers directly rather
+than running =make install=, because the patched Swiss Ephemeris
+install target still shells out through =sudo=.
+
+** HTTP Service (Kubernetes)
+
+Tag and push the image to a registry your cluster can pull from (or
+use =kind load docker-image= for local clusters), then apply the
+kustomize base:
+
+#+begin_src bash
+kubectl apply -k src/deploy/kubernetes
+kubectl rollout status deployment/mademanifest
+kubectl port-forward service/mademanifest 8080:80
+#+end_src
+
+* Testing
+
+** Unit Tests And Harness Self-Tests
+
+Covers the Go packages and the =integration/= helpers' self-tests.  No
+Docker or Kubernetes required.
+
+#+begin_src bash
+make -C src test
+#+end_src
+
+or, directly:
+
+#+begin_src bash
+cd src/mademanifest-engine
+go test -count=1 ./pkg/... ./integration/...
+#+end_src
+
+** Phase 0 Integration Harness
+
+Three runtime launchers share a common HTTP client (=integration/helpers.go=)
+and are exercised by build-tagged smoke tests.  The same tests will
+drive every Trinity fixture added in later phases.
+
+Local subprocess (builds =cmd/httpserver= and launches it on a free
+loopback port; requires the Swiss Ephemeris library and data):
+
+#+begin_src bash
+make -C src test-integration-local
+#+end_src
+
+Docker container (builds =src/Dockerfile=, runs it with the =itest=
+tag, publishes container 8080 to a free host port):
+
+#+begin_src bash
+make -C src test-integration-docker
+#+end_src
+
+Kubernetes via kind (reuses a pre-existing =trinity-itest= cluster if
+present, otherwise creates and tears down a fresh one; applies the
+repo kustomize base through a temp overlay that pins the image tag
+and opens =kubectl port-forward=):
+
+#+begin_src bash
+make -C src test-integration-k8s
+#+end_src
+
+All three:
+
+#+begin_src bash
+make -C src test-all
+#+end_src
+
+** CI
+
+Two workflows in =.github/workflows/=:
+
+- =ci.yml= – the original pipeline: unit tests and an HTTP smoke
+  check against the PoC service.
+- =trinity-ci.yml= – Phase 0 matrix: =unit=, =integration-local=,
+  =integration-docker=, =integration-k8s=.  The kubernetes leg only
+  runs on merges to =main= / =master= or manual dispatch.
+
+* Trinity Specification
+
+The canon is split across Documents 00–12 under
+=specifications/trinity/=.  Two companion text files summarise the
+package:
+
+- =specifications/trinity/trinity.org= – machine-friendly canon extract
+- =specifications/trinity/report.org= – canon review, ambiguities
+  (A1..A7), and workstream readiness
+
+Implementation-side documents under =src/doc/=:
+
+- =requirement-tracking.org= – map of every Trinity requirement to the
+  current code, with =Implemented= / =Partial= / =Missing= /
+  =Contradicted= status
+- =trinity-implementation-plan.org= – fifteen-phase plan taking the
+  code from the PoC contract to the Trinity contract, with unit tests
+  and local / Docker / Kubernetes integration tests at every phase
+- =user-manual.md= / =user-manual.pdf= – operator manual for the
+  file-based CLI
 
 * Notes
 
-- The former =phase-4= directory has been flattened into =src/=.
-- The engineering specification PDFs remain at the repository root under =specifications/=, while the final architecture and Trinity material lives in subdirectories there.
+- The project's earlier =phase-4= milestone label (a git-history
+  phase, unrelated to the Trinity plan phases) has been retired: the
+  HTTP service image is now tagged =mademanifest:latest= and the
+  former =src/phase-4/= directory is flattened into =src/=.
+- =specifications/architecture/= has moved to the repo root as
+  =architecture/=.
+- The former =src/README= and =src/README_RUN.md= have been folded
+  into this top-level file and removed.

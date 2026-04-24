@@ -11,7 +11,7 @@ import (
 
 func main() {
 
-	const version = "phase-4 http-service version 0.1"
+	const version = "mademanifest v0.1-poc"
 
 	canonDirFlag := flag.String("canon-directory", "canon", "canon directory path")
 	flag.StringVar(canonDirFlag, "cd", "canon", "canon directory path")

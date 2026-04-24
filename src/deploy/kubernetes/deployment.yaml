@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: mademanifest
-          image: registry.example.com/mademanifest/phase-4:latest
+          image: registry.example.com/mademanifest:latest
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef:
