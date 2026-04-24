@@ -1,0 +1,497 @@
+#+TITLE: Trinity Engine v1 Implementation Plan
+#+DATE: 2026-04-23
+#+AUTHOR: Engineering
+#+OPTIONS: toc:3 num:t
+
+* Purpose And Scope
+
+- Drive the codebase from its current Golden PoC contract to the Trinity
+  Engine v1 runtime contract defined in =specifications/trinity/=.
+- The plan is phased so every phase produces:
+  - a concrete behavioral change in the engine,
+  - unit tests covering the change in isolation,
+  - an integration test against the engine running as a *local process*,
+  - an integration test against the engine running in a *Docker
+    container* over HTTP,
+  - an integration test against the engine running in a *Kubernetes*
+    cluster over HTTP (via =kind=, service port-forward).
+- Companion source documents:
+  - =specifications/trinity/trinity.org= (canon extract)
+  - =specifications/trinity/report.org= (known ambiguities)
+  - =src/doc/requirement-tracking.org= (current gap analysis)
+
+* Canon Ambiguities That Gate Final Acceptance
+
+These items from =specifications/trinity/report.org= must be answered by
+the canon owner before the work in later phases can be *frozen*. The
+plan codes temporary implementation choices so engineering can proceed,
+and flags those choices as =A1..A7= so they can be revisited.
+
+| ID | Topic                                      | Working assumption (revise on canon clarification)                     |
+|----+--------------------------------------------+------------------------------------------------------------------------|
+| A1 | IANA tzdb release                          | Pin to the =go-1.22.x embedded tzdata= release; surface in metadata.   |
+| A2 | House interval ownership                   | Start-inclusive / end-exclusive on cusps, wrap between cusp 12 and 1.  |
+| A3 | Design-time second selection               | Return bracket midpoint, emit =floor= to whole second in =Z= suffix.   |
+| A4 | Error messages                             | Match only =error_type= in fixtures; =message= is informational prose. |
+| A5 | =unsupported_input= boundary               | Reject seconds-present, sub-minute precision, multi-person payload.    |
+| A6 | IANA link names                            | Accept canonical zones only; reject =US/Eastern=, =Etc/GMT+3=.         |
+| A7 | Golden first-fixture oracle                | Capture once from engine, cross-check against external tool, then pin. |
+
+* Source-Tree Target Layout
+
+Phases add packages and rename existing ones. The Golden PoC code stays
+compilable during the transition, then gets removed at the end. Proposed
+end-state under =src/mademanifest-engine/pkg=:
+
+- =canon/=           canonical constants + version pins (promoted)
+- =trinity/input/=   Trinity input DTO + validator + rejection classifier
+- =trinity/output/=  Trinity success + error DTOs + serializer
+- =astro/=           astrology calculation producing Trinity objects
+- =hd/calc/=         HD personality + design snapshot calculators
+- =hd/structure/=    channels, centers, definition, type, authority,
+                     profile, incarnation_cross
+- =genekeys/=        Trinity Gene Keys derivation
+- =engine/=          orchestrator returning Trinity envelopes
+- =httpservice/=     HTTP adapter emitting Trinity envelopes
+- =golden/=          Trinity golden pack harness
+- =emit_golden/=     *removed* at Phase 12
+
+* Cross-Cutting Test Harness (built in Phase 0, used in every phase)
+
+** Unit tests
+- Go =testing= standard. Table-driven tests. No network. No filesystem
+  outside the tested fixture tree.
+
+** Local-process integration tests
+- New target =make test-integration-local=.
+- Launches =cmd/httpserver= on a random loopback port with
+  =CANON_DIRECTORY= and =SE_EPHE_PATH= pointing at the repo checkout.
+- Test binary lives under
+  =src/mademanifest-engine/integration/local_test.go= and calls
+  =GET /healthz= and =POST /manifest= with real =net/http=.
+
+** Docker integration tests
+- New target =make test-integration-docker=.
+- Builds the production =src/Dockerfile= image as
+  =mademanifest-engine:itest=.
+- Runs =docker run -d -p 18080:8080= of that image; waits on
+  =GET /healthz=.
+- Test binary lives under =src/mademanifest-engine/integration/docker_test.go=
+  (guarded with build tag =integration_docker=) and hits the container
+  over HTTP with the same golden pack as the local-process tests.
+
+** Kubernetes integration tests
+- New target =make test-integration-k8s=.
+- Spins up a =kind= cluster =kind create cluster --name trinity-itest=.
+- =kind load docker-image mademanifest-engine:itest=.
+- =kubectl apply -k src/deploy/kubernetes/= with the image pin
+  overridden for the test tag; waits on deployment readiness.
+- Opens =kubectl port-forward svc/mademanifest 18081:80= as a sidecar
+  process; test binary lives under
+  =src/mademanifest-engine/integration/k8s_test.go= (build tag
+  =integration_k8s=) and drives the service HTTP API exactly like the
+  docker test.
+- Test teardown deletes the =kind= cluster.
+
+** Shared fixture set
+- Every phase extends =src/golden/trinity/= with fixtures labelled
+  =valid_baseline=, =valid_edge=, =invalid_input=, =incomplete_input=,
+  =unsupported_input=, =regression_sentinel= per Document 10. The same
+  fixture set drives local, docker, and k8s integration suites.
+
+* Phase 0 – Test Harness And CI Scaffolding
+
+** Deliverables
+- =src/Makefile= targets =test-integration-local=, =test-integration-docker=,
+  =test-integration-k8s=, plus =test-all= aggregator.
+- =src/mademanifest-engine/integration/= package with shared helpers:
+  - =startLocalServer(t)= returning base URL + cleanup
+  - =startDockerContainer(t)= returning base URL + cleanup
+  - =startKindCluster(t)= + =startPortForward(t)= returning base URL +
+    cleanup
+  - =postManifest(url, body)= returning decoded envelope
+- =.github/workflows/trinity-ci.yml= matrix:
+  =[unit, integration-local, integration-docker, integration-k8s]=.
+
+** Unit tests
+- Tests for helpers in =integration/helpers_test.go=: URL assembly,
+  port allocation, timeout discipline, JSON decode.
+
+** Integration
+- Harness self-test: the three helpers start and stop a dummy
+  =net/http/httptest= server wired behind the same call flow.
+
+* Phase 1 – Canonical Constants And Version Pins
+
+** Deliverables
+- =pkg/canon/constants.go= exposes:
+  - =CanonVersion=, =MappingVersion=, =InputSchemaVersion=,
+    =SourceStackVersion=, =EngineVersion= (all strings, build-time).
+  - =MandalaAnchorDeg=, =GateWidthDeg=, =LineWidthDeg=,
+    =GateOrder= (64-int, bootstrapped from the authoritative sequence
+    in =trinity.org=).
+  - =SignOrder=, =AstrologyObjectOrder=, =HDSnapshotOrder=,
+    =CenterOrder=, =MotorCenters=, =ChannelTable=.
+- =pkg/canon/sources.go= exposes =SwissEphVersion= (=2.10.03=) and
+  =TZDBVersion= (string, read from =time/tzdata= build tag or
+  explicit pin — tracks A1).
+- =cmd/*/main.go= print all versions on =--version=.
+
+** Unit tests
+- =canon/constants_test.go=:
+  - =GateOrder= has 64 entries, unique, covers =1..64=.
+  - =ChannelTable= has 36 channels, each references two valid gates and
+    two valid centers from =CenterOrder=.
+  - =MotorCenters ⊂ CenterOrder=.
+  - Sign order has 12 entries, snake_case strings match canon.
+- =canon/sources_test.go=: version strings are non-empty and conform
+  to =semver= or =YYYYb= format.
+
+** Integration (local / docker / k8s)
+- New endpoint =GET /version= returns all pins as JSON; integration
+  suites assert the response matches the compiled-in constants.
+
+* Phase 2 – Trinity Input DTO And Validator
+
+** Deliverables
+- =pkg/trinity/input/input.go=:
+  =type Payload struct { BirthDate, BirthTime, Timezone string; Latitude, Longitude float64 }=.
+- =pkg/trinity/input/validator.go= implements Document 04:
+  - JSON decode with =DisallowUnknownFields=.
+  - Explicit rejection of numeric-looking strings (custom unmarshal).
+  - IANA canonical-zone check (list compiled from =tzdata=; rejects
+    link names per A6).
+  - Gregorian date + 24-hour minute format regexes.
+  - Classifier returns =RejectIncomplete=, =RejectInvalid=, or
+    =RejectUnsupported= (A5) carrying an enum field name.
+- =engine.Run= replaces =process_input.ProcessInput= as the input entry
+  point; the Golden PoC path is left intact but is no longer exercised
+  by the HTTP handler.
+
+** Unit tests
+- Table-driven =validator_test.go= case per rule:
+  - missing each field → =incomplete_input=
+  - numeric field as string → =invalid_input=
+  - malformed date (=1990-02-30=, =90-04-09=) → =invalid_input=
+  - seconds present (=18:04:00=), or sub-minute precision →
+    =unsupported_input= (A5)
+  - IANA abbreviation (=CET=) → =invalid_input=
+  - IANA link name (=US/Eastern=) → =invalid_input= (A6)
+  - lat > 90, lon out of range → =invalid_input=
+
+** Integration
+- =POST /manifest= with every rejection category: envelope has
+  =status="error"=, correct =error_type=, non-empty =message=, and
+  complete =metadata=. Tests assert only the =error_type= (A4) and
+  metadata block.
+- Runs under local, docker, k8s harnesses.
+
+* Phase 3 – Trinity Output Envelope And Error Path
+
+** Deliverables
+- =pkg/trinity/output/envelope.go= types:
+  - =SuccessEnvelope= (=status, metadata, input_echo, astrology, human_design, gene_keys=).
+  - =ErrorEnvelope= (=status, metadata, error{error_type,message}=).
+  - =Metadata= with the five pinned version fields and *nothing else*.
+- Stable JSON serializer with pinned key order. Implementation option:
+  struct tags + ordered map encoder. Round trip tested.
+- HTTP handler replaced:
+  - Status code policy: =200= for =success=; =400= for
+    =incomplete_input= + =invalid_input=; =422= for =unsupported_input=;
+    =500= for =canon_conflict= + =execution_failure=.
+- Longitude serialized as =float64= rounded to 6 decimals;
+  =design_time_utc= formatted =RFC 3339 UTC= with whole-second precision
+  (A3 rounding rule = floor).
+
+** Unit tests
+- =envelope_test.go=: marshal / unmarshal preserves order; missing
+  metadata fields rejected; numeric fields kept numeric.
+- Handler tests via =httptest.NewRecorder= for every =error_type=.
+
+** Integration
+- Local, docker, k8s suites hit:
+  - a valid baseline → =200= with full envelope keys present in order.
+  - each error type → correct status code + envelope.
+
+* Phase 4 – Astrology Calculation Rewrite
+
+** Deliverables
+- =pkg/astro/= replaces the sign/deg/min emission with canonical output:
+  =objects[{object_id, longitude, sign, house}]=.
+- Earth added as a first-class astrology object
+  (=lon_earth = (lon_sun + 180) mod 360=).
+- House assignment under A2 rule, wrapping 12 → 1.
+- Lowercase sign identifiers =aries..pisces=.
+- =angles={ascendant, midheaven}=, =house_cusps[12]=.
+- Astrology =system= block fixed:
+  =zodiac=tropical=, =house_system=placidus=, =node_type=mean=.
+
+** Unit tests
+- Sign boundary cases: longitudes =0, 29.999999, 30, 359.999999=
+  map to canonical signs.
+- House boundary cases: synthetic cusp table exercising wrap and
+  equal-cusp degenerate cases.
+- Ordering test: output object order matches Document 07 order.
+
+** Integration
+- =valid_baseline= fixture with birth data from
+  =GOLDEN_TEST_CASE_V1.json= (Schiedam 1990-04-09) is rerun through the
+  Trinity pipeline and the astrology section is compared field-by-field
+  against an oracle fixture captured in =src/golden/trinity/baseline/=.
+- Local / docker / k8s suites exercise the fixture over HTTP.
+
+* Phase 5 – Human Design Design-Time Solver (canonical form)
+
+** Deliverables
+- =pkg/hd/calc/designtime.go= replaces the parameter-driven solver:
+  - constants hard-coded from canon (=88.0°=, stop thresholds).
+  - backward-only search; initial bracket centered ~88 days back.
+  - pure bisection (no secant fallback).
+  - returns UTC time; emission applies A3 rounding in Phase 3 output
+    layer.
+- Remove =DesignTimeSolver= struct from the engine API surface.
+
+** Unit tests
+- Known-seed test using a hand-crafted =sunFunc= (linear over 365 days)
+  produces the mathematically exact target within tolerance.
+- Monotonicity test: bracket shrinks strictly; final width ≤ 1 second.
+- Forbidden shortcut test: ensure no path subtracts a fixed 88 days
+  (inspection of the sun-func call sequence; we capture the minimum
+  number of iterations and require ≥ 20 calls, defeating the trivial
+  shortcut).
+
+** Integration
+- Regression sentinel fixture derived from baseline: assert
+  =human_design.system.design_time_utc= equals the canonical value to
+  the whole second.
+
+* Phase 6 – Human Design Gate/Line Mapping Hardening
+
+** Deliverables
+- =pkg/hd/calc/mandala.go= takes constants only from =canon=, never
+  from input.
+- Canonical boundary rule: start-inclusive / end-exclusive (already
+  matches current code).
+- Remove =SE_NODE_POLICY= environment lookup; use =SE_TRUE_NODE= for HD
+  unconditionally, =SE_MEAN_NODE= for astrology unconditionally.
+
+** Unit tests
+- Exact-boundary longitudes: =313.25= is gate 38 line 1; =313.25 - ε=
+  belongs to previous gate.
+- Every gate start from the canonical =GateOrder= maps to a known
+  gate.
+
+** Integration
+- Regression sentinel: fixtures that straddle gate and line boundaries
+  within ±0.01° of the anchor, verified through the HTTP API.
+
+* Phase 7 – Human Design Structural Layer
+
+** Deliverables
+- =pkg/hd/structure/= emits, from the combined activation set:
+  - =channels[]=: dedupe + sort by =channel_id= lexicographic.
+  - =centers[]=: ordered =head..root=, each with =state ∈ {defined,undefined}=.
+  - =definition ∈ {none, single, split, triple_split, quadruple_split}=
+    computed by union-find over active channels.
+  - =type= via the Document 05 priority list.
+  - =authority= via the Document 05 priority list.
+  - =profile= =personality_sun_line/design_sun_line=.
+  - =incarnation_cross= structural =p_sun/p_earth | d_sun/d_earth=.
+
+** Unit tests
+- Synthetic activation sets hitting every =type= branch:
+  - reflector: no defined centers.
+  - generator: sacral defined, no motor-to-throat.
+  - manifesting_generator: sacral defined + motor-to-throat.
+  - manifestor: sacral undefined, motor-to-throat present.
+  - projector: sacral undefined, no motor-to-throat.
+- Definition class tests: single connected component, two components,
+  three components, four components.
+- Authority priority tests for each of the eight authority values.
+
+** Integration
+- Baseline fixture now includes expected =channels=, =centers=,
+  =definition=, =type=, =authority=, =profile=, =incarnation_cross=
+  and is verified through all three runtimes.
+
+* Phase 8 – Gene Keys Canonical Output
+
+** Deliverables
+- =pkg/genekeys/genekeys.go= emits
+  =system.derivation_basis = "human_design"= plus
+  =activations={life_work, evolution, radiance, purpose}=
+  (rename from =lifes_work=).
+
+** Unit tests
+- Derivation is a pure function of HD activations;
+  =life_work.key = personality_sun.gate=, etc.
+- Absence of any text or semantic-state fields.
+
+** Integration
+- Baseline fixture Gene Keys block matches canonical schema over
+  local / docker / k8s.
+
+* Phase 9 – Determinism Cleanup
+
+** Deliverables
+- Remove all runtime-affecting environment variables (=SE_NODE_POLICY=,
+  any fallback path tricks). =SE_EPHE_PATH= remains a *deployment*
+  setting but is validated on boot and its resolved absolute path is
+  surfaced in =/version= for diagnosis (never in =metadata=).
+- =pkg/canon= becomes the single source of every calculation
+  constant; engine refuses to boot if the constants fail their
+  self-checks.
+- Gate-sequence file becomes a sanity check against the compiled-in
+  =GateOrder= rather than a configuration source.
+
+** Unit tests
+- Boot-time self-check fails fast on tampered canon files.
+- A fuzz test permutes two entries in the gate sequence file and
+  confirms the engine refuses to start.
+
+** Integration
+- Docker image built with =--env SE_NODE_POLICY=true= still produces
+  canonical output. Same for k8s pod with the same environment.
+
+* Phase 10 – HTTP Service Trinity Contract
+
+** Deliverables
+- =POST /manifest= consumes the Trinity payload and emits Trinity
+  envelopes.
+- =GET /healthz= unchanged (liveness only, no version info).
+- =GET /version= (Phase 1) stabilised.
+- Request size cap and structured error on oversize =413=.
+
+** Unit tests
+- Handler unit tests cover:
+  - content-type enforcement (=application/json=).
+  - method not allowed.
+  - oversize body.
+  - malformed JSON → =invalid_input=.
+
+** Integration
+- Local, docker, k8s suites exercise the full HTTP contract for
+  success, oversize, malformed JSON, each rejection category.
+
+* Phase 11 – Golden Test Pack
+
+** Deliverables
+- =src/golden/trinity/= directory with subdirectories per category,
+  frozen JSON pairs =input.json= / =expected.json= for the minimums in
+  Document 10:
+  - =valid_baseline/= (≥ 3)
+  - =valid_edge/= (≥ 5)
+  - =invalid_input/= (≥ 5)
+  - =incomplete_input/= (≥ 5)
+  - =unsupported_input/= (≥ 2)
+  - =regression_sentinel/= (≥ 3)
+- Oracle discipline per A7: each baseline expected output is generated
+  once with the engine, then cross-checked against an external
+  reference (e.g. published Schiedam chart used for the existing PoC)
+  before being frozen.
+- Test runner =pkg/golden/runner.go= iterates the fixture tree and
+  compares envelopes by semantic JSON equality for success, and by
+  =error_type= + envelope shape for errors (A4).
+
+** Unit tests
+- Runner tests against synthetic fixtures (golden pass, golden fail,
+  ordering drift caught).
+
+** Integration
+- =TestTrinityGoldenPack= in each of the three harnesses iterates the
+  whole pack, so the full fixture set is exercised end-to-end over
+  HTTP in local, docker, and k8s.
+
+* Phase 12 – PoC Contract Retirement
+
+** Deliverables
+- Remove =pkg/emit_golden= and the GoldenCase data model.
+- Remove =cmd/main.go= file-based flow (keep only the HTTP server),
+  or rewrite =cmd/main.go= to run the pack against the HTTP API as a
+  CLI regression tool.
+- Update =Makefile= targets =run=, =diff=, =test-integration= to use
+  the Trinity pack instead of =GOLDEN_TEST_CASE_V1.json=.
+- Delete stale =src/mademanifest-engine/proof-of-capability-2= binary.
+
+** Unit tests
+- Compilation tests: no Go file imports =emit_golden=.
+
+** Integration
+- Full =test-all= green on local, docker, k8s.
+
+* Phase 13 – Deployment Hardening
+
+** Deliverables
+- =src/Dockerfile=:
+  - Multi-stage already present; add =HEALTHCHECK CMD curl -f
+    http://localhost:8080/healthz=.
+  - Non-root =USER appuser=.
+  - Pinned =golang:1.22.N-bookworm= digest.
+  - =ENV SE_EPHE_PATH= read-only.
+- =src/deploy/kubernetes/=:
+  - Pin container image digest (not =:latest=).
+  - Add =resources= verified by load tests.
+  - Add =securityContext=: non-root, read-only root fs, drop
+    capabilities.
+  - Add =NetworkPolicy= limiting ingress to the ingress controller.
+  - Add =HorizontalPodAutoscaler= (CPU 70%).
+  - Keep =readinessProbe= and =livenessProbe= on =/healthz=.
+
+** Unit tests
+- Kustomize build smoke test: =kustomize build src/deploy/kubernetes=
+  yields no schema errors (validated with =kubeconform=).
+
+** Integration
+- K8s suite (Phase 0 harness) exercises the hardened manifests end to
+  end: ingress reachable, non-ingress blocked, horizontal scaling test
+  disabled unless =TRINITY_LOAD_TEST=1=.
+
+* Phase 14 – Release And Acceptance
+
+** Deliverables
+- CHANGELOG bump and =engine_version= bump per Document 08.
+- Release tag =v1.0.0-trinity= once the whole pack passes on all three
+  runtimes.
+- Acceptance report stored as =src/doc/trinity-acceptance-<date>.org=
+  summarising:
+  - canon items still deferred (A1..A7 status),
+  - pack coverage,
+  - automated test run logs,
+  - container + k8s image digests.
+
+** Integration
+- Nightly CI job re-runs the full golden pack on local / docker / k8s
+  and posts the acceptance report artefact.
+
+* Execution Order Summary
+
+| Phase | Focus                                    | Blocks                                                                 |
+|-------+------------------------------------------+------------------------------------------------------------------------|
+|   0   | Test harness + CI matrix                 | Every later phase                                                      |
+|   1   | Canonical constants + version pins       | Phases 2, 3, 4, 6, 7                                                   |
+|   2   | Input DTO + validator                    | Phase 3, 10                                                            |
+|   3   | Output envelope + error path             | Phases 4, 7, 8, 10                                                     |
+|   4   | Astrology rewrite                        | Phase 11                                                               |
+|   5   | Design-time solver                       | Phases 6, 7                                                            |
+|   6   | Gate/line mapping hardening              | Phase 7                                                                |
+|   7   | HD structural layer                      | Phase 8                                                                |
+|   8   | Gene Keys canonical output               | Phase 11                                                               |
+|   9   | Determinism cleanup                      | Phase 13                                                               |
+|  10   | HTTP Trinity contract                    | Phase 11                                                               |
+|  11   | Golden test pack                         | Phase 14                                                               |
+|  12   | PoC retirement                           | Phase 13                                                               |
+|  13   | Deploy hardening                         | Phase 14                                                               |
+|  14   | Release + acceptance                     | –                                                                      |
+
+* Risks And Mitigations
+
+- *Canon ambiguities freeze mid-flight*: A1..A7 may force rework of
+  Phases 2, 3, 4, 5. Each affected commit is tagged with the =Ax= id
+  so revision is surgical.
+- *Oracle self-freeze* (A7): we explicitly cross-check baseline
+  fixtures with an external reference before pinning — no self-pinning
+  allowed.
+- *Environmental drift*: kind image and Docker base images pinned by
+  digest; =go.mod=, =go.sum=, and =swisseph= tarball already committed.
+- *K8s suite flakiness in CI*: the kind cluster startup is long; only
+  runs on merge to =main= and nightly, not on every PR.
