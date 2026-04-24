@@ -157,6 +157,44 @@ kubectl rollout status deployment/mademanifest
 kubectl port-forward service/mademanifest 8080:80
 #+end_src
 
+*** Interactive local-k8s dev loop (scripted)
+
+Three helper scripts wrap the manual steps so you can spin a
+throwaway cluster up, exercise it with =curl=, and tear it down.
+Requires =docker=, =kind=, =kubectl= on =PATH=.
+
+Terminal 1 – bring the service up and open a port-forward
+(foreground; =Ctrl-C= deletes the cluster it created):
+
+#+begin_src bash
+src/scripts/k8s-local-up.sh
+# options: --keep-cluster, --port 9090, --cluster my-cluster
+#+end_src
+
+Terminal 2 – send =GET /healthz= and =POST /manifest= through the
+port-forward:
+
+#+begin_src bash
+src/scripts/k8s-local-test.sh
+# overrides: URL=http://127.0.0.1:9090 FIXTURE=path/to/input.json
+#+end_src
+
+If a run crashed mid-way and left a cluster behind (or you used
+=--keep-cluster= earlier), the down script removes it:
+
+#+begin_src bash
+src/scripts/k8s-local-down.sh
+#+end_src
+
+Notes:
+- The up script reuses a pre-existing =trinity-dev= cluster instead
+  of deleting it, so iterative runs stay fast.
+- Image tag defaults to =mademanifest:dev=; the kustomize base's
+  placeholder =registry.example.com/mademanifest:latest= is rewritten
+  in-line before apply (no temp overlay directory).
+- The test script writes the full =/manifest= response to a
+  =/tmp/mademanifest-response-*.json= file and prints the path.
+
 * Testing
 
 ** Unit Tests And Harness Self-Tests
