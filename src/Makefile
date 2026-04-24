@@ -22,6 +22,7 @@ help::
     test-coverage test-verbose test-astronomy \
 	test-ephemeris test-astrology \
 	test-human_design test-gene_keys \
+	doc user-manual-pdf \
 	clean \
 	docker-image \
 	docker-update \
@@ -39,6 +40,7 @@ help::
 	@printf 'make test-integration-docker # Trinity harness: docker build + docker run.\n'
 	@printf 'make test-integration-k8s    # Trinity harness: kind + kubectl (long-running).\n'
 	@printf 'make test-all                # unit + local + docker + kubernetes.\n'
+	@printf 'make doc                     # rebuild doc/user-manual.pdf from user-manual.md.\n'
 	@printf 'make help                    # prints this help.\n'
 
 all: prepare compile run diff
@@ -100,6 +102,31 @@ test-integration-k8s:
 	cd $(SRC) ; go test $(TEST_FLAGS) -tags integration_k8s -timeout 900s ./integration/...
 
 test-all: test-unit test-integration-local test-integration-docker test-integration-k8s
+
+
+# Documentation build.
+#
+# user-manual.pdf is produced from user-manual.md with pandoc.  We use
+# xelatex because it handles the Unicode in the code block output
+# (arrows, fancy quotes) without needing a preamble dance.
+
+DOC_DIR = $(ROOT)doc
+
+doc: user-manual-pdf
+
+user-manual-pdf: $(DOC_DIR)/user-manual.pdf
+
+$(DOC_DIR)/user-manual.pdf: $(DOC_DIR)/user-manual.md
+	pandoc \
+	    --from=gfm+yaml_metadata_block \
+	    --to=pdf \
+	    --pdf-engine=xelatex \
+	    -V geometry:margin=1in \
+	    -V mainfont="Helvetica" \
+	    -V monofont="Menlo" \
+	    -V colorlinks=true \
+	    --toc --toc-depth=2 \
+	    -o $@ $<
 
 
 # Run all tests with coverage
