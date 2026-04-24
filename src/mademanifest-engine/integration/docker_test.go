@@ -26,6 +26,13 @@ func TestDockerHarnessBootsAndServesHealthz(t *testing.T) {
 	}
 }
 
+func TestDockerHarnessServesVersion(t *testing.T) {
+	srv := StartDockerContainer(t, DockerOptions{})
+	t.Cleanup(srv.Shutdown)
+
+	AssertVersionEndpointMatchesCanon(t, srv.BaseURL)
+}
+
 func TestDockerHarnessPostsGoldenFixture(t *testing.T) {
 	srv := StartDockerContainer(t, DockerOptions{})
 	t.Cleanup(srv.Shutdown)

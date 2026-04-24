@@ -1,0 +1,175 @@
+#+TITLE: Trinity Engine Version Pins
+#+DATE: 2026-04-24
+#+OPTIONS: toc:2 num:nil
+
+This document catalogues every pinned version and constant that
+affects deterministic Trinity output, together with its canonical
+source and the =A*= ambiguities (from
+=specifications/trinity/report.org=) still blocking final acceptance
+for that pin.
+
+Single source of truth in code:
+- =src/mademanifest-engine/pkg/canon/constants.go= – numeric pins and lookup tables.
+- =src/mademanifest-engine/pkg/canon/sources.go= – version strings and =VersionInfo=.
+
+The compiled-in values are exposed over HTTP via =GET /version= (added
+in Phase 1) and propagate into the Trinity response metadata block
+in a later phase.
+
+* Version Strings
+
+| Constant             | Value              | Canonical source                    | A-ambiguity |
+|----------------------+--------------------+-------------------------------------+-------------|
+| =EngineVersion=      | =v0.1.0-phase-1=  | this build                          | –           |
+| =CanonVersion=       | =trinity-v1-rev-0= | =trinity.org= (scope + calc + map + output) | A8 |
+| =MappingVersion=     | =trinity-v1-rev-0= | =trinity.org= §"Mapping Canon"     | A8          |
+| =InputSchemaVersion= | =trinity-v1-rev-0= | Document 04                         | A5, A6      |
+| =SourceStackVersion= | =trinity-v1-rev-0= | Document 03                         | A1          |
+| =SwissEphVersion=    | =2.10.03=         | =trinity.org= line 61               | –           |
+| =TZDBVersion=        | =2023c=           | Go 1.22 =time/tzdata= (assumption)  | A1 (UNPINNED) |
+
+* Numeric Constants
+
+| Constant         | Value  | Canonical source                     | A-ambiguity |
+|------------------+--------+--------------------------------------+-------------|
+| =MandalaAnchorDeg= | 277.5 | =trinity.org= lines 297-300         | A8          |
+| =GateWidthDeg=     | 5.625 | =trinity.org= §"Mandala parameters" | –           |
+| =LineWidthDeg=     | 0.9375 | =trinity.org= §"Mandala parameters" | –           |
+
+The A8 flag on =MandalaAnchorDeg= reflects a concrete divergence
+between the compiled-in canon and the legacy JSON files under
+=src/canon/=: the JSON uses =313.25°= (gate sequence starting with
+=13=), while =trinity.org= pins =277.5°= (sequence starting with
+=38=).  The canon explicitly lists "rejected old gate anchor
+assumptions" among its regression sentinels (Document 10), strongly
+suggesting the legacy value is the rejected one.  This package
+follows =trinity.org=; the PoC path continues to load the JSON until
+Phase 9 removes the JSON-driven loader.
+
+* Lookup Tables
+
+| Table                | Size | Canonical source                |
+|----------------------+------+---------------------------------|
+| =GateOrder=          | 64   | =trinity.org= line 300          |
+| =SignOrder=          | 12   | =trinity.org= §"Mapping Canon"  |
+| =AstrologyObjectOrder= | 13 | =trinity.org= Document 07       |
+| =HDSnapshotOrder=    | 13   | =trinity.org= §"Human Design"   |
+| =CenterOrder=        | 9    | =trinity.org= §"HD Centers"     |
+| =MotorCenters=       | 4    | =trinity.org= §"HD Centers"     |
+| =ChannelTable=       | 36   | =trinity.org= §"Channel Table"  |
+
+* A-Ambiguity Register
+
+Numbering follows =specifications/trinity/report.org=.  Status
+values:
+
+- =UNRESOLVED= – canon owner has not answered yet; working assumption
+  documented inline in the code.
+- =RESOLVED= – canon has been updated and the code matches.
+
+** A1 – IANA tzdb release not pinned
+
+- Status: =UNRESOLVED=
+- Working assumption: =TZDBVersion = "2023c"= (the release shipped
+  with the Go 1.22 toolchain via =time/tzdata=).
+- Affects: =SourceStackVersion= (bumps on tzdb change),
+  =InputSchemaVersion= (tzdb determines whether a given timezone id
+  is valid).
+- Question for canon owner: Which exact tzdb release is authoritative
+  for Trinity v1?
+
+** A2 – House interval ownership rules missing
+
+- Status: =UNRESOLVED=
+- Working assumption: start-inclusive / end-exclusive on every cusp,
+  wrap between cusp 12 and cusp 1.  (Documented in the Phase 4
+  deliverables section of the implementation plan.)
+- Affects: astrology =house= field on every object.  No constant in
+  this package depends on A2 today; the dependency lands in Phase 4.
+- Question for canon owner: What are the canonical house interval
+  ownership rules?
+
+** A3 – Design-time second-selection underspecified
+
+- Status: =UNRESOLVED=
+- Working assumption: return bracket midpoint, emit =floor= to whole
+  second in the =Z= suffix.
+- Affects: =design_time_utc= emission in Trinity Human Design output.
+  No constant here; enforced in Phase 5 solver and Phase 3 serializer.
+- Question for canon owner: Which timestamp is canonical when the
+  bisection stops with interval width under 1 second – lower bound,
+  upper bound, midpoint, or nearest whole second?
+
+** A4 – Error messages not pinned
+
+- Status: =UNRESOLVED=
+- Working assumption: golden fixtures match =error_type= only;
+  =message= prose is informational.
+- Affects: error envelope in Phase 3, golden test pack in Phase 11.
+- Question for canon owner: Is there an authoritative error-message
+  catalog, or is =error_type= the only pinned field?
+
+** A5 – =unsupported_input= boundary not operationalized
+
+- Status: =UNRESOLVED=
+- Working assumption: seconds-present in =birth_time=, sub-minute
+  precision, and multi-person payloads all return =unsupported_input=.
+- Affects: =InputSchemaVersion= (the validator's classification
+  rules).  Constant bumps with each boundary change.
+- Question for canon owner: Which scenarios should produce
+  =unsupported_input= rather than =invalid_input=?
+
+** A6 – IANA alias / link-name acceptance
+
+- Status: =UNRESOLVED=
+- Working assumption: accept canonical =Area/Location= identifiers
+  only; reject =US/Eastern=, =Etc/GMT+3=, and other aliases.
+- Affects: =InputSchemaVersion=.
+- Question for canon owner: Are IANA link names valid input if
+  submitted directly?
+
+** A7 – First golden-fixture oracle is not independent
+
+- Status: =UNRESOLVED=
+- Working assumption: capture baseline expected outputs once from the
+  engine, cross-check against an external reference (published chart)
+  before pinning.
+- Affects: no compile-time constant; affects Phase 11 fixture
+  workflow.
+- Question for canon owner: How should the initial golden expected
+  outputs be reviewed and approved so they are not merely
+  self-frozen?
+
+** A8 – Final consistency pass not folded back
+
+- Status: =UNRESOLVED=
+- Working assumption: follow =trinity.org= everywhere it pins a
+  concrete value; treat legacy JSON in =src/canon/= as a PoC-era
+  artefact slated for removal in Phase 9.
+- Affects: =MandalaAnchorDeg= (=277.5°= vs legacy =313.25°=),
+  =GateOrder= (starts with =38= vs legacy =13=), =CanonVersion=,
+  =MappingVersion=.
+- Question for canon owner: Is the mandala anchor =277.5°= the final
+  canonical value?  If yes, may we retire
+  =src/canon/gate_sequence_v1.json= and
+  =src/canon/mandala_constants.json= once the calculation path
+  switches to the compiled constants?
+
+* Revision Policy
+
+Every bump in this table follows Document 08:
+
+- =CanonVersion= bumps on any change to scope, calculation, mapping,
+  output, precedence, formatting, or input behaviour.
+- =MappingVersion= bumps on gate order, channel table, center list,
+  channel-to-center map, or identifier scheme changes.
+- =InputSchemaVersion= bumps on any field/type/format/range/validation
+  change.
+- =SourceStackVersion= bumps on any authoritative external source
+  change (Swiss Ephemeris version, tzdb release).
+- =EngineVersion= bumps on any production implementation change
+  (build ID), even pure refactors with no behavioural impact.
+
+Constants in =sources.go= and =constants.go= are the only valid
+source of these values; every other piece of the engine must read
+them from =pkg/canon= rather than hard-coding literals.

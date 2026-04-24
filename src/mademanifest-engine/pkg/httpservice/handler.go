@@ -33,11 +33,24 @@ func New(canonPaths canon.Paths) Handler {
 
 func (h Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/healthz", h.handleHealth)
+	mux.HandleFunc("/version", h.handleVersion)
 	mux.HandleFunc("/manifest", h.handleManifest)
 }
 
 func (h Handler) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// handleVersion returns the compiled-in pinned versions as JSON.
+// This is the Phase 1 deliverable; later phases embed the same
+// VersionInfo into every Trinity response envelope's metadata block.
+func (h Handler) handleVersion(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+	writeJSON(w, http.StatusOK, canon.Versions())
 }
 
 func (h Handler) handleManifest(w http.ResponseWriter, r *http.Request) {

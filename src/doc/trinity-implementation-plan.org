@@ -19,13 +19,36 @@
   - =specifications/trinity/trinity.org= (canon extract)
   - =specifications/trinity/report.org= (known ambiguities)
   - =src/doc/requirement-tracking.org= (current gap analysis)
+  - =src/doc/version-pins.org= (pinned versions + A-register, Phase 1+)
+
+* Phase Status
+
+| Phase | State       | Note                                                                 |
+|-------+-------------+----------------------------------------------------------------------|
+|   0   | Done        | Test harness + CI matrix landed.                                     |
+|   1   | Done        | Canonical constants + version pins + =GET /version= + =--version=.  |
+|   2   | Not started |                                                                      |
+|   3   | Not started |                                                                      |
+|   4   | Not started |                                                                      |
+|   5   | Not started |                                                                      |
+|   6   | Not started |                                                                      |
+|   7   | Not started |                                                                      |
+|   8   | Not started |                                                                      |
+|   9   | Not started |                                                                      |
+|  10   | Not started |                                                                      |
+|  11   | Not started |                                                                      |
+|  12   | Not started |                                                                      |
+|  13   | Not started |                                                                      |
+|  14   | Not started |                                                                      |
 
 * Canon Ambiguities That Gate Final Acceptance
 
 These items from =specifications/trinity/report.org= must be answered by
 the canon owner before the work in later phases can be *frozen*. The
 plan codes temporary implementation choices so engineering can proceed,
-and flags those choices as =A1..A7= so they can be revisited.
+and flags those choices as =A1..A8= so they can be revisited.  See
+=src/doc/version-pins.org= for the full dependency graph from each
+=A*= item to the compiled-in constants it affects.
 
 | ID | Topic                                      | Working assumption (revise on canon clarification)                     |
 |----+--------------------------------------------+------------------------------------------------------------------------|
@@ -36,6 +59,7 @@ and flags those choices as =A1..A7= so they can be revisited.
 | A5 | =unsupported_input= boundary               | Reject seconds-present, sub-minute precision, multi-person payload.    |
 | A6 | IANA link names                            | Accept canonical zones only; reject =US/Eastern=, =Etc/GMT+3=.         |
 | A7 | Golden first-fixture oracle                | Capture once from engine, cross-check against external tool, then pin. |
+| A8 | Consistency pass (Docs 05-07) not folded back | Follow =trinity.org= (mandala anchor =277.5°=, sequence starting with =38=); treat legacy =src/canon/*.json= as PoC-era. |
 
 * Source-Tree Target Layout
 

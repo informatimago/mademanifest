@@ -1,17 +1,17 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 
+	"mademanifest-engine/pkg/canon"
 	"mademanifest-engine/pkg/engine"
 )
 
 func main() {
-
-	const version = "mademanifest v0.1-poc"
 
 	canonDirFlag := flag.String("canon-directory", "canon", "canon directory path")
 	flag.StringVar(canonDirFlag, "cd", "canon", "canon directory path")
@@ -51,7 +51,11 @@ func main() {
 	}
 
 	if *versionFlag {
-		fmt.Println(version)
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(canon.Versions()); err != nil {
+			log.Fatalf("encode versions: %v", err)
+		}
 		os.Exit(0)
 	}
 

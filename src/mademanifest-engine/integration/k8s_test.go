@@ -45,6 +45,10 @@ func TestK8sHarnessServesHealthz(t *testing.T) {
 	}
 }
 
+func TestK8sHarnessServesVersion(t *testing.T) {
+	AssertVersionEndpointMatchesCanon(t, sharedK8s.BaseURL)
+}
+
 func TestK8sHarnessPostsGoldenFixture(t *testing.T) {
 	goldenPath := filepath.Join(RepoRoot(t), "src", "golden", "GOLDEN_TEST_CASE_V1.json")
 	body, err := os.ReadFile(goldenPath)

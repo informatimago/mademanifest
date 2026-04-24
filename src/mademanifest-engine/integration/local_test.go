@@ -32,6 +32,13 @@ func TestLocalHarnessBootsAndServesHealthz(t *testing.T) {
 	}
 }
 
+func TestLocalHarnessServesVersion(t *testing.T) {
+	srv := StartLocalServer(t, LocalServerOptions{})
+	t.Cleanup(srv.Shutdown)
+
+	AssertVersionEndpointMatchesCanon(t, srv.BaseURL)
+}
+
 func TestLocalHarnessPostsGoldenFixture(t *testing.T) {
 	srv := StartLocalServer(t, LocalServerOptions{})
 	t.Cleanup(srv.Shutdown)

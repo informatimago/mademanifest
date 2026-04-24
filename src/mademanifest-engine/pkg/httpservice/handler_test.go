@@ -1,6 +1,7 @@
 package httpservice
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -87,6 +88,44 @@ func TestHandleManifestRecoversFromPanic(t *testing.T) {
 	handler.handleManifest(rec, req)
 
 	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("unexpected status: %d", rec.Code)
+	}
+}
+
+// TestHandleVersionReturnsCompiledInValues verifies the /version
+// endpoint echoes the pinned constants from pkg/canon without
+// mutation.  Any future drift between the endpoint and the compiled
+// VersionInfo is caught here before it reaches an integration test.
+func TestHandleVersionReturnsCompiledInValues(t *testing.T) {
+	handler := New(canon.Paths{})
+	req := httptest.NewRequest(http.MethodGet, "/version", nil)
+	rec := httptest.NewRecorder()
+
+	handler.handleVersion(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("/version status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if got := rec.Header().Get("Content-Type"); got != "application/json" {
+		t.Fatalf("/version content-type = %q", got)
+	}
+	var got canon.VersionInfo
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode /version body: %v\nbody: %s", err, rec.Body.String())
+	}
+	if want := canon.Versions(); got != want {
+		t.Errorf("/version payload = %+v\nwant          = %+v", got, want)
+	}
+}
+
+func TestHandleVersionRejectsWrongMethod(t *testing.T) {
+	handler := New(canon.Paths{})
+	req := httptest.NewRequest(http.MethodPost, "/version", nil)
+	rec := httptest.NewRecorder()
+
+	handler.handleVersion(rec, req)
+
+	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("unexpected status: %d", rec.Code)
 	}
 }

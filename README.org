@@ -16,14 +16,17 @@ harness exercises it in all three runtimes.
 |-----------------------------------------+------------------------------------------------------------------|
 | Calculation core                        | Works – UTC + Julian Day, Swiss Ephemeris 2.10.03, HD gates/lines, Gene Keys |
 | Golden PoC contract (pre-Trinity)       | Green on local, docker, and kind                                 |
-| Trinity input / output contract         | Not yet implemented                                              |
-| Trinity Human Design structural layer   | Not yet implemented (channels, centers, definition, type, authority, profile, incarnation cross) |
-| Trinity Golden Test Pack                | Not yet implemented                                              |
-| Phase 0 integration harness (this repo) | Done – see =src/doc/trinity-implementation-plan.org=             |
-| Canon ambiguities A1..A7                | Open – tracked in =specifications/trinity/report.org=            |
+| Phase 0 integration harness             | Done – local + docker + kind, shared helpers                     |
+| Phase 1 canon constants + version pins  | Done – =pkg/canon/constants.go=, =pkg/canon/sources.go=, =GET /version=, =--version= |
+| Trinity input / output contract         | Phase 2 + 3 – not yet started                                    |
+| Trinity Human Design structural layer   | Phase 7 – not yet started (channels, centers, definition, type, authority, profile, incarnation cross) |
+| Trinity Golden Test Pack                | Phase 11 – not yet started                                       |
+| Canon ambiguities A1..A8                | Open – see =src/doc/version-pins.org=                            |
 
-The next phase is Phase 1: canonical constants and version pins.  The
-full plan is in [[file:src/doc/trinity-implementation-plan.org][src/doc/trinity-implementation-plan.org]].
+The next phase is Phase 2: Trinity input DTO + validator.  The full
+plan is in [[file:src/doc/trinity-implementation-plan.org][src/doc/trinity-implementation-plan.org]]; pinned versions and
+the =A*= ambiguity register live in
+[[file:src/doc/version-pins.org][src/doc/version-pins.org]].
 
 * Repository Layout
 
