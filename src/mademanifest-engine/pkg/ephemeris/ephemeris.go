@@ -117,8 +117,7 @@ func AsterConstantByName(name string) int {
 			return a.Constant
 		}
 	}
-	panic("unknown aster PJB: " + name)
-	return 0
+	panic("unknown aster: " + name)
 }
 
 func GetPlanetLongAtTime(julianDay float64, astre string) float64 {
