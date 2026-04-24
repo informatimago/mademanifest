@@ -435,7 +435,9 @@ end-state under =src/mademanifest-engine/pkg=:
   CLI regression tool.
 - Update =Makefile= targets =run=, =diff=, =test-integration= to use
   the Trinity pack instead of =GOLDEN_TEST_CASE_V1.json=.
-- Delete stale =src/mademanifest-engine/proof-of-capability-2= binary.
+- Delete stale =src/mademanifest-engine/mademanifest-engine= CLI binary
+  (the file-based PoC entry point) once the HTTP service is the only
+  runtime surface.
 
 ** Unit tests
 - Compilation tests: no Go file imports =emit_golden=.

@@ -4,7 +4,7 @@ ROOT        := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 SRC         := $(ROOT)mademanifest-engine
 GOLDEN      := $(ROOT)golden
 TEST_FLAGS   = -count=1
-NAME         = proof-of-capability-2
+NAME         = mademanifest-engine
 # DIFF_RELAX   = -twb
 DIFF_RELAX   =
 IMAGE_NAME   = mademanifest-poc-v2
@@ -68,7 +68,11 @@ swisseph-install-data:
 $(SRC)/$(NAME):
 	cd $(SRC) ; CGO_LDFLAGS="-lm" go build -o $(NAME) ./cmd
 	install_name_tool -change libswe.dylib @rpath/libswe.dylib $(SRC)/$(NAME)
-	install_name_tool -add_rpath /usr/local/lib                $(SRC)/$(NAME)
+	# pkg/sweph/rpath_cgo.go already embeds this rpath via cgo
+	# LDFLAGS, so -add_rpath is idempotent-with-failure.  Swallow
+	# the "would duplicate path" error so repeat builds still
+	# succeed.
+	install_name_tool -add_rpath /usr/local/lib $(SRC)/$(NAME) 2>/dev/null || true
 
 test: test-unit test-integration
 

@@ -34,8 +34,10 @@ go.work.sum
 .claude/
 
 *~
-proof-of-capability
-proof-of-capability-2
+# The mademanifest CLI binary (built at src/mademanifest-engine/mademanifest-engine).
+# The leading slash anchors the pattern at the repo root so it does not
+# collide with the Go module directory of the same name.
+/src/mademanifest-engine/mademanifest-engine
 tarballs/
 
 expected.json

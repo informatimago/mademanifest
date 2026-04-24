@@ -13,12 +13,12 @@ package canon
 // Divergence from src/canon/*.json (A8 – consistency pass):
 //   The legacy JSON files under src/canon/ carry an older mandala
 //   anchor of 313.25° (gate sequence starting with 13) inherited
-//   from the pre-Trinity proof-of-capability.  Trinity.org pins the
-//   canonical anchor at 277.5° (sequence starting with 38) and
-//   explicitly lists "rejected old gate anchor assumptions" among
-//   its regression sentinels.  This package follows trinity.org.
-//   The PoC calculation path continues to load the JSON values; the
-//   two will converge when Phase 9 removes the JSON-driven path.
+//   from the pre-Trinity PoC bundle.  Trinity.org pins the canonical
+//   anchor at 277.5° (sequence starting with 38) and explicitly
+//   lists "rejected old gate anchor assumptions" among its
+//   regression sentinels.  This package follows trinity.org.  The
+//   PoC calculation path continues to load the JSON values; the two
+//   will converge when Phase 9 removes the JSON-driven path.
 
 // Mandala numeric constants.  See trinity.org lines 274-300.
 const (

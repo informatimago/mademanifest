@@ -41,10 +41,11 @@ There are two ways to drive the engine:
 
 ### 1. File-based CLI (pre-Trinity PoC)
 
-The binary `mademanifest-engine/proof-of-capability-2` takes one
-input JSON file and one output JSON file.  It implements the Golden
-PoC contract — this is the only runtime path still wired for the
-legacy `case_id` / `engine_contract` / `expected` shape.
+The binary `mademanifest-engine/mademanifest-engine` (built by
+`make -C src compile`) takes one input JSON file and one output JSON
+file.  It implements the Golden PoC contract — this is the only
+runtime path still wired for the legacy `case_id` /
+`engine_contract` / `expected` shape.
 
 ### 2. HTTP service
 
@@ -89,7 +90,7 @@ the `src/scripts/k8s-local-{up,down,test}.sh` dev loop.
 ## CLI Command-Line Usage
 
 ```bash
-proof-of-capability-2 [options] <input.json> <output.json>
+mademanifest-engine [options] <input.json> <output.json>
 ```
 
 The program requires exactly two positional arguments:
@@ -111,10 +112,10 @@ The program requires exactly two positional arguments:
 
 ### Example
 
-From `mademanifest-engine/`:
+From `src/mademanifest-engine/`:
 
 ```bash
-./proof-of-capability-2 -cd ../canon ../golden/GOLDEN_TEST_CASE_V1.json out.json
+./mademanifest-engine -cd ../canon ../golden/GOLDEN_TEST_CASE_V1.json out.json
 ```
 
 ## HTTP Service Usage
@@ -381,7 +382,7 @@ curl -s http://localhost:8080/version
 
 ### `--version` (CLI and HTTP server)
 
-Both `proof-of-capability-2 --version` and
+Both `mademanifest-engine --version` and
 `cmd/httpserver --version` emit the same JSON to stdout and exit.
 
 ### `pkg/canon.Versions()` (Go API)

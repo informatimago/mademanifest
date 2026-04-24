@@ -94,9 +94,9 @@ make -C src run    # writes src/mademanifest-engine/out.json
 make -C src diff   # compiles, runs, and compares to golden
 #+end_src
 
-The binary is =src/mademanifest-engine/proof-of-capability-2=.  It
+The binary is =src/mademanifest-engine/mademanifest-engine=.  It
 takes =$inputFile $outputFile= arguments plus optional flags (see
-=main --help=).
+=./mademanifest-engine --help=).
 
 ** HTTP Service (Local Binary)
 
