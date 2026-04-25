@@ -107,8 +107,42 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: src/mademanifest-engine/go.mod
+          cache-dependency-path: src/mademanifest-engine/go.sum
+      # The docker integration test binary itself links against
+      # libswe (pkg/httpservice imports pkg/ephemeris for the Phase 9
+      # ResolvedEphePath() diagnostic, which transitively pulls in
+      # swephgo).  We need libswe and the .se1 data on the runner so
+      # `go test` can link and so the test binary can boot a local
+      # subprocess for harness self-checks.  Inside the docker
+      # container we drive over HTTP, the image already ships its own
+      # libswe.
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential ca-certificates patch rsync
+      - name: Build and install Swiss Ephemeris
+        run: |
+          set -euo pipefail
+          cd "$SRC_DIR/ephemeris/swisseph"
+          rm -rf swisseph-2.10.03
+          tar zxf swisseph-2.10.03.tar.gz
+          cd swisseph-2.10.03
+          patch -p1 < ../../../swisseph-makefile-install.patch
+          make PREFIX=/usr/local libswe.so libswe.a
+          sudo install -d /usr/local/lib /usr/local/include /usr/local/share/swisseph
+          sudo install -m 644 libswe.so libswe.a /usr/local/lib/
+          sudo install -m 644 sweph.h swephexp.h /usr/local/include/
+          sudo rsync -a "$GITHUB_WORKSPACE/$SRC_DIR/ephemeris/data/REQUIRED_EPHEMERIS_FILES/" /usr/local/share/swisseph/
+          sudo ldconfig
       - name: make test-integration-docker
         working-directory: ${{ env.SRC_DIR }}
+        env:
+          LD_LIBRARY_PATH: /usr/local/lib
+          SE_EPHE_PATH: /usr/local/share/swisseph
         run: make test-integration-docker
 
   validate-kubernetes:
@@ -147,6 +181,30 @@ jobs:
         with:
           go-version-file: src/mademanifest-engine/go.mod
           cache-dependency-path: src/mademanifest-engine/go.sum
+      # The k8s integration test binary itself links against libswe
+      # for the same reason as integration-docker (Phase 9 added an
+      # import of pkg/ephemeris in pkg/httpservice).  The kind cluster
+      # runs the production image which ships its own libswe; the host
+      # only needs it for the test-binary build.
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential ca-certificates patch rsync
+      - name: Build and install Swiss Ephemeris
+        run: |
+          set -euo pipefail
+          cd "$SRC_DIR/ephemeris/swisseph"
+          rm -rf swisseph-2.10.03
+          tar zxf swisseph-2.10.03.tar.gz
+          cd swisseph-2.10.03
+          patch -p1 < ../../../swisseph-makefile-install.patch
+          make PREFIX=/usr/local libswe.so libswe.a
+          sudo install -d /usr/local/lib /usr/local/include /usr/local/share/swisseph
+          sudo install -m 644 libswe.so libswe.a /usr/local/lib/
+          sudo install -m 644 sweph.h swephexp.h /usr/local/include/
+          sudo rsync -a "$GITHUB_WORKSPACE/$SRC_DIR/ephemeris/data/REQUIRED_EPHEMERIS_FILES/" /usr/local/share/swisseph/
+          sudo ldconfig
       - name: Install kind
         run: |
           set -euo pipefail
@@ -160,4 +218,7 @@ jobs:
           version: "v1.30.0"
       - name: make test-integration-k8s
         working-directory: ${{ env.SRC_DIR }}
+        env:
+          LD_LIBRARY_PATH: /usr/local/lib
+          SE_EPHE_PATH: /usr/local/share/swisseph
         run: make test-integration-k8s
