@@ -126,14 +126,30 @@ GET  http://<host>:<port>/version
 POST http://<host>:<port>/manifest   (Content-Type: application/json)
 ```
 
-Body-size cap on `POST /manifest` is 10 MiB.  The handler returns:
+`POST /manifest` enforces (Phase 10):
 
-- `200 OK` with the calculation result on success.
-- `400 Bad Request` on malformed input or processing failure (to be
-  replaced with the Trinity error envelope in Phase 3).
-- `405 Method Not Allowed` for non-POST on `/manifest` and non-GET on
-  `/version`.
-- `500 Internal Server Error` on a handler panic.
+- `Content-Type: application/json` is required (charset suffixes
+  like `; charset=utf-8` are accepted).
+- Body size cap = `MaxRequestBodyBytes` = 1 MiB.
+
+Status code policy:
+
+| HTTP code | When                                                     | Trinity error_type    |
+|-----------|----------------------------------------------------------|-----------------------|
+| 200       | Valid payload; canonical success envelope is returned.   | -                     |
+| 400       | Missing required field, type/format violation, malformed JSON, IANA timezone alias, range violation. | `incomplete_input` / `invalid_input` |
+| 405       | Wrong HTTP method on any of the three endpoints.         | -                     |
+| 413       | Body exceeds `MaxRequestBodyBytes`.                      | `unsupported_input`   |
+| 415       | Missing or non-`application/json` Content-Type.          | `invalid_input`       |
+| 422       | Structurally valid input outside Trinity v1 scope (sub-minute precision, multi-person, etc.). | `unsupported_input`  |
+| 500       | Internal calculation failure or handler panic.           | `execution_failure`   |
+
+`GET /healthz` is liveness-only: the body is exactly
+`{"status":"ok"}` and never contains version information (the
+liveness probe does not change scope across phases).
+
+`GET /version` returns the canonical version block plus the Phase 9
+diagnostic field `ephe_path_resolved`.
 
 Environment variables read at startup:
 
@@ -466,7 +482,7 @@ curl -s http://localhost:8080/version
 
 ```json
 {
-  "engine_version": "v0.1.0-phase-9",
+  "engine_version": "v0.1.0-phase-10",
   "canon_version": "trinity-v1-rev-0",
   "mapping_version": "trinity-v1-rev-0",
   "input_schema_version": "trinity-v1-rev-0",

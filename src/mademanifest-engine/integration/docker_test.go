@@ -96,3 +96,12 @@ func TestDockerHarnessEnvImmuneToSENodePolicy(t *testing.T) {
 
 	AssertEnvImmuneCanonicalSchiedam(t, srv.BaseURL)
 }
+
+// TestDockerHarnessHTTPContract is the Phase 10 contract sentinel
+// running against the production Docker image.
+func TestDockerHarnessHTTPContract(t *testing.T) {
+	srv := StartDockerContainer(t, DockerOptions{})
+	t.Cleanup(srv.Shutdown)
+
+	AssertHTTPContract(t, srv.BaseURL)
+}

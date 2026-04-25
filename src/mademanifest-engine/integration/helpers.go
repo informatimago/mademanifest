@@ -163,6 +163,42 @@ func PostManifest(baseURL string, body any, out any) (int, []byte, error) {
 	return status, raw, nil
 }
 
+// PostRaw sends body bytes to baseURL+path with the given
+// Content-Type header (empty string omits the header entirely) and
+// returns the HTTP status code and response body bytes.  Used by
+// the Phase 10 contract tests to exercise the handler's
+// content-type, oversize, and malformed-JSON rejection paths
+// without going through the canonicalising PostJSON helper.
+func PostRaw(baseURL, path string, body []byte, contentType string) (int, []byte, error) {
+	target, err := url.JoinPath(baseURL, path)
+	if err != nil {
+		return 0, nil, fmt.Errorf("build URL: %w", err)
+	}
+	req, err := http.NewRequest(http.MethodPost, target, bytes.NewReader(body))
+	if err != nil {
+		return 0, nil, fmt.Errorf("new request: %w", err)
+	}
+	if contentType != "" {
+		req.Header.Set("Content-Type", contentType)
+	} else {
+		// http.NewRequest defaults to text/plain when the body is a
+		// non-nil bytes.Reader; explicitly clear to test the
+		// no-Content-Type path.
+		req.Header.Del("Content-Type")
+	}
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, nil, fmt.Errorf("do request: %w", err)
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return resp.StatusCode, raw, fmt.Errorf("read body: %w", err)
+	}
+	return resp.StatusCode, raw, nil
+}
+
 // GetJSON is the symmetric helper for read-only endpoints like /healthz
 // or the forthcoming /version.
 func GetJSON(baseURL, path string) (int, []byte, error) {

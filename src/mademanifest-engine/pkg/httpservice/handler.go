@@ -2,9 +2,11 @@ package httpservice
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
+	"mime"
 	"net/http"
 
 	"mademanifest-engine/pkg/canon"
@@ -16,6 +18,16 @@ import (
 	"mademanifest-engine/pkg/trinity/input"
 	"mademanifest-engine/pkg/trinity/output"
 )
+
+// MaxRequestBodyBytes caps the size of the request body that
+// /manifest accepts.  Phase 10 pins this at 1 MiB, well above any
+// realistic Trinity input (a canonical payload is ~150 bytes), but
+// far below sizes that would burden the engine's JSON decoder or
+// expose us to memory-pressure DoS via large bodies.
+//
+// Bodies that exceed this cap are rejected with HTTP 413 and an
+// unsupported_input envelope per the Phase 10 plan deliverable.
+const MaxRequestBodyBytes = 1 << 20
 
 // Processor consumes the request body and returns the bytes to send
 // back, the HTTP status code to attach, and an error.  A non-nil
@@ -89,8 +101,19 @@ func (h Handler) handleManifest(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	const maxBodyBytes = 10 << 20
-	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
+	// Phase 10: Content-Type enforcement.  A POST /manifest with the
+	// wrong (or missing) Content-Type is rejected with HTTP 415 and
+	// a Trinity error envelope of type invalid_input, before the
+	// body is even read.  This protects clients from accidentally
+	// posting form-encoded or text/plain payloads and from us
+	// silently parsing them as JSON.
+	if msg, ok := requireJSONContentType(r); !ok {
+		env := output.NewError(output.ErrorInvalidInput, msg)
+		writeJSON(w, http.StatusUnsupportedMediaType, env)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, MaxRequestBodyBytes)
 
 	defer func() {
 		if recovered := recover(); recovered != nil {
@@ -103,6 +126,19 @@ func (h Handler) handleManifest(w http.ResponseWriter, r *http.Request) {
 
 	body, status, err := h.Process(r.Body, h.CanonPaths)
 	if err != nil {
+		// Phase 10: distinguish oversize-body errors from generic
+		// execution failures.  http.MaxBytesReader returns
+		// *http.MaxBytesError once the cap is hit; we surface that
+		// as the canonical 413 + unsupported_input envelope before
+		// falling through to the generic 500 path.
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			env := output.NewError(output.ErrorUnsupportedInput,
+				fmt.Sprintf("request body exceeds %d-byte limit",
+					MaxRequestBodyBytes))
+			writeJSON(w, http.StatusRequestEntityTooLarge, env)
+			return
+		}
 		log.Printf("manifest processor error: %v", err)
 		env := output.NewError(output.ErrorExecutionFailure, err.Error())
 		writeJSON(w, http.StatusInternalServerError, env)
@@ -114,6 +150,30 @@ func (h Handler) handleManifest(w http.ResponseWriter, r *http.Request) {
 	if _, err := w.Write(body); err != nil {
 		log.Printf("write response: %v", err)
 	}
+}
+
+// requireJSONContentType inspects the request's Content-Type header
+// and returns ("", true) when it is application/json (with optional
+// parameters such as charset=utf-8), or (msg, false) when it is
+// missing, malformed, or not application/json.
+//
+// The string return is suitable for the error envelope's message
+// field; the bool is the gate for the caller's branching.
+func requireJSONContentType(r *http.Request) (string, bool) {
+	ct := r.Header.Get("Content-Type")
+	if ct == "" {
+		return "Content-Type header is required; expected application/json", false
+	}
+	mediaType, _, err := mime.ParseMediaType(ct)
+	if err != nil {
+		return fmt.Sprintf("Content-Type %q is not parseable: %s", ct, err.Error()), false
+	}
+	if mediaType != "application/json" {
+		return fmt.Sprintf(
+			"Content-Type %q is not supported; expected application/json",
+			mediaType), false
+	}
+	return "", true
 }
 
 // trinityProcess is the default manifest processor.  It reads the

@@ -159,6 +159,7 @@ func TestHandleManifestProcessorErrorWrapsExecutionFailure(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/manifest",
 		strings.NewReader(`{}`))
+	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
 	handler.handleManifest(rec, req)
@@ -192,6 +193,7 @@ func TestHandleManifestRecoversFromPanic(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/manifest",
 		strings.NewReader(`{}`))
+	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
 	handler.handleManifest(rec, req)
@@ -271,5 +273,201 @@ func TestHandleVersionRejectsWrongMethod(t *testing.T) {
 
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("unexpected status: %d", rec.Code)
+	}
+}
+
+// TestHandleHealthzAlwaysOK pins the Phase 1 invariant the Phase 10
+// plan re-asserts: GET /healthz is liveness-only and never carries
+// version info.  The body must be exactly {"status":"ok"}.
+func TestHandleHealthzAlwaysOK(t *testing.T) {
+	handler := New(canon.Paths{})
+	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	rec := httptest.NewRecorder()
+
+	handler.handleHealth(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("/healthz status = %d", rec.Code)
+	}
+	if got := rec.Header().Get("Content-Type"); got != "application/json" {
+		t.Errorf("/healthz content-type = %q", got)
+	}
+	body := strings.TrimSpace(rec.Body.String())
+	if body != `{"status":"ok"}` {
+		t.Errorf("/healthz body = %q, want {\"status\":\"ok\"}", body)
+	}
+	// Phase 10: /healthz must NOT leak version info.
+	for _, banned := range []string{"engine_version", "canon_version", "swisseph_version"} {
+		if strings.Contains(rec.Body.String(), banned) {
+			t.Errorf("/healthz body leaks %q: %s", banned, rec.Body.String())
+		}
+	}
+}
+
+// TestHandleManifestRejectsMissingContentType is the Phase 10
+// content-type sentinel: a POST /manifest with no Content-Type
+// header at all gets HTTP 415 with a Trinity invalid_input
+// envelope, before the body is even read.
+func TestHandleManifestRejectsMissingContentType(t *testing.T) {
+	handler := New(canon.Paths{})
+	req := httptest.NewRequest(http.MethodPost, "/manifest",
+		strings.NewReader(canonicalBaseline))
+	// Intentionally do NOT set Content-Type.
+	rec := httptest.NewRecorder()
+
+	handler.handleManifest(rec, req)
+
+	if rec.Code != http.StatusUnsupportedMediaType {
+		t.Fatalf("status = %d, want 415; body = %s", rec.Code, rec.Body.String())
+	}
+	var env output.ErrorEnvelope
+	if err := json.Unmarshal(rec.Body.Bytes(), &env); err != nil {
+		t.Fatalf("decode envelope: %v", err)
+	}
+	if env.Error.Type != output.ErrorInvalidInput {
+		t.Errorf("error_type = %q, want %q",
+			env.Error.Type, output.ErrorInvalidInput)
+	}
+	if env.Metadata != output.CurrentMetadata() {
+		t.Errorf("envelope metadata drifted")
+	}
+	if !strings.Contains(env.Error.Message, "Content-Type") {
+		t.Errorf("error message should mention Content-Type; got %q",
+			env.Error.Message)
+	}
+}
+
+// TestHandleManifestRejectsWrongContentType – Phase 10.  POST with
+// Content-Type: text/plain (or anything that is not application/json)
+// must be rejected with 415 + invalid_input.
+func TestHandleManifestRejectsWrongContentType(t *testing.T) {
+	cases := []struct {
+		name        string
+		contentType string
+	}{
+		{"text/plain", "text/plain"},
+		{"application/x-www-form-urlencoded", "application/x-www-form-urlencoded"},
+		{"application/xml", "application/xml"},
+		{"application/json typo", "application/jso"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			handler := New(canon.Paths{})
+			req := httptest.NewRequest(http.MethodPost, "/manifest",
+				strings.NewReader(canonicalBaseline))
+			req.Header.Set("Content-Type", c.contentType)
+			rec := httptest.NewRecorder()
+
+			handler.handleManifest(rec, req)
+
+			if rec.Code != http.StatusUnsupportedMediaType {
+				t.Fatalf("status = %d, want 415", rec.Code)
+			}
+			var env output.ErrorEnvelope
+			if err := json.Unmarshal(rec.Body.Bytes(), &env); err != nil {
+				t.Fatalf("decode envelope: %v", err)
+			}
+			if env.Error.Type != output.ErrorInvalidInput {
+				t.Errorf("error_type = %q, want %q",
+					env.Error.Type, output.ErrorInvalidInput)
+			}
+		})
+	}
+}
+
+// TestHandleManifestAcceptsContentTypeWithCharset – Phase 10.
+// "application/json; charset=utf-8" is the canonical wire form for
+// JSON requests sent by many clients; accept it.
+func TestHandleManifestAcceptsContentTypeWithCharset(t *testing.T) {
+	handler := New(canon.Paths{})
+	req := httptest.NewRequest(http.MethodPost, "/manifest",
+		strings.NewReader(canonicalBaseline))
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	rec := httptest.NewRecorder()
+
+	handler.handleManifest(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
+	}
+}
+
+// TestHandleManifestRejectsOversizeBody is the Phase 10 oversize
+// sentinel.  A request body that exceeds MaxRequestBodyBytes is
+// rejected with HTTP 413 and a Trinity unsupported_input envelope.
+func TestHandleManifestRejectsOversizeBody(t *testing.T) {
+	handler := New(canon.Paths{})
+	// Build a body that's syntactically a JSON object but obviously
+	// over the limit: open-brace + giant pad + close-brace.
+	pad := strings.Repeat("x", MaxRequestBodyBytes+1024)
+	body := `{"birth_date":"1990-04-09","pad":"` + pad + `"}`
+	req := httptest.NewRequest(http.MethodPost, "/manifest",
+		strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	handler.handleManifest(rec, req)
+
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("status = %d, want 413; body = %s", rec.Code, rec.Body.String())
+	}
+	var env output.ErrorEnvelope
+	if err := json.Unmarshal(rec.Body.Bytes(), &env); err != nil {
+		t.Fatalf("decode envelope: %v", err)
+	}
+	if env.Error.Type != output.ErrorUnsupportedInput {
+		t.Errorf("error_type = %q, want %q",
+			env.Error.Type, output.ErrorUnsupportedInput)
+	}
+	if env.Metadata != output.CurrentMetadata() {
+		t.Errorf("envelope metadata drifted")
+	}
+	if !strings.Contains(env.Error.Message, "exceeds") {
+		t.Errorf("error message should mention size limit; got %q",
+			env.Error.Message)
+	}
+}
+
+// TestHandleManifestRejectsMalformedJSON is the Phase 10 malformed-
+// JSON sentinel.  A syntactically broken JSON body classifies as
+// invalid_input + 400.  This is enforced by the validator (Phase 2);
+// Phase 10 pins it through the HTTP surface.
+func TestHandleManifestRejectsMalformedJSON(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+	}{
+		{"truncated", `{"birth_date":"1990-04-09"`},
+		{"missing colon", `{"birth_date" "1990-04-09"}`},
+		{"trailing comma", `{"birth_date":"1990-04-09",}`},
+		{"single quote", `{'birth_date':'1990-04-09'}`},
+		{"plain text", `not json at all`},
+		{"empty body", ``},
+		{"null payload", `null`},
+		{"array payload", `["birth_date","1990-04-09"]`},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			handler := New(canon.Paths{})
+			req := httptest.NewRequest(http.MethodPost, "/manifest",
+				strings.NewReader(c.body))
+			req.Header.Set("Content-Type", "application/json")
+			rec := httptest.NewRecorder()
+
+			handler.handleManifest(rec, req)
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want 400; body = %s",
+					rec.Code, rec.Body.String())
+			}
+			var env output.ErrorEnvelope
+			if err := json.Unmarshal(rec.Body.Bytes(), &env); err != nil {
+				t.Fatalf("decode envelope: %v\nbody: %s", err, rec.Body.String())
+			}
+			if env.Error.Type != output.ErrorInvalidInput {
+				t.Errorf("error_type = %q, want %q",
+					env.Error.Type, output.ErrorInvalidInput)
+			}
+		})
 	}
 }

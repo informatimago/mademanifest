@@ -92,3 +92,9 @@ func TestK8sHarnessSchiedamGeneKeysMatchOracle(t *testing.T) {
 func TestK8sHarnessEnvImmuneToSENodePolicy(t *testing.T) {
 	AssertEnvImmuneCanonicalSchiedam(t, sharedK8s.BaseURL)
 }
+
+// TestK8sHarnessHTTPContract is the Phase 10 contract sentinel
+// running against the kind-deployed service.
+func TestK8sHarnessHTTPContract(t *testing.T) {
+	AssertHTTPContract(t, sharedK8s.BaseURL)
+}

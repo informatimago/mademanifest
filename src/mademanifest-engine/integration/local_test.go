@@ -120,3 +120,14 @@ func TestLocalHarnessEnvImmuneToSENodePolicy(t *testing.T) {
 
 	AssertEnvImmuneCanonicalSchiedam(t, srv.BaseURL)
 }
+
+// TestLocalHarnessHTTPContract is the Phase 10 contract sentinel:
+// the local subprocess must enforce content-type, oversize-body,
+// malformed-JSON, and method-not-allowed rejection paths through
+// the same network surface clients hit in production.
+func TestLocalHarnessHTTPContract(t *testing.T) {
+	srv := StartLocalServer(t, LocalServerOptions{})
+	t.Cleanup(srv.Shutdown)
+
+	AssertHTTPContract(t, srv.BaseURL)
+}
