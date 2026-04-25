@@ -1,0 +1,11 @@
+{
+  "system": {
+    "derivation_basis": "human_design"
+  },
+  "activations": {
+    "life_work": {"key": 42, "line": 1},
+    "evolution": {"key": 32, "line": 1},
+    "radiance":  {"key": 61, "line": 3},
+    "purpose":   {"key": 62, "line": 3}
+  }
+}

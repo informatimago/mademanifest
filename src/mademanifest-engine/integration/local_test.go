@@ -93,3 +93,15 @@ func TestLocalHarnessSchiedamStructureMatchesOracle(t *testing.T) {
 
 	AssertSchiedamStructureMatchesOracle(t, srv.BaseURL)
 }
+
+// TestLocalHarnessSchiedamGeneKeysMatchOracle is the Phase 8
+// regression sentinel: the canonical Schiedam payload must produce
+// the frozen gene_keys block (system.derivation_basis = "human_design"
+// + four canonical activations life_work / evolution / radiance /
+// purpose).
+func TestLocalHarnessSchiedamGeneKeysMatchOracle(t *testing.T) {
+	srv := StartLocalServer(t, LocalServerOptions{})
+	t.Cleanup(srv.Shutdown)
+
+	AssertSchiedamGeneKeysMatchOracle(t, srv.BaseURL)
+}

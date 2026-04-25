@@ -10,6 +10,7 @@ import (
 	"mademanifest-engine/pkg/canon"
 	"mademanifest-engine/pkg/hd/structure"
 	"mademanifest-engine/pkg/trinity/astro"
+	"mademanifest-engine/pkg/trinity/genekeys"
 	"mademanifest-engine/pkg/trinity/hd"
 	"mademanifest-engine/pkg/trinity/input"
 	"mademanifest-engine/pkg/trinity/output"
@@ -180,6 +181,15 @@ func trinityProcess(bodyReader io.Reader, _ canon.Paths) ([]byte, int, error) {
 	env.HumanDesign.Authority = struc.Authority
 	env.HumanDesign.Profile = struc.Profile
 	env.HumanDesign.IncarnationCross = struc.IncarnationCross
+
+	// Phase 8: Gene Keys block.  Derived directly from the four
+	// HD pillar activations (personality sun + earth, design sun +
+	// earth) — no astronomical computation, no node policy.
+	gk, err := genekeys.Compute(personality, design)
+	if err != nil {
+		return nil, 0, fmt.Errorf("compute gene keys: %w", err)
+	}
+	env.GeneKeys = gk
 
 	body, encErr := json.Marshal(env)
 	if encErr != nil {

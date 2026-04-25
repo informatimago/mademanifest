@@ -383,17 +383,34 @@ activation set:
 
 ### 5. Gene Keys module
 
-Gene Keys are derived directly from Human Design output:
+Gene Keys are derived directly from Human Design output by
+`pkg/trinity/genekeys.Compute`.  The block has exactly two top-level
+sub-objects: `system` and `activations`.
 
-- Activation Sequence:
-  - **Life's Work** = Personality Sun
-  - **Evolution** = Personality Earth
-  - **Radiance** = Design Sun
-  - **Purpose** = Design Earth
+- `system.derivation_basis` is the literal string `"human_design"`.
+- `activations` carries the four canonical positions, each a
+  `{key, line}` pair where `key` is the HD gate number and `line` is
+  the HD line number:
+  - `life_work` = Personality Sun
+  - `evolution` = Personality Earth
+  - `radiance`  = Design Sun
+  - `purpose`   = Design Earth
 
-> **Transition note.**  Phase 8 renames the PoC field `lifes_work` to
-> the Trinity canonical `life_work` and wraps the four values under a
-> `{system, activations}` object.
+The derivation is a pure function of the four HD pillar activations;
+no astronomical computation, no node policy, no canon constants.
+
+Out of scope for v1 (must not appear in the wire output):
+
+- shadow / gift / essence text
+- sequence prose
+- semantic-state fields
+
+> **Transition note (Phase 8 -- landed).**  The PoC field name
+> `lifes_work` is retired; the canonical name is `life_work`.  The
+> rename is enforced by the Phase 3 output type
+> `output.GKActivations.LifeWork`, which has had the canonical JSON
+> tag since the envelope types landed.  Phase 8 only adds the
+> derivation that finally fills those four `{key, line}` pairs.
 
 ## Output Format
 
@@ -449,7 +466,7 @@ curl -s http://localhost:8080/version
 
 ```json
 {
-  "engine_version": "v0.1.0-phase-7",
+  "engine_version": "v0.1.0-phase-8",
   "canon_version": "trinity-v1-rev-0",
   "mapping_version": "trinity-v1-rev-0",
   "input_schema_version": "trinity-v1-rev-0",
