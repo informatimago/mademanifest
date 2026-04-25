@@ -29,8 +29,16 @@ test-http-service:
     - trap 'kill $SERVER_PID' EXIT
     - sleep 3
     - curl --fail --silent --show-error http://127.0.0.1:18080/healthz
-    - curl --fail --silent --show-error -X POST -H 'Content-Type: application/json' --data-binary @"$CI_PROJECT_DIR/$SRC_DIR/golden/GOLDEN_TEST_CASE_V1.json" http://127.0.0.1:18080/manifest -o out-http.json
+    - curl --fail --silent --show-error http://127.0.0.1:18080/version | grep -q '"engine_version"'
+    # POST a canonical Trinity payload (the Schiedam baseline) and
+    # require a 200 status with a non-empty success-envelope body.
+    # The PoC GOLDEN_TEST_CASE_V1.json shape is no longer accepted
+    # on /manifest – it would correctly be rejected as invalid_input
+    # since Phase 2.
+    - curl --fail --silent --show-error -X POST -H 'Content-Type: application/json' --data-binary @"$CI_PROJECT_DIR/$SRC_DIR/golden/trinity/baseline/schiedam_1990_04_09_input.json" http://127.0.0.1:18080/manifest -o out-http.json
     - test -s out-http.json
+    # The handler emits compact JSON via json.Marshal, no spaces.
+    - grep -q '"status":"success"' out-http.json
 
 validate-kubernetes:
   stage: test

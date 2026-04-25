@@ -111,6 +111,26 @@ jobs:
         working-directory: ${{ env.SRC_DIR }}
         run: make test-integration-docker
 
+  validate-kubernetes:
+    name: Validate Kubernetes Manifests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install kubeconform
+        run: |
+          set -euo pipefail
+          version="v0.6.7"
+          arch="linux-amd64"
+          url="https://github.com/yannh/kubeconform/releases/download/${version}/kubeconform-${arch}.tar.gz"
+          curl -fsSL "$url" | tar xz
+          sudo mv kubeconform /usr/local/bin/kubeconform
+      - name: Validate manifests
+        run: |
+          kubeconform -strict -summary \
+            "$SRC_DIR/deploy/kubernetes/configmap.yaml" \
+            "$SRC_DIR/deploy/kubernetes/deployment.yaml" \
+            "$SRC_DIR/deploy/kubernetes/service.yaml"
+
   integration-k8s:
     name: Integration (kubernetes via kind)
     needs: unit
