@@ -105,3 +105,12 @@ func TestDockerHarnessHTTPContract(t *testing.T) {
 
 	AssertHTTPContract(t, srv.BaseURL)
 }
+
+// TestDockerHarnessTrinityGoldenPack is the Phase 11 sentinel
+// running against the production Docker image.
+func TestDockerHarnessTrinityGoldenPack(t *testing.T) {
+	srv := StartDockerContainer(t, DockerOptions{})
+	t.Cleanup(srv.Shutdown)
+
+	AssertTrinityGoldenPack(t, srv.BaseURL)
+}

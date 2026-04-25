@@ -131,3 +131,13 @@ func TestLocalHarnessHTTPContract(t *testing.T) {
 
 	AssertHTTPContract(t, srv.BaseURL)
 }
+
+// TestLocalHarnessTrinityGoldenPack is the Phase 11 sentinel: the
+// full Trinity golden pack (3+5+5+5+2+3 fixtures) must round-trip
+// through the local subprocess HTTP surface without drift.
+func TestLocalHarnessTrinityGoldenPack(t *testing.T) {
+	srv := StartLocalServer(t, LocalServerOptions{})
+	t.Cleanup(srv.Shutdown)
+
+	AssertTrinityGoldenPack(t, srv.BaseURL)
+}

@@ -36,7 +36,7 @@ const (
 
 	// EngineVersion is this build's own implementation revision.
 	// Bumps on any production code change, not just canon revisions.
-	EngineVersion = "v0.1.0-phase-10"
+	EngineVersion = "v0.1.0-phase-11"
 )
 
 const (

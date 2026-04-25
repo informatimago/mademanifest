@@ -20,7 +20,7 @@ in a later phase.
 
 | Constant             | Value              | Canonical source                    | A-ambiguity |
 |----------------------+--------------------+-------------------------------------+-------------|
-| =EngineVersion=      | =v0.1.0-phase-10= | this build                          | –           |
+| =EngineVersion=      | =v0.1.0-phase-11= | this build                          | –           |
 | =CanonVersion=       | =trinity-v1-rev-0= | =trinity.org= (scope + calc + map + output) | A8 |
 | =MappingVersion=     | =trinity-v1-rev-0= | =trinity.org= §"Mapping Canon"     | A8          |
 | =InputSchemaVersion= | =trinity-v1-rev-0= | Document 04                         | A5, A6      |

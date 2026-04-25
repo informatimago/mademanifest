@@ -98,3 +98,9 @@ func TestK8sHarnessEnvImmuneToSENodePolicy(t *testing.T) {
 func TestK8sHarnessHTTPContract(t *testing.T) {
 	AssertHTTPContract(t, sharedK8s.BaseURL)
 }
+
+// TestK8sHarnessTrinityGoldenPack is the Phase 11 sentinel running
+// against the kind-deployed service.
+func TestK8sHarnessTrinityGoldenPack(t *testing.T) {
+	AssertTrinityGoldenPack(t, sharedK8s.BaseURL)
+}

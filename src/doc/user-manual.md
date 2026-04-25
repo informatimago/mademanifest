@@ -482,7 +482,7 @@ curl -s http://localhost:8080/version
 
 ```json
 {
-  "engine_version": "v0.1.0-phase-10",
+  "engine_version": "v0.1.0-phase-11",
   "canon_version": "trinity-v1-rev-0",
   "mapping_version": "trinity-v1-rev-0",
   "input_schema_version": "trinity-v1-rev-0",
@@ -530,6 +530,52 @@ fmt.Println(info.CanonVersion, info.SwissEphVersion)
 | `ephe_path_resolved`   | Deployment-resolved Swiss Ephemeris path; appears only in `/version`, never in metadata. |
 
 See [`version-pins.org`](version-pins.org) for the full A-register.
+
+## Golden Test Pack
+
+Phase 11 ships the canonical Trinity Golden Test Pack under
+`src/golden/trinity/`.  The directory is organised by canon
+category:
+
+```
+src/golden/trinity/
+  valid_baseline/
+    schiedam_1990_04_09/
+      input.json
+      expected.json
+    new_york_1985_07_21/...
+    tokyo_2000_01_01/...
+  valid_edge/                  (5 cases)
+  invalid_input/               (5 cases)
+  incomplete_input/            (5 cases)
+  unsupported_input/           (2 cases)
+  regression_sentinel/         (3 cases)
+```
+
+`pkg/golden.LoadFixtures` enforces the canon minimums (3 / 5 / 5 /
+5 / 2 / 3) at load time.  The runner asserts:
+
+- **Success cases** (`valid_baseline`, `valid_edge`,
+  `regression_sentinel`): the engine response must equal the frozen
+  `expected.json` field-by-field.  The metadata block is *excluded*
+  from the comparison and asserted separately against
+  `output.CurrentMetadata()` — so phase bumps that change
+  `engine_version` do not invalidate fixtures.
+- **Error cases** (`invalid_input`, `incomplete_input`,
+  `unsupported_input`): the engine must return the canon-mapped
+  HTTP status code (400 / 400 / 422) and an error envelope whose
+  `error_type` matches the fixture.  Per ambiguity *A4*, the
+  `message` field is informational and is not compared.
+
+`TestTrinityGoldenPack` in each integration harness (local
+subprocess, Docker container, kind cluster) iterates the entire
+pack and runs each fixture as a `t.Run` sub-test, so a single drift
+surfaces with the exact `<category>/<name>` path.
+
+To capture a fresh fixture set against a different (or
+re-engineered) engine build, start `cmd/httpserver` and post the
+existing `input.json` files; freeze the resulting body (with the
+`metadata` key removed) as `expected.json`.
 
 ## Determinism Requirements
 

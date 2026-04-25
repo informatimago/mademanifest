@@ -1,0 +1,415 @@
+{
+  "status": "success",
+  "input_echo": {
+    "birth_date": "1990-09-23",
+    "birth_time": "06:00",
+    "timezone": "Pacific/Auckland",
+    "latitude": -0.5,
+    "longitude": 178.0
+  },
+  "astrology": {
+    "system": {
+      "zodiac": "tropical",
+      "house_system": "placidus",
+      "node_type": "mean"
+    },
+    "angles": {
+      "ascendant": {
+        "longitude": 179.271088,
+        "sign": "virgo"
+      },
+      "midheaven": {
+        "longitude": 89.388744,
+        "sign": "gemini"
+      }
+    },
+    "house_cusps": [
+      {
+        "house": 1,
+        "longitude": 179.271088,
+        "sign": "virgo"
+      },
+      {
+        "house": 2,
+        "longitude": 211.561301,
+        "sign": "scorpio"
+      },
+      {
+        "house": 3,
+        "longitude": 241.512216,
+        "sign": "sagittarius"
+      },
+      {
+        "house": 4,
+        "longitude": 269.388744,
+        "sign": "sagittarius"
+      },
+      {
+        "house": 5,
+        "longitude": 297.214318,
+        "sign": "capricorn"
+      },
+      {
+        "house": 6,
+        "longitude": 327.048813,
+        "sign": "aquarius"
+      },
+      {
+        "house": 7,
+        "longitude": 359.271088,
+        "sign": "pisces"
+      },
+      {
+        "house": 8,
+        "longitude": 31.561301,
+        "sign": "taurus"
+      },
+      {
+        "house": 9,
+        "longitude": 61.512216,
+        "sign": "gemini"
+      },
+      {
+        "house": 10,
+        "longitude": 89.388744,
+        "sign": "gemini"
+      },
+      {
+        "house": 11,
+        "longitude": 117.214318,
+        "sign": "cancer"
+      },
+      {
+        "house": 12,
+        "longitude": 147.048813,
+        "sign": "leo"
+      }
+    ],
+    "objects": [
+      {
+        "object_id": "sun",
+        "longitude": 179.472208,
+        "sign": "virgo",
+        "house": 1
+      },
+      {
+        "object_id": "moon",
+        "longitude": 222.107331,
+        "sign": "scorpio",
+        "house": 2
+      },
+      {
+        "object_id": "mercury",
+        "longitude": 161.750655,
+        "sign": "virgo",
+        "house": 12
+      },
+      {
+        "object_id": "venus",
+        "longitude": 169.09366,
+        "sign": "virgo",
+        "house": 12
+      },
+      {
+        "object_id": "mars",
+        "longitude": 69.448464,
+        "sign": "gemini",
+        "house": 9
+      },
+      {
+        "object_id": "jupiter",
+        "longitude": 126.928442,
+        "sign": "leo",
+        "house": 11
+      },
+      {
+        "object_id": "saturn",
+        "longitude": 288.704352,
+        "sign": "capricorn",
+        "house": 4
+      },
+      {
+        "object_id": "uranus",
+        "longitude": 275.627518,
+        "sign": "capricorn",
+        "house": 4
+      },
+      {
+        "object_id": "neptune",
+        "longitude": 281.797885,
+        "sign": "capricorn",
+        "house": 4
+      },
+      {
+        "object_id": "pluto",
+        "longitude": 225.909593,
+        "sign": "scorpio",
+        "house": 2
+      },
+      {
+        "object_id": "chiron",
+        "longitude": 115.704721,
+        "sign": "cancer",
+        "house": 10
+      },
+      {
+        "object_id": "north_node_mean",
+        "longitude": 304.442486,
+        "sign": "aquarius",
+        "house": 5
+      },
+      {
+        "object_id": "earth",
+        "longitude": 359.472208,
+        "sign": "pisces",
+        "house": 7
+      }
+    ]
+  },
+  "human_design": {
+    "system": {
+      "node_type": "true",
+      "design_time_utc": "1990-06-23T04:34:26Z"
+    },
+    "personality_activations": [
+      {
+        "object_id": "sun",
+        "gate": 46,
+        "line": 4
+      },
+      {
+        "object_id": "earth",
+        "gate": 25,
+        "line": 4
+      },
+      {
+        "object_id": "north_node",
+        "gate": 19,
+        "line": 1
+      },
+      {
+        "object_id": "south_node",
+        "gate": 33,
+        "line": 1
+      },
+      {
+        "object_id": "moon",
+        "gate": 1,
+        "line": 1
+      },
+      {
+        "object_id": "mercury",
+        "gate": 64,
+        "line": 3
+      },
+      {
+        "object_id": "venus",
+        "gate": 47,
+        "line": 5
+      },
+      {
+        "object_id": "mars",
+        "gate": 35,
+        "line": 1
+      },
+      {
+        "object_id": "jupiter",
+        "gate": 33,
+        "line": 2
+      },
+      {
+        "object_id": "saturn",
+        "gate": 54,
+        "line": 6
+      },
+      {
+        "object_id": "uranus",
+        "gate": 58,
+        "line": 5
+      },
+      {
+        "object_id": "neptune",
+        "gate": 38,
+        "line": 5
+      },
+      {
+        "object_id": "pluto",
+        "gate": 1,
+        "line": 5
+      }
+    ],
+    "design_activations": [
+      {
+        "object_id": "sun",
+        "gate": 15,
+        "line": 6
+      },
+      {
+        "object_id": "earth",
+        "gate": 10,
+        "line": 6
+      },
+      {
+        "object_id": "north_node",
+        "gate": 19,
+        "line": 3
+      },
+      {
+        "object_id": "south_node",
+        "gate": 33,
+        "line": 3
+      },
+      {
+        "object_id": "moon",
+        "gate": 52,
+        "line": 6
+      },
+      {
+        "object_id": "mercury",
+        "gate": 45,
+        "line": 6
+      },
+      {
+        "object_id": "venus",
+        "gate": 8,
+        "line": 6
+      },
+      {
+        "object_id": "mars",
+        "gate": 51,
+        "line": 4
+      },
+      {
+        "object_id": "jupiter",
+        "gate": 53,
+        "line": 5
+      },
+      {
+        "object_id": "saturn",
+        "gate": 61,
+        "line": 6
+      },
+      {
+        "object_id": "uranus",
+        "gate": 38,
+        "line": 1
+      },
+      {
+        "object_id": "neptune",
+        "gate": 54,
+        "line": 1
+      },
+      {
+        "object_id": "pluto",
+        "gate": 1,
+        "line": 5
+      }
+    ],
+    "channels": [
+      {
+        "channel_id": "1-8",
+        "gate_a": 1,
+        "gate_b": 8,
+        "center_a": "g",
+        "center_b": "throat"
+      },
+      {
+        "channel_id": "25-51",
+        "gate_a": 25,
+        "gate_b": 51,
+        "center_a": "g",
+        "center_b": "ego"
+      },
+      {
+        "channel_id": "47-64",
+        "gate_a": 47,
+        "gate_b": 64,
+        "center_a": "ajna",
+        "center_b": "head"
+      }
+    ],
+    "centers": [
+      {
+        "center_id": "head",
+        "state": "defined"
+      },
+      {
+        "center_id": "ajna",
+        "state": "defined"
+      },
+      {
+        "center_id": "throat",
+        "state": "defined"
+      },
+      {
+        "center_id": "g",
+        "state": "defined"
+      },
+      {
+        "center_id": "ego",
+        "state": "defined"
+      },
+      {
+        "center_id": "solar_plexus",
+        "state": "undefined"
+      },
+      {
+        "center_id": "sacral",
+        "state": "undefined"
+      },
+      {
+        "center_id": "spleen",
+        "state": "undefined"
+      },
+      {
+        "center_id": "root",
+        "state": "undefined"
+      }
+    ],
+    "definition": "split",
+    "type": "manifestor",
+    "authority": "ego_manifested",
+    "profile": "4/6",
+    "incarnation_cross": {
+      "personality_sun": {
+        "gate": 46,
+        "line": 4
+      },
+      "personality_earth": {
+        "gate": 25,
+        "line": 4
+      },
+      "design_sun": {
+        "gate": 15,
+        "line": 6
+      },
+      "design_earth": {
+        "gate": 10,
+        "line": 6
+      }
+    }
+  },
+  "gene_keys": {
+    "system": {
+      "derivation_basis": "human_design"
+    },
+    "activations": {
+      "life_work": {
+        "key": 46,
+        "line": 4
+      },
+      "evolution": {
+        "key": 25,
+        "line": 4
+      },
+      "radiance": {
+        "key": 15,
+        "line": 6
+      },
+      "purpose": {
+        "key": 10,
+        "line": 6
+      }
+    }
+  }
+}

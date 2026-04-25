@@ -40,8 +40,12 @@ go.work.sum
 /src/mademanifest-engine/mademanifest-engine
 tarballs/
 
-expected.json
-out.json
+# PoC engine intermediate diff outputs (Makefile test-integration).
+# The Phase 11 Trinity Golden Test Pack lives at
+# src/golden/trinity/<category>/<name>/expected.json and must be
+# tracked, so the ignore is scoped to the PoC source directory.
+/src/mademanifest-engine/expected.json
+/src/mademanifest-engine/out.json
 
 *.tex
 *.zip
