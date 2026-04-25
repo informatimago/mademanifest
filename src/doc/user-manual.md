@@ -6,14 +6,15 @@ date: 2026-04-24
 # MadeManifest Calculation Engine User Manual
 
 This manual documents how to run the deterministic calculation engine
-in this bundle, including its two API surfaces (file-based CLI and
-HTTP service), command-line options, environment variables,
+in this bundle: the HTTP service surface, environment variables,
 computation details, and output format.
 
-The engine is currently in transition from the pre-Trinity "Golden PoC"
-contract to the Trinity v1 runtime contract defined in
-[`specifications/trinity/`](../../specifications/trinity/).  See the
-companion docs for the transition plan and the pinned versions:
+The engine implements the Trinity v1 runtime contract defined in
+[`specifications/trinity/`](../../specifications/trinity/).  Phase 12
+of the implementation plan retired the pre-Trinity "Golden PoC"
+file-based CLI; the HTTP service is now the only runtime surface.
+See the companion docs for the transition history and the pinned
+versions:
 
 - [`trinity-implementation-plan.org`](trinity-implementation-plan.org) — 15-phase
   migration plan with per-phase tests.
@@ -21,7 +22,7 @@ companion docs for the transition plan and the pinned versions:
   constant, with its canonical source and the open ambiguity register
   (A1..A8).
 - [`requirement-tracking.org`](requirement-tracking.org) — detailed
-  gap analysis between the current code and the Trinity canon.
+  gap analysis between the original PoC and the Trinity canon.
 
 ## Overview
 
@@ -31,35 +32,23 @@ The engine calculates objective, deterministic outputs for:
 - Human Design
 - Gene Keys (derived from Human Design)
 
-It uses the pinned Swiss Ephemeris version (`2.10.03`) and the pinned
-canon constants.  The output is bit-exactly reproducible given
-identical input, canon state, and version pins.
+It uses the pinned Swiss Ephemeris version (`2.10.03`), the pinned
+canon constants compiled into `pkg/canon`, and the IANA tzdata
+embedded in the Go 1.22 toolchain.  The output is bit-exactly
+reproducible given identical input and version pins.
 
-## API Surfaces
+## API Surface
 
-There are two ways to drive the engine:
+The single binary `cmd/httpserver` (built into
+`src/mademanifest-engine/mademanifest-engine` by `make -C src compile`)
+exposes a small HTTP API:
 
-### 1. File-based CLI (pre-Trinity PoC)
-
-The binary `mademanifest-engine/mademanifest-engine` (built by
-`make -C src compile`) takes one input JSON file and one output JSON
-file.  It implements the Golden PoC contract — this is the only
-runtime path still wired for the legacy `case_id` /
-`engine_contract` / `expected` shape.
-
-### 2. HTTP service
-
-The binary `mademanifest-engine/cmd/httpserver` exposes a small HTTP
-API:
-
-- `GET  /healthz`  — liveness probe.
-- `GET  /version`  — pinned version info as JSON (since Phase 1).
-- `POST /manifest` — submit a calculation payload and get the result.
-
-The HTTP service is the surface the Trinity input / output contract
-will land on in Phases 2–10.  Today `POST /manifest` still returns the
-PoC response shape; `GET /version` already returns the canonical
-Trinity-compatible `VersionInfo` envelope.
+- `GET  /healthz`  — liveness probe.  Body is exactly
+  `{"status":"ok"}`; never carries version information.
+- `GET  /version`  — pinned canon version block plus the Phase 9
+  diagnostic field `ephe_path_resolved`.
+- `POST /manifest` — submit a Trinity payload and receive a Trinity
+  success or error envelope (Phase 10 contract).
 
 ## Quick Start
 
@@ -67,56 +56,31 @@ From the repo root:
 
 ```bash
 make -C src swisseph-install swisseph-install-data   # one-time
-make -C src compile                                  # build the PoC CLI
-make -C src run                                      # produce out.json
-make -C src diff                                     # strict diff vs golden
+make -C src compile                                  # build cmd/httpserver
+make -C src test-integration-local                   # full Trinity golden pack
 ```
 
-For the HTTP service:
+To start the service manually:
 
 ```bash
 cd src/mademanifest-engine
-CGO_LDFLAGS="-lm" go build -o mademanifest-http ./cmd/httpserver
-CANON_DIRECTORY=$(pwd)/../canon \
-SE_EPHE_PATH=/usr/local/share/swisseph \
 PORT=8080 \
-./mademanifest-http
+SE_EPHE_PATH=/usr/local/share/swisseph \
+./mademanifest-engine
 ```
 
 Or containerised + on Kubernetes — see the top-level
 [`README.org`](../../README.org) for the full build/run recipe and
 the `src/scripts/k8s-local-{up,down,test}.sh` dev loop.
 
-## CLI Command-Line Usage
-
-```bash
-mademanifest-engine [options] <input.json> <output.json>
-```
-
-The program requires exactly two positional arguments:
-
-- `input.json` — JSON input case file.
-- `output.json` — output file to write.
-
-### Options
-
-| Flag                                | Default                   | Meaning                                                               |
-|-------------------------------------|---------------------------|-----------------------------------------------------------------------|
-| `--canon-directory` / `-cd`         | `canon`                   | Base directory for canon files.  Resolved from CWD if relative.       |
-| `--gate-sequence-file` / `-gs`      | `gate_sequence_v1.json`   | Canon gate sequence file.  Resolved from `--canon-directory`.         |
-| `--mandala-constants-file` / `-mc`  | `mandala_constants.json`  | Canon mandala constants file.                                         |
-| `--node-policy-file` / `-np`        | `node_policy.json`        | Canon node policy file.                                               |
-| `--dos`                             | off                       | Write output with CRLF line endings.                                  |
-| `--help` / `-h`                     |                           | Print usage and exit.                                                 |
-| `--version` / `-v`                  |                           | Print the pinned `VersionInfo` as JSON and exit (see *Versioning*).  |
-
-### Example
-
-From `src/mademanifest-engine/`:
-
-```bash
-./mademanifest-engine -cd ../canon ../golden/GOLDEN_TEST_CASE_V1.json out.json
-```
+> **Phase 12 transition note.**  The legacy `cmd/main.go` file-based
+> CLI that took `--canon-directory` / `--gate-sequence-file` /
+> `--mandala-constants-file` / `--node-policy-file` flags and read
+> the PoC `case_id` / `engine_contract` / `expected` shape has been
+> removed.  The Makefile aliases `run`, `diff`, and
+> `test-integration` now delegate to `test-integration-local`,
+> which runs the Phase 11 golden pack against a freshly-built
+> local subprocess.
 
 ## HTTP Service Usage
 
@@ -153,11 +117,15 @@ diagnostic field `ephe_path_resolved`.
 
 Environment variables read at startup:
 
-| Variable             | Default                       | Purpose                                                          |
-|----------------------|-------------------------------|------------------------------------------------------------------|
-| `PORT`               | `8080`                        | Port the server binds to.                                        |
-| `CANON_DIRECTORY`    | `/app/canon` (in container)   | Directory containing the three canon JSON files.                |
-| `SE_EPHE_PATH`       | resolved at runtime           | Directory containing Swiss Ephemeris `.se1` data files.          |
+| Variable        | Default               | Purpose                                                          |
+|-----------------|-----------------------|------------------------------------------------------------------|
+| `PORT`          | `8080`                | Port the server binds to.                                        |
+| `SE_EPHE_PATH`  | resolved at runtime   | Directory containing Swiss Ephemeris `.se1` data files.          |
+
+Phase 12 retired `CANON_DIRECTORY` (the trinity HTTP path consumes
+only the compiled-in canon constants).  Phase 6 retired
+`SE_NODE_POLICY` (per-domain node policy is fixed by the canon).
+The engine reads no other environment variables at runtime.
 
 Helper scripts for interactive dev loops:
 
@@ -179,65 +147,57 @@ Path to Swiss Ephemeris data files.  If unset, the engine tries:
 1. The relative repo path `../ephemeris/data/REQUIRED_EPHEMERIS_FILES/`.
 2. `/usr/local/share/swisseph/`.
 
-### `SE_NODE_POLICY`  *(deprecated — slated for removal in Phase 9)*
+The resolved absolute path is surfaced under `ephe_path_resolved`
+in `GET /version` (Phase 9 diagnostic).  `pkg/ephemeris.ValidateEphePath()`
+runs at boot and aborts startup if the resolved path does not
+exist or is not a directory.
 
-Controls the node used by `GetPlanetLongAtTime` for `north_node`
-lookups in the PoC astrology path.  If set to `true`, the true node
-is used; otherwise the mean node is used.  Trinity policy is fixed
-(astrology = mean, Human Design = true) and no longer depends on
-this variable.
+### `PORT`
 
-### `PORT`, `CANON_DIRECTORY`
+HTTP listen port (default `8080`).
 
-Used only by `cmd/httpserver`.  See *HTTP Service Usage* above.
+### `CANON_DIRECTORY`  *(deprecated — Phase 12 retired)*
+
+Phase 12 retired the legacy canon JSON loaders; the trinity HTTP
+path consumes only the compiled-in `pkg/canon/constants.go`.  The
+variable can still be set for backward compat with older deployment
+manifests but has no effect.
 
 ## Input Contract
 
-The current PoC input shape is a JSON document with three sections:
+The Trinity v1 input is a JSON object with exactly five fields and
+no others:
 
-- `case_id`
-- `birth`
-- `engine_contract`
+| field        | type   | format / rule                  |
+|--------------|--------|--------------------------------|
+| `birth_date` | string | `YYYY-MM-DD`                   |
+| `birth_time` | string | `HH:MM`, 24-hour, minute only  |
+| `timezone`   | string | IANA `Area/Location` identifier |
+| `latitude`   | number | decimal degrees, `-90..90`     |
+| `longitude`  | number | decimal degrees, `-180..180`   |
 
-The engine merges canon defaults into the input before processing;
-input values override canon defaults.
+```json
+{
+  "birth_date": "1990-04-09",
+  "birth_time": "18:04",
+  "timezone": "Europe/Amsterdam",
+  "latitude": 51.9167,
+  "longitude": 4.4
+}
+```
 
-> **Transition note.**  Phase 2 of the Trinity plan replaces this
-> shape with the canonical Trinity payload
-> `{birth_date, birth_time, timezone, latitude, longitude}` and adds
-> a strict boundary validator that classifies rejections as
-> `incomplete_input`, `invalid_input`, or `unsupported_input`.
+`pkg/trinity/input.Validate` (Phase 2) classifies any deviation as
+one of three Trinity error types:
 
-### `birth` fields (PoC)
-
-- `date`: `YYYY-MM-DD`
-- `time_hh_mm`: `HH:MM` (seconds assumed `00`)
-- `seconds_policy`: must be `assume_00`
-- `place_name`: text name (not used for computation)
-- `latitude`: decimal degrees
-- `longitude`: decimal degrees
-- `timezone_iana`: IANA timezone identifier
-
-### `engine_contract` fields (PoC)
-
-The engine asserts the following contract values:
-
-- `ephemeris`: `swiss_ephemeris`
-- `zodiac`: `tropical`
-- `houses`: `placidus`
-- `node_policy_by_system.astrology`: `mean`
-- `node_policy_by_system.human_design`: `true`
-- `node_policy_by_system.gene_keys`: `true`
-- `human_design_mapping.interval_rule`: `start_inclusive_end_exclusive`
-
-The remaining fields are provided via canon defaults:
-
-- `human_design_mapping.mandala_start_deg`
-- `human_design_mapping.gate_width_deg`
-- `human_design_mapping.line_width_deg`
-- `design_time_solver.sun_offset_deg`
-- `design_time_solver.stop_if_abs_sun_diff_deg_below`
-- `design_time_solver.stop_if_time_bracket_below_seconds`
+- `incomplete_input` — required field missing.
+- `invalid_input`    — wrong type, malformed format, out-of-range
+                       value, IANA abbreviation (e.g. `CET`), IANA
+                       link name (e.g. `US/Eastern`), unknown field,
+                       malformed JSON, or wrong Content-Type
+                       (Phase 10 also adds 415 + invalid_input for
+                       Content-Type errors).
+- `unsupported_input` — structurally valid input outside Trinity v1
+                       scope (e.g. sub-minute time precision).
 
 ## Computations Performed
 
@@ -269,12 +229,12 @@ Using Swiss Ephemeris (pinned to `2.10.03`) and tropical zodiac:
   within the sign.
 - The `north_node_mean` field in astrology output is the mean node.
 
-> **Transition note (Phase 4 — landed).**  The Trinity canonical
+> **Transition note (Phase 4 — landed; Phase 12 — retired
+> the legacy alternative).**  The Trinity canonical
 > `{object_id, longitude, sign, house}` output is now emitted by
 > `POST /manifest`, with explicit house cusps 1–12 and Earth as a
-> first-class astrology object.  The legacy `{sign, deg, min}` shape
-> survives only in the Golden PoC contract path and is retired in
-> Phase 12.
+> first-class astrology object.  The legacy `{sign, deg, min}` PoC
+> shape was removed in Phase 12.
 
 ### 4. Human Design module
 
@@ -303,14 +263,15 @@ Design-time solver (Trinity / Phase 5):
   Phase 3's `output.DesignTime` marshaler floors that value to whole
   seconds before emitting `human_design.system.design_time_utc`.
 
-> **Transition note (Phase 5 — landed).**  Trinity calls now emit
+> **Transition note (Phase 5 — landed; Phase 12 — legacy path
+> retired).**  Trinity calls emit
 > `human_design.system.design_time_utc` from
 > `pkg/trinity/hd.ComputeDesignTime`, which calls the canonical
 > bisection solver in `pkg/hd/calc.SolveDesignTime`.  The legacy
-> input-driven `DesignTimeSolver` parameters in the Golden PoC
-> contract still feed `pkg/human_design.SolveDesignTime` for the
-> file-based PoC CLI; that path is retired in Phase 12.  Exact-second
-> rounding is tracked as ambiguity *A3* in `version-pins.org`.
+> input-driven `DesignTimeSolver` PoC parameters and
+> `pkg/human_design.SolveDesignTime` were removed in Phase 12.
+> Exact-second rounding is tracked as ambiguity *A3* in
+> `version-pins.org`.
 
 Mapping to gates and lines (Trinity / Phase 6):
 
@@ -338,14 +299,13 @@ Mapping to gates and lines (Trinity / Phase 6):
   `human_design.design_activations` are 13-entry arrays of
   `{object_id, gate, line}` in `canon.HDSnapshotOrder`.
 
-> **Transition note (A8 — landed via Phase 6).**  The compiled
-> Trinity canon in `pkg/canon/constants.go` uses the canonical
-> mandala anchor **277.5°** (sequence starting with gate 38)
-> specified by `trinity.org`.  The legacy anchor 313.25° in
-> `src/canon/mandala_constants.json` is explicitly marked "rejected"
-> in the Trinity regression sentinels.  The Trinity HTTP path uses
-> the compiled canon today; the legacy JSON-driven PoC CLI path
-> still uses the legacy anchor and will be retired in Phase 12.
+> **Transition note (A8 — landed via Phase 6; Phase 12 — legacy
+> JSON canon removed).**  The compiled Trinity canon in
+> `pkg/canon/constants.go` uses the canonical mandala anchor
+> **277.5°** (sequence starting with gate 38) specified by
+> `trinity.org`.  Phase 12 removed the legacy 313.25° JSON files
+> under `src/canon/`; the trinity HTTP path always reads the
+> compiled canon directly.
 
 > **Transition note (Phase 6 — landed).**  The
 > `SE_NODE_POLICY` environment-variable switch in
@@ -430,44 +390,63 @@ Out of scope for v1 (must not appear in the wire output):
 
 ## Output Format
 
-The current output is the PoC document; Phases 3–8 replace it with
-the Trinity success/error envelope.
+The Trinity success envelope returned by `POST /manifest` has the
+canonical six-key shape (`trinity.org` §"Success Response"):
 
-### Top-level structure (PoC)
+```json
+{
+  "status": "success",
+  "metadata":    { "engine_version": "...", "canon_version": "...", ... },
+  "input_echo":  { "birth_date": "...", "birth_time": "...", ... },
+  "astrology":   { "system": {...}, "angles": {...}, "house_cusps": [...], "objects": [...] },
+  "human_design":{ "system": {...}, "personality_activations": [...], ... },
+  "gene_keys":   { "system": {...}, "activations": {...} }
+}
+```
 
-- `case_id`
-- `birth`
-- `engine_contract`
-- `expected`
+The error envelope has three top-level keys:
 
-### `expected.astrology.positions`
+```json
+{
+  "status": "error",
+  "metadata": { ... },
+  "error":    { "error_type": "invalid_input", "message": "..." }
+}
+```
 
-Position objects with `sign`, `deg`, and `min`:
+`error_type` is one of `invalid_input`, `incomplete_input`,
+`unsupported_input`, `canon_conflict`, `execution_failure`.
 
-- `sun`, `moon`, `mercury`, `venus`, `mars`, `jupiter`, `saturn`,
-  `uranus`, `neptune`, `pluto`, `chiron`, `north_node_mean`,
-  `ascendant`, `mc`
+### Field highlights
 
-### `expected.human_design`
-
-- `activation_object_order` — fixed array
-  `[sun, earth, north_node, south_node, moon, mercury, venus, mars,
-    jupiter, saturn, uranus, neptune, pluto]`.
-- `personality` — map keyed by the same objects, values formatted as
-  `gate.line` with one decimal place.
-- `design` — same as `personality` at the design-time snapshot.
-
-### `expected.gene_keys.activation_sequence`
-
-- `lifes_work`, `evolution`, `radiance`, `purpose`.
-- Each is `{ "key": <int>, "line": <int> }`.
+- `metadata` contains the five canon version pins
+  (`engine_version`, `canon_version`, `source_stack_version`,
+  `input_schema_version`, `mapping_version`).  It does **not**
+  include `swisseph_version`, `tzdb_version`, or
+  `ephe_path_resolved` — those live only in `GET /version`.
+- `astrology.objects[]` is 13 entries in canon order
+  `[sun, moon, mercury, venus, mars, jupiter, saturn, uranus,
+    neptune, pluto, chiron, north_node_mean, earth]`.
+- `astrology.house_cusps[]` is 12 entries, houses 1..12.
+- `human_design.personality_activations[]` and `design_activations[]`
+  are 13 entries each in canon order `[sun, earth, north_node,
+    south_node, moon, mercury, venus, mars, jupiter, saturn,
+    uranus, neptune, pluto]`.
+- `human_design.channels[]` is sorted lexicographically by
+  `channel_id`.
+- `human_design.centers[]` is 9 entries in canon order
+  `[head, ajna, throat, g, ego, solar_plexus, sacral, spleen, root]`.
+- `gene_keys.activations` carries `{life_work, evolution, radiance,
+  purpose}`, each as `{key, line}`.  The legacy PoC name
+  `lifes_work` is retired (Phase 8).
 
 ### Formatting rules
 
-- Output JSON is rendered in a fixed key order and spacing.
-- `--dos` switches line endings to CRLF; otherwise LF.
-- Floating-point values in the emitted JSON use fixed precision as
-  defined in the renderer.
+- Longitude fields are rounded to 6 decimal places.
+- `human_design.system.design_time_utc` is RFC 3339 UTC with
+  whole-second precision and a trailing `Z` (A3 floor rule).
+- Object/array ordering is canon-pinned and asserted by the
+  Phase 11 golden pack runner.
 
 ## Versioning
 
@@ -482,7 +461,7 @@ curl -s http://localhost:8080/version
 
 ```json
 {
-  "engine_version": "v0.1.0-phase-11",
+  "engine_version": "v0.1.0-phase-12",
   "canon_version": "trinity-v1-rev-0",
   "mapping_version": "trinity-v1-rev-0",
   "input_schema_version": "trinity-v1-rev-0",
@@ -580,9 +559,9 @@ existing `input.json` files; freeze the resulting body (with the
 ## Determinism Requirements
 
 - The trinity HTTP path consumes only the compiled-in
-  `pkg/canon/constants.go`.  The legacy `src/canon/*.json` files are
-  loaded only by the PoC CLI path and are scheduled for retirement
-  in Phase 12.
+  `pkg/canon/constants.go`.  Phase 12 removed the legacy
+  `src/canon/*.json` files; the trinity binary no longer ships any
+  canon JSON files.
 - The engine refuses to boot when its compiled constants fail
   `pkg/canon.SelfCheck()` or when the resolved ephemeris path fails
   `pkg/ephemeris.ValidateEphePath()`.  Phase 9 pins this invariant.
@@ -594,11 +573,11 @@ existing `input.json` files; freeze the resulting body (with the
   output (Phase 11+).
 - No hidden state: no mutable caches, no implicit environment
   defaults, no third-party service responses, no stored run history.
-- The only allowed runtime environment variables are deployment
-  settings — `SE_EPHE_PATH` (Swiss Ephemeris data directory),
-  `CANON_DIRECTORY` (legacy PoC canon root, ignored by the trinity
-  HTTP path), and `PORT` (HTTP listen port).  Phase 6 retired the
-  `SE_NODE_POLICY` env shim; Phase 9 verifies env-immunity end-to-
-  end through local subprocess, Docker container, and kind cluster
-  (the kustomize overlay injects `SE_NODE_POLICY=true` and the
-  canonical Phase 4-8 oracles must remain bit-identical).
+- The only runtime environment variables consulted by the engine
+  are deployment settings — `SE_EPHE_PATH` (Swiss Ephemeris data
+  directory) and `PORT` (HTTP listen port).  Phase 6 retired the
+  `SE_NODE_POLICY` env shim; Phase 12 retired `CANON_DIRECTORY`.
+  Phase 9 verifies env-immunity end-to-end through local
+  subprocess, Docker container, and kind cluster (the kustomize
+  overlay injects `SE_NODE_POLICY=true` and the canonical Phase 4-8
+  oracles must remain bit-identical).

@@ -27,7 +27,7 @@ const canonicalBaseline = `{
 // TestHandleManifestRejectsWrongMethod proves /manifest answers
 // non-POST requests with 405.
 func TestHandleManifestRejectsWrongMethod(t *testing.T) {
-	handler := New(canon.Paths{})
+	handler := New()
 	req := httptest.NewRequest(http.MethodGet, "/manifest", nil)
 	rec := httptest.NewRecorder()
 
@@ -43,7 +43,7 @@ func TestHandleManifestRejectsWrongMethod(t *testing.T) {
 // verifies the response is a Trinity error envelope with
 // incomplete_input + 400.
 func TestHandleManifestValidatesAndReturnsErrorEnvelope(t *testing.T) {
-	handler := New(canon.Paths{})
+	handler := New()
 	body := `{"birth_date": "1990-04-09"}`
 	req := httptest.NewRequest(http.MethodPost, "/manifest", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -86,7 +86,7 @@ func TestHandleManifestValidatesAndReturnsErrorEnvelope(t *testing.T) {
 // in this test but should not need to change the *shape* assertions
 // (top-level keys, status, metadata, input_echo).
 func TestHandleManifestValidPayloadReturnsSuccessEnvelope(t *testing.T) {
-	handler := New(canon.Paths{})
+	handler := New()
 	req := httptest.NewRequest(http.MethodPost, "/manifest",
 		strings.NewReader(canonicalBaseline))
 	req.Header.Set("Content-Type", "application/json")
@@ -152,7 +152,7 @@ func TestHandleManifestValidPayloadReturnsSuccessEnvelope(t *testing.T) {
 // the error as a Trinity execution_failure envelope.
 func TestHandleManifestProcessorErrorWrapsExecutionFailure(t *testing.T) {
 	handler := Handler{
-		Process: func(_ io.Reader, _ canon.Paths) ([]byte, int, error) {
+		Process: func(_ io.Reader) ([]byte, int, error) {
 			return nil, 0, errors.New("synthetic processor failure")
 		},
 	}
@@ -186,7 +186,7 @@ func TestHandleManifestProcessorErrorWrapsExecutionFailure(t *testing.T) {
 // envelope, not as a partial response or an HTTP 200.
 func TestHandleManifestRecoversFromPanic(t *testing.T) {
 	handler := Handler{
-		Process: func(_ io.Reader, _ canon.Paths) ([]byte, int, error) {
+		Process: func(_ io.Reader) ([]byte, int, error) {
 			panic("boom")
 		},
 	}
@@ -214,7 +214,7 @@ func TestHandleManifestRecoversFromPanic(t *testing.T) {
 // TestHandleVersionReturnsCompiledInValues – Phase 1 invariant
 // preserved through the Phase 2 handler refactor.
 func TestHandleVersionReturnsCompiledInValues(t *testing.T) {
-	handler := New(canon.Paths{})
+	handler := New()
 	req := httptest.NewRequest(http.MethodGet, "/version", nil)
 	rec := httptest.NewRecorder()
 
@@ -241,7 +241,7 @@ func TestHandleVersionReturnsCompiledInValues(t *testing.T) {
 // a diagnostic, not a canon constant, so the field appears only in
 // /version – never in the trinity success/error response metadata.
 func TestHandleVersionSurfacesEphePathResolved(t *testing.T) {
-	handler := New(canon.Paths{})
+	handler := New()
 	req := httptest.NewRequest(http.MethodGet, "/version", nil)
 	rec := httptest.NewRecorder()
 
@@ -265,7 +265,7 @@ func TestHandleVersionSurfacesEphePathResolved(t *testing.T) {
 
 // TestHandleVersionRejectsWrongMethod – Phase 1 invariant.
 func TestHandleVersionRejectsWrongMethod(t *testing.T) {
-	handler := New(canon.Paths{})
+	handler := New()
 	req := httptest.NewRequest(http.MethodPost, "/version", nil)
 	rec := httptest.NewRecorder()
 
@@ -280,7 +280,7 @@ func TestHandleVersionRejectsWrongMethod(t *testing.T) {
 // plan re-asserts: GET /healthz is liveness-only and never carries
 // version info.  The body must be exactly {"status":"ok"}.
 func TestHandleHealthzAlwaysOK(t *testing.T) {
-	handler := New(canon.Paths{})
+	handler := New()
 	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	rec := httptest.NewRecorder()
 
@@ -309,7 +309,7 @@ func TestHandleHealthzAlwaysOK(t *testing.T) {
 // header at all gets HTTP 415 with a Trinity invalid_input
 // envelope, before the body is even read.
 func TestHandleManifestRejectsMissingContentType(t *testing.T) {
-	handler := New(canon.Paths{})
+	handler := New()
 	req := httptest.NewRequest(http.MethodPost, "/manifest",
 		strings.NewReader(canonicalBaseline))
 	// Intentionally do NOT set Content-Type.
@@ -352,7 +352,7 @@ func TestHandleManifestRejectsWrongContentType(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			handler := New(canon.Paths{})
+			handler := New()
 			req := httptest.NewRequest(http.MethodPost, "/manifest",
 				strings.NewReader(canonicalBaseline))
 			req.Header.Set("Content-Type", c.contentType)
@@ -379,7 +379,7 @@ func TestHandleManifestRejectsWrongContentType(t *testing.T) {
 // "application/json; charset=utf-8" is the canonical wire form for
 // JSON requests sent by many clients; accept it.
 func TestHandleManifestAcceptsContentTypeWithCharset(t *testing.T) {
-	handler := New(canon.Paths{})
+	handler := New()
 	req := httptest.NewRequest(http.MethodPost, "/manifest",
 		strings.NewReader(canonicalBaseline))
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
@@ -396,7 +396,7 @@ func TestHandleManifestAcceptsContentTypeWithCharset(t *testing.T) {
 // sentinel.  A request body that exceeds MaxRequestBodyBytes is
 // rejected with HTTP 413 and a Trinity unsupported_input envelope.
 func TestHandleManifestRejectsOversizeBody(t *testing.T) {
-	handler := New(canon.Paths{})
+	handler := New()
 	// Build a body that's syntactically a JSON object but obviously
 	// over the limit: open-brace + giant pad + close-brace.
 	pad := strings.Repeat("x", MaxRequestBodyBytes+1024)
@@ -448,7 +448,7 @@ func TestHandleManifestRejectsMalformedJSON(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			handler := New(canon.Paths{})
+			handler := New()
 			req := httptest.NewRequest(http.MethodPost, "/manifest",
 				strings.NewReader(c.body))
 			req.Header.Set("Content-Type", "application/json")

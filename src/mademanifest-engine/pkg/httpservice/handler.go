@@ -37,22 +37,25 @@ const MaxRequestBodyBytes = 1 << 20
 // When err is nil, body must be a complete JSON document (the Trinity
 // envelope) and status the canonical HTTP code chosen by
 // output.StatusCodeForErrorType for rejections, or 200 for the
-// (Phase 3+) success path.
-type Processor func(bodyReader io.Reader, canonPaths canon.Paths) (body []byte, status int, err error)
+// success path.
+//
+// Phase 12 retired the canonPaths argument: the trinity processor
+// reads its canonical constants directly from pkg/canon, never
+// from a JSON file on disk.
+type Processor func(bodyReader io.Reader) (body []byte, status int, err error)
 
+// Handler is the Trinity HTTP service.  Phase 12 retired the
+// CanonPaths field that originally piped legacy canon JSON paths
+// through the handler; the trinity processor now reads canon
+// directly from pkg/canon.
 type Handler struct {
-	CanonPaths canon.Paths
-	Process    Processor
+	Process Processor
 }
 
-// New wires the default Trinity processor.  Phase 2 implements the
-// validator and the rejection path; the success branch returns
-// execution_failure with a placeholder message until later phases
-// land the calculation pipeline behind the same surface.
-func New(canonPaths canon.Paths) Handler {
+// New wires the default Trinity processor.
+func New() Handler {
 	return Handler{
-		CanonPaths: canonPaths,
-		Process:    trinityProcess,
+		Process: trinityProcess,
 	}
 }
 
@@ -124,7 +127,7 @@ func (h Handler) handleManifest(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	body, status, err := h.Process(r.Body, h.CanonPaths)
+	body, status, err := h.Process(r.Body)
 	if err != nil {
 		// Phase 10: distinguish oversize-body errors from generic
 		// execution failures.  http.MaxBytesReader returns
@@ -191,7 +194,7 @@ func requireJSONContentType(r *http.Request) (string, bool) {
 // Phase 4-8 incrementally fill the placeholder calculation
 // sub-fields with real values; each fill is a strict superset of
 // the previous behaviour and does not change the wire shape.
-func trinityProcess(bodyReader io.Reader, _ canon.Paths) ([]byte, int, error) {
+func trinityProcess(bodyReader io.Reader) ([]byte, int, error) {
 	raw, err := io.ReadAll(bodyReader)
 	if err != nil {
 		// I/O failures (truncated upload, MaxBytesReader trip)

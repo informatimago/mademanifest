@@ -28,7 +28,10 @@ RUN cd ephemeris/swisseph \
 RUN mkdir -p /usr/local/share/swisseph \
     && rsync -a ephemeris/data/REQUIRED_EPHEMERIS_FILES/ /usr/local/share/swisseph/
 
-COPY canon ./canon
+# Phase 12 retired the legacy src/canon/ JSON directory.  The
+# trinity HTTP path consumes only the compiled-in canon constants
+# (pkg/canon/constants.go), so the image no longer ships any canon
+# JSON files.
 COPY mademanifest-engine ./mademanifest-engine
 
 WORKDIR /build/mademanifest-engine
@@ -46,14 +49,12 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 ENV PORT=8080
-ENV CANON_DIRECTORY=/app/canon
 ENV SE_EPHE_PATH=/usr/local/share/swisseph
 
 WORKDIR /app
 
 COPY --from=builder /usr/local/lib/libswe.so /usr/local/lib/libswe.so
 COPY --from=builder /usr/local/share/swisseph /usr/local/share/swisseph
-COPY --from=builder /build/canon /app/canon
 COPY --from=builder /out/mademanifest-http /usr/local/bin/mademanifest-http
 
 RUN ldconfig

@@ -5,9 +5,7 @@ SRC         := $(ROOT)mademanifest-engine
 GOLDEN      := $(ROOT)golden
 TEST_FLAGS   = -count=1
 NAME         = mademanifest-engine
-# DIFF_RELAX   = -twb
-DIFF_RELAX   =
-IMAGE_NAME   = mademanifest-poc-v2
+IMAGE_NAME   = mademanifest-engine-dev
 IMAGE_WORK_DIR = /workspace/mademanifest/src
 
 export SE_EPHE_PATH
@@ -19,9 +17,7 @@ help::
 	help prepare compile run diff all \
 	test test-unit test-integration \
 	test-integration-local test-integration-docker test-integration-k8s test-all \
-    test-coverage test-verbose test-astronomy \
-	test-ephemeris test-astrology \
-	test-human_design test-gene_keys \
+	test-coverage test-verbose \
 	doc user-manual-pdf \
 	clean \
 	docker-image \
@@ -30,12 +26,13 @@ help::
 	docker-run
 
 help::
-	@printf 'make prepare                 # compiles swisseph and install it.\n'
-	@printf 'make compile                 # compiles the go program.\n'
-	@printf 'make run                     # produces an output JSON file from the Golden Test input.\n'
-	@printf 'make diff                    # diffs the produced output against the Golden Test expected output with no differences.\n'
-	@printf 'make all                     # all of the above.\n'
-	@printf 'make test                    # run unit + PoC integration tests.\n'
+	@printf 'make prepare                 # compile and install Swiss Ephemeris.\n'
+	@printf 'make compile                 # compile cmd/httpserver into ./mademanifest-engine.\n'
+	@printf 'make run                     # alias for test-integration-local (Trinity golden pack via local subprocess).\n'
+	@printf 'make diff                    # alias for test-integration-local.\n'
+	@printf 'make all                     # prepare + compile + test-integration-local.\n'
+	@printf 'make test                    # unit tests (alias for test-unit).\n'
+	@printf 'make test-unit               # go test ./pkg/...\n'
 	@printf 'make test-integration-local  # Trinity harness: launch cmd/httpserver as subprocess.\n'
 	@printf 'make test-integration-docker # Trinity harness: docker build + docker run.\n'
 	@printf 'make test-integration-k8s    # Trinity harness: kind + kubectl (long-running).\n'
@@ -43,13 +40,28 @@ help::
 	@printf 'make doc                     # rebuild doc/user-manual.pdf from user-manual.md.\n'
 	@printf 'make help                    # prints this help.\n'
 
-all: prepare compile run diff
+# Phase 12 retired the file-based PoC CLI.  The "all" / "run" / "diff"
+# targets are kept as aliases so existing muscle memory still works,
+# but they now drive the canonical Trinity Golden Pack through the
+# HTTP service rather than the legacy GOLDEN_TEST_CASE_V1.json
+# file-based pipeline.
+
+all: prepare compile test-integration-local
 
 prepare: swisseph-install swisseph-install-data
 compile: $(SRC)/$(NAME)
-run:	 compile
-	cd $(SRC) ; LD_LIBRARY_PATH=$${LD_LIBRARY_PATH}:/usr/local/lib ./$(NAME) -cd ../canon ../golden/GOLDEN_TEST_CASE_V1.json out.json ; cat out.json
-diff:    compile test-integration
+
+# `run` and `diff` are Phase 12 aliases for test-integration-local.
+# Both used to drive the file-based PoC CLI against
+# golden/GOLDEN_TEST_CASE_V1.json; that fixture and that CLI are gone.
+run:  test-integration-local
+diff: test-integration-local
+
+# `test-integration` is a Phase 12 alias for test-integration-local.
+# The original target shelled out to the file-based PoC CLI and
+# diffed JSON against the now-deleted golden fixture.
+test-integration: test-integration-local
+
 
 swisseph-prepare:
 	cd ephemeris/swisseph ; rm -rf swisseph-2.10.03 ; tar zxf swisseph-2.10.03.tar.gz
@@ -65,8 +77,10 @@ swisseph-install-data:
 	sudo rsync -HSWacvxz --progress --force --delete --delete-after \
 		ephemeris/data/REQUIRED_EPHEMERIS_FILES/ $(PREFIX)/share/swisseph/
 
+# Phase 12 retargets the build at cmd/httpserver — the file-based
+# entry point at cmd/main.go is gone.
 $(SRC)/$(NAME):
-	cd $(SRC) ; CGO_LDFLAGS="-lm" go build -o $(NAME) ./cmd
+	cd $(SRC) ; CGO_LDFLAGS="-lm" go build -o $(NAME) ./cmd/httpserver
 	install_name_tool -change libswe.dylib @rpath/libswe.dylib $(SRC)/$(NAME)
 	# pkg/sweph/rpath_cgo.go already embeds this rpath via cgo
 	# LDFLAGS, so -add_rpath is idempotent-with-failure.  Swallow
@@ -74,24 +88,15 @@ $(SRC)/$(NAME):
 	# succeed.
 	install_name_tool -add_rpath /usr/local/lib $(SRC)/$(NAME) 2>/dev/null || true
 
-test: test-unit test-integration
+test: test-unit
 
 test-unit:
 	cd $(SRC) ; go test $(TEST_FLAGS) ./pkg/...
 
-test-integration-unix: $(SRC)/$(NAME)
-	cd $(SRC) ; LD_LIBRARY_PATH=$${LD_LIBRARY_PATH}:/usr/local/lib ./$(NAME) -cd ../canon ../golden/GOLDEN_TEST_CASE_V1.json out.json \
-	&& tr -d '\015' < ../golden/GOLDEN_TEST_CASE_V1.json > expected.json \
-	&& diff $(DIFF_RELAX) --width=160 -y out.json expected.json
 
-test-integration: $(SRC)/$(NAME)
-	cd $(SRC) ; LD_LIBRARY_PATH=$${LD_LIBRARY_PATH}:/usr/local/lib ./$(NAME) -dos -cd ../canon ../golden/GOLDEN_TEST_CASE_V1.json out.json \
-	&& ( diff $(DIFF_RELAX) --width=160 -y out.json ../golden/GOLDEN_TEST_CASE_V1.json > diff ; status=$$? ; if [ $$status -ne 0 ] ; then cat diff ; fi ; )
-
-
-# Trinity harness tests (Phase 0+).  Each target builds its own runtime
-# surface and drives it through the shared integration helpers.  The
-# helper self-tests (no build tag) run as part of the ordinary `test`
+# Trinity harness tests.  Each target builds its own runtime surface
+# and drives it through the shared integration helpers.  The helper
+# self-tests (no build tag) run as part of the ordinary `test-unit`
 # target above; the harness targets below opt into the runtime launch
 # via build tags.
 
@@ -133,34 +138,18 @@ $(DOC_DIR)/user-manual.pdf: $(DOC_DIR)/user-manual.md
 	    -o $@ $<
 
 
-# Run all tests with coverage
+# Run all tests with coverage.
 test-coverage:
 	cd $(SRC) ; go test $(TEST_FLAGS) -coverprofile=coverage.txt ./...
 	go tool cover -html=coverage.txt
 
-# Run tests with verbose output
+# Run tests with verbose output.
 test-verbose:
 	cd $(SRC) ; go test $(TEST_FLAGS) -v ./...
 
-# Run specific package tests
-test-astronomy:
-	cd $(SRC) ; go test $(TEST_FLAGS) ./pkg/astronomy
-
-test-ephemeris:
-	cd $(SRC) ; go test $(TEST_FLAGS) ./pkg/ephemeris
-
-test-astrology:
-	cd $(SRC) ; go test $(TEST_FLAGS) ./pkg/astrology
-
-test-human_design:
-	cd $(SRC) ; go test $(TEST_FLAGS) ./pkg/human_design
-
-test-gene_keys:
-	cd $(SRC) ; go test $(TEST_FLAGS) ./pkg/gene_keys
-
-# Clean test artifacts
+# Clean test artifacts.
 clean:
-	rm -f coverage.txt out.json $(SRC)/$(NAME)
+	rm -f coverage.txt $(SRC)/$(NAME)
 
 
 docker-image:
@@ -172,7 +161,6 @@ docker-update:
 	  -w $(IMAGE_WORK_DIR) \
 	  "$(IMAGE_NAME)" \
 	  bash -lc "git pull ; make clean compile"
-
 
 docker-compile:
 	docker run --rm -t \
@@ -186,4 +174,4 @@ docker-run:
 	  -v "$$(pwd)":$(IMAGE_WORK_DIR) \
 	  -w $(IMAGE_WORK_DIR) \
 	  "$(IMAGE_NAME)" \
-	  bash -lc "make run diff"
+	  bash -lc "make run"

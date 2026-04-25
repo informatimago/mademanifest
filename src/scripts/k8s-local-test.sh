@@ -8,12 +8,14 @@
 # Exercises:
 #   GET  /healthz   – expects 200 {"status":"ok"}
 #   POST /manifest  – expects 200 with the JSON calculation envelope,
-#                     payload taken from golden/GOLDEN_TEST_CASE_V1.json
+#                     payload taken from the Trinity baseline fixture
+#                     under golden/trinity/valid_baseline/.
 #
 # Overrides:
 #   URL       service base URL (default: http://127.0.0.1:8080)
 #   FIXTURE   path to the POST payload
-#             (default: <repo>/src/golden/GOLDEN_TEST_CASE_V1.json)
+#             (default: <repo>/src/golden/trinity/valid_baseline/
+#                       schiedam_1990_04_09/input.json)
 #   OUTPUT    where to save the /manifest response body
 #             (default: <tempfile>; printed on exit)
 
@@ -22,7 +24,7 @@ set -euo pipefail
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 
 URL=${URL:-http://127.0.0.1:8080}
-FIXTURE=${FIXTURE:-$ROOT_DIR/golden/GOLDEN_TEST_CASE_V1.json}
+FIXTURE=${FIXTURE:-$ROOT_DIR/golden/trinity/valid_baseline/schiedam_1990_04_09/input.json}
 OUTPUT=${OUTPUT:-$(mktemp -t mademanifest-response-XXXXXX.json)}
 
 if [[ ! -f "$FIXTURE" ]]; then

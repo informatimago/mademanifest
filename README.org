@@ -28,12 +28,13 @@ harness exercises it in all three runtimes.
 | Phase 9 Determinism cleanup             | Done – =pkg/canon.SelfCheck()= validates every compiled constant at boot, =ephemeris.ValidateEphePath()= sanity-checks the deployment-resolved Swiss Ephemeris path; httpserver =main()= refuses to start on either failure.  =/version= surfaces =ephe_path_resolved= (never in metadata).  =SE_NODE_POLICY= env immunity is verified end-to-end through local subprocess, Docker container, and kind cluster (kustomize overlay injects =SE_NODE_POLICY=true= and the canonical Phase 4-8 oracles must stay bit-identical). |
 | Phase 10 HTTP Trinity contract          | Done – =POST /manifest= enforces =Content-Type: application/json= (415 + invalid_input on missing or wrong type), caps request bodies at =MaxRequestBodyBytes = 1 MiB= (413 + unsupported_input on overflow), and keeps the Phase 2 invalid_input classification for malformed JSON; =GET /healthz= remains liveness-only with no version leak; =AssertHTTPContract= verifies all five paths end-to-end through local / docker / kind |
 | Phase 11 Golden Test Pack               | Done – =pkg/golden= loads + runs =src/golden/trinity/<category>/<name>/{input,expected}.json= with canon minimums (3 / 5 / 5 / 5 / 2 / 3) enforced at load time; success cases compare envelopes minus metadata, error cases compare =error_type= per A4; =TestTrinityGoldenPack= wired into local / docker / kind |
+| Phase 12 PoC retirement                 | Done – removed =pkg/emit_golden= / =pkg/process_input= / =pkg/engine= / =pkg/human_design= / =pkg/gene_keys= / =pkg/astrology= / =pkg/geolocation=, =cmd/main.go=, =src/canon/*.json=, =src/golden/GOLDEN_TEST_CASE_V1.json=; =cmd/httpserver= is the only runtime surface; HTTP =Handler.CanonPaths= and =Processor= =canonPaths= argument retired; Makefile, Dockerfile, and dev scripts retargeted at the Trinity pack; compile-time guard rejects any future re-import of the retired packages |
 | Canon ambiguities A1..A8                | Open – see =src/doc/version-pins.org=                            |
 
-The next phase is Phase 12 (PoC contract retirement: remove
-=pkg/emit_golden=, drop the file-based CLI, retire the legacy JSON
-canon files, point all Makefile run / diff / test targets at the
-Trinity pack).  The full plan is in
+The next phase is Phase 13 (deployment hardening: pin the Docker
+base-image digest, add =HEALTHCHECK=, run as non-root, add
+=securityContext=, =NetworkPolicy=, and an HPA to the kustomize
+overlay).  The full plan is in
 [[file:src/doc/trinity-implementation-plan.org][src/doc/trinity-implementation-plan.org]]; pinned versions and the
 =A*= ambiguity register live in [[file:src/doc/version-pins.org][src/doc/version-pins.org]].
 
@@ -45,41 +46,37 @@ Trinity pack).  The full plan is in
 - =architecture/= – hybrid architecture + system flow diagrams (PDF + Mermaid)
 - =src/= – everything that is built and shipped
   - =Makefile=, =Dockerfile=
-  - =canon/= – pinned canonical inputs loaded at boot
-  - =golden/= – Golden Test Case v1 fixture (the PoC oracle)
+  - =golden/trinity/= – Trinity Golden Test Pack (Phase 11): per-category fixture trees =<category>/<name>/{input,expected}.json=
+  - =golden/trinity/baseline/= – Phase 4-8 per-section oracles for the Schiedam canonical case
   - =ephemeris/= – Swiss Ephemeris source tarball + =.se1= data files
   - =env/= – pinned Go version, Docker dev container (=env/docker/=)
   - =deploy/kubernetes/= – kustomize base for the cluster deploy
-  - =scripts/request_cloud_service.sh= – send the golden fixture at a running service
-  - =tools/= – placeholder =diff.sh= / =validate_json.sh= (reserved for later phases)
+  - =scripts/= – interactive dev-loop scripts (=request_cloud_service.sh=, k8s up/down/test)
   - =doc/= – user manual, requirement tracking, Trinity implementation plan
   - =mademanifest-engine/= – Go module
-    - =cmd/= – file-based CLI (=main.go=) and HTTP server (=httpserver/main.go=)
+    - =cmd/httpserver/= – HTTP service entry point (only runtime surface after Phase 12)
     - =pkg/= – engine packages (see below)
-    - =integration/= – Trinity test harness added in Phase 0
+    - =integration/= – Trinity test harness
 
 * Go Engine Packages
 
+Phase 12 retired the entire PoC code path.  The packages below are
+the trinity-only surface the engine ships today.
+
 =src/mademanifest-engine/pkg/=:
 
-- =canon= – loads =gate_sequence_v1.json=, =mandala_constants.json=, =node_policy.json=
-- =process_input= – current (PoC) input decoder
-- =engine= – orchestrator that wires inputs to calculators and emits output
-- =astronomy= – local time → UTC, UTC → Julian Day
-- =ephemeris=, =sweph= – Swiss Ephemeris (cgo) wrappers, pinned to 2.10.03
-- =astrology= – tropical-zodiac positions, Placidus ascendant / MC (PoC path; Trinity uses =trinity/astro=)
-- =human_design= – PoC personality / design snapshots, design-time bisection, gate/line mapping (legacy; retired at Phase 12)
-- =hd/calc= – Phase 5+ canonical Trinity calculation primitives.  Holds =SolveDesignTime= (pure bisection, backward-only, all canon constants compiled in) and =MapToGateLine= (mandala anchor 277.5°, start-inclusive / end-exclusive interval rule)
+- =canon= – compiled-in canonical constants (=GateOrder=, =SignOrder=, =ChannelTable=, =CenterOrder=, etc.) and version pins.  =SelfCheck()= validates them at boot; =AssertGateSequenceFileMatchesGateOrder= is a deployment / CI tool for verifying any external JSON gate-sequence fixture against the compiled canon.
+- =astronomy= – local time → UTC, UTC → Julian Day.
+- =ephemeris=, =sweph= – Swiss Ephemeris (cgo) wrappers, pinned to 2.10.03.  =ResolvedEphePath()= surfaces the deployment-resolved data directory for =/version=; =ValidateEphePath()= is a boot-time gate.
+- =hd/calc= – Phase 5+ canonical Trinity calculation primitives.  Holds =SolveDesignTime= (pure bisection, backward-only, all canon constants compiled in) and =MapToGateLine= (mandala anchor 277.5°, start-inclusive / end-exclusive interval rule).
 - =hd/structure= – Phase 7 structural derivations.  =Compute(personality, design)= produces channels (lex-sorted), centers (canon order), definition (5-class union-find), type (5-way decision tree), authority (8-way priority), profile, and incarnation_cross.
+- =trinity/input= – Phase 2 Trinity input validator with full Document 04 rules.
+- =trinity/output= – Phase 3 envelope types (=SuccessEnvelope=, =ErrorEnvelope=) with canon-ordered JSON keys.
+- =trinity/astro= – Phase 4 Trinity astrology pipeline (signs, houses, 13 objects, angles).
+- =trinity/hd= – Trinity Human Design pipeline.  =ComputeDesignTime= (Phase 5) drives the bisection solver; =ComputeActivations= (Phase 6) builds personality + design activation arrays from SE_TRUE_NODE-policy snapshots fed through the canonical mandala mapping.
 - =trinity/genekeys= – Phase 8 Gene Keys derivation.  =Compute(personality, design)= reads the four HD pillar activations and emits the canonical four positions (life_work / evolution / radiance / purpose).
 - =golden= – Phase 11 Golden Test Pack runner.  =LoadFixtures= walks =src/golden/trinity/<category>/<name>/{input,expected}.json=, enforces canon minimums per category, and returns deterministic =Fixture= records.  =CompareSuccess= / =CompareError= drive each fixture's response through the Trinity comparison rules (semantic JSON equality for success minus metadata; =error_type= + envelope shape for errors per A4).
-- =trinity/input= – Phase 2 Trinity input validator with full Document 04 rules
-- =trinity/output= – Phase 3 envelope types (=SuccessEnvelope=, =ErrorEnvelope=) with canon-ordered JSON keys
-- =trinity/astro= – Phase 4 Trinity astrology pipeline (signs, houses, 13 objects, angles)
-- =trinity/hd= – Trinity Human Design pipeline.  =ComputeDesignTime= (Phase 5) drives the bisection solver; =ComputeActivations= (Phase 6) builds personality + design activation arrays from SE_TRUE_NODE-policy snapshots fed through the canonical mandala mapping.
-- =gene_keys= – four-position derivation from Human Design (PoC; retired at Phase 12)
-- =httpservice= – =/healthz=, =/version=, and =/manifest= HTTP handlers
-- =geolocation=, =emit_golden= – PoC helpers (retired at Phase 12)
+- =httpservice= – =/healthz=, =/version=, and =/manifest= HTTP handlers (Phase 10 contract).
 
 * Build And Run
 
@@ -100,45 +97,41 @@ step; uses =sudo= for =rsync= into =/usr/local/share/swisseph=):
 make -C src swisseph-install swisseph-install-data
 #+end_src
 
-** File-Based CLI
+** Compile And Run
 
-Compile, run against the golden input, and diff against the golden
-expected output:
+Phase 12 retired the file-based PoC CLI.  =cmd/httpserver= is now
+the only buildable entry point.  The Makefile target =compile=
+emits the binary at =src/mademanifest-engine/mademanifest-engine=:
 
 #+begin_src bash
 make -C src compile
-make -C src run    # writes src/mademanifest-engine/out.json
-make -C src diff   # compiles, runs, and compares to golden
 #+end_src
 
-The binary is =src/mademanifest-engine/mademanifest-engine=.  It
-takes =$inputFile $outputFile= arguments plus optional flags (see
-=./mademanifest-engine --help=).
-
-** HTTP Service (Local Binary)
-
-Build the HTTP server directly:
+Run it with sensible defaults:
 
 #+begin_src bash
 cd src/mademanifest-engine
-CGO_LDFLAGS="-lm" go build -o mademanifest-http ./cmd/httpserver
 PORT=8080 \
-CANON_DIRECTORY=$(pwd)/../canon \
 SE_EPHE_PATH=/usr/local/share/swisseph \
-./mademanifest-http
+./mademanifest-engine
 #+end_src
 
-Endpoints:
-- =GET /healthz= – liveness probe
-- =POST /manifest= – JSON in, JSON out
+Endpoints (full status-code policy in =doc/user-manual.md=):
+- =GET /healthz= – liveness probe (body =={"status":"ok"}==)
+- =GET /version= – pinned canon versions + =ephe_path_resolved=
+- =POST /manifest= – Trinity payload in, Trinity envelope out
 
-Drive it with the golden fixture:
+Drive it with the canonical Schiedam fixture from the Trinity pack:
 
 #+begin_src bash
 src/scripts/request_cloud_service.sh \
     http://localhost:8080/manifest \
     src/out/cloud-service-output.json
 #+end_src
+
+The Makefile aliases =run=, =diff=, and =test-integration= now
+delegate to =test-integration-local=, which runs the full Phase 11
+golden pack against a freshly-built local subprocess.
 
 ** HTTP Service (Docker)
 
@@ -158,8 +151,12 @@ The image installs Swiss Ephemeris at the canonical locations:
 
 - =/usr/local/lib/libswe.so=
 - =/usr/local/share/swisseph/= – =.se1= data files
-- =/app/canon= – canon JSON files
-- =SE_EPHE_PATH=/usr/local/share/swisseph=, =CANON_DIRECTORY=/app/canon=
+- =SE_EPHE_PATH=/usr/local/share/swisseph=
+
+Phase 12 removed the legacy =/app/canon= JSON directory: the
+trinity HTTP path consumes only the compiled-in canon constants in
+=pkg/canon/constants.go=, so the image no longer ships any canon
+JSON files.
 
 The Dockerfile copies the compiled library and headers directly rather
 than running =make install=, because the patched Swiss Ephemeris
