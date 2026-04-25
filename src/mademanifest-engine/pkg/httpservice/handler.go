@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"mademanifest-engine/pkg/canon"
+	"mademanifest-engine/pkg/hd/structure"
 	"mademanifest-engine/pkg/trinity/astro"
 	"mademanifest-engine/pkg/trinity/hd"
 	"mademanifest-engine/pkg/trinity/input"
@@ -163,6 +164,22 @@ func trinityProcess(bodyReader io.Reader, _ canon.Paths) ([]byte, int, error) {
 	}
 	env.HumanDesign.PersonalityActivations = personality
 	env.HumanDesign.DesignActivations = design
+
+	// Phase 7: structural derivations from the combined activation
+	// set – channels, centers, definition, type, authority, profile,
+	// incarnation_cross.  Replaces the placeholder reflector / lunar /
+	// "1/1" values seeded by NewPlaceholderSuccess.
+	struc, err := structure.Compute(personality, design)
+	if err != nil {
+		return nil, 0, fmt.Errorf("compute structure: %w", err)
+	}
+	env.HumanDesign.Channels = struc.Channels
+	env.HumanDesign.Centers = struc.Centers
+	env.HumanDesign.Definition = struc.Definition
+	env.HumanDesign.Type = struc.Type
+	env.HumanDesign.Authority = struc.Authority
+	env.HumanDesign.Profile = struc.Profile
+	env.HumanDesign.IncarnationCross = struc.IncarnationCross
 
 	body, encErr := json.Marshal(env)
 	if encErr != nil {

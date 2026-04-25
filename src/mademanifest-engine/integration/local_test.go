@@ -82,3 +82,14 @@ func TestLocalHarnessSchiedamActivationsMatchOracle(t *testing.T) {
 
 	AssertSchiedamActivationsMatchOracle(t, srv.BaseURL)
 }
+
+// TestLocalHarnessSchiedamStructureMatchesOracle is the Phase 7
+// regression sentinel: the canonical Schiedam payload must produce
+// the frozen structural derivations (channels, centers, definition,
+// type, authority, profile, incarnation_cross).
+func TestLocalHarnessSchiedamStructureMatchesOracle(t *testing.T) {
+	srv := StartLocalServer(t, LocalServerOptions{})
+	t.Cleanup(srv.Shutdown)
+
+	AssertSchiedamStructureMatchesOracle(t, srv.BaseURL)
+}

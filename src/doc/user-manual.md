@@ -339,6 +339,48 @@ Mapping to gates and lines (Trinity / Phase 6):
 > `"north_node_true"` for SE_TRUE_NODE.  Trinity HD activations
 > always use the true policy; Trinity astrology always uses mean.
 
+Structural derivations (Trinity / Phase 7) are computed by
+`pkg/hd/structure.Compute` from the combined personality + design
+activation set:
+
+- **Channels.**  Walk `canon.ChannelTable`; emit each channel whose
+  two gates both appear in the active set; output sorted
+  lexicographically by `channel_id`.
+- **Centers.**  Each center is `defined` if it participates in at
+  least one active channel, `undefined` otherwise.  The output array
+  always has 9 entries in `canon.CenterOrder` (head, ajna, throat, g,
+  ego, solar_plexus, sacral, spleen, root).
+- **Definition.**  Run union-find over the active channels (each
+  channel = an edge between two centers).  Count connected
+  components made of *defined* centers and pick the canonical class:
+  - 0 -> `none`
+  - 1 -> `single`
+  - 2 -> `split`
+  - 3 -> `triple_split`
+  - 4 -> `quadruple_split`
+- **Type** decision tree (`trinity.org` lines 318-325, first
+  matching rule wins):
+  1. `definition == none` -> `reflector`
+  2. sacral defined:
+     - motor-to-throat path in the same component -> `manifesting_generator`
+     - otherwise -> `generator`
+  3. non-sacral motor connects to throat -> `manifestor`
+  4. otherwise -> `projector`
+- **Authority** priority list (`trinity.org` lines 326-334, first
+  matching rule wins):
+  1. `emotional` if solar_plexus defined
+  2. `sacral` if type in {generator, manifesting_generator}
+  3. `splenic` if spleen defined
+  4. `ego_manifested` if type=manifestor and ego defined
+  5. `ego_projected` if type=projector and ego defined
+  6. `self_projected` if type=projector and g defined
+  7. `mental` if type=projector
+  8. `lunar` if type=reflector
+- **Profile** = `personality_sun_line/design_sun_line` (e.g. `"1/3"`).
+- **Incarnation cross** = `{personality_sun, personality_earth,
+  design_sun, design_earth}`, each as `{gate, line}` pairs; no
+  human-readable cross name is required (`trinity.org` line 339).
+
 ### 5. Gene Keys module
 
 Gene Keys are derived directly from Human Design output:
@@ -407,7 +449,7 @@ curl -s http://localhost:8080/version
 
 ```json
 {
-  "engine_version": "v0.1.0-phase-6",
+  "engine_version": "v0.1.0-phase-7",
   "canon_version": "trinity-v1-rev-0",
   "mapping_version": "trinity-v1-rev-0",
   "input_schema_version": "trinity-v1-rev-0",

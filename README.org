@@ -23,16 +23,16 @@ harness exercises it in all three runtimes.
 | Phase 4 Astrology calculation           | Done – =pkg/trinity/astro= computes signs, houses (A2), 13 objects (Earth = Sun + 180), and angles; Schiedam oracle frozen as the regression sentinel |
 | Phase 5 HD design-time bisection solver | Done – =pkg/hd/calc.SolveDesignTime= (canon constants, pure bisection, backward-only); =pkg/trinity/hd= wraps it with the Swiss Ephemeris Sun callback; Schiedam =design_time_utc= oracle frozen at =1990-01-12T00:38:22Z=; HTTP handler emits the canonical value |
 | Phase 6 HD gate/line mapping            | Done – =pkg/hd/calc.MapToGateLine= (canon constants only, anchor 277.5°, start-inclusive / end-exclusive); =pkg/trinity/hd= computes personality + design activations via SE_TRUE_NODE; =SE_NODE_POLICY= env shim removed; Schiedam personality + design activation oracle frozen |
-| Trinity Human Design structural layer   | Phase 7 – not yet started (channels, centers, definition, type, authority, profile, incarnation cross) |
+| Phase 7 HD structural layer             | Done – =pkg/hd/structure.Compute= derives channels (lex-sorted), centers (canon order), definition (union-find over active channels), type (5-way decision tree), authority (8-way priority), profile, incarnation_cross; Schiedam structural oracle (3 channels, triple_split, projector / splenic, profile 1/3) frozen |
 | Trinity Golden Test Pack                | Phase 11 – not yet started                                       |
 | Canon ambiguities A1..A8                | Open – see =src/doc/version-pins.org=                            |
 
-The next phase is Phase 7 (HD structural layer: channels, centers,
-definition, type, authority, profile, incarnation cross), then
-Phase 8 (Gene Keys canonical output) and Phase 9 (determinism
-cleanup).  The full plan is in [[file:src/doc/trinity-implementation-plan.org][src/doc/trinity-implementation-plan.org]];
-pinned versions and the =A*= ambiguity register live in
-[[file:src/doc/version-pins.org][src/doc/version-pins.org]].
+The next phase is Phase 8 (Gene Keys canonical output: rename
+=lifes_work= → =life_work=, wrap the four positions under the
+canonical envelope), then Phase 9 (determinism cleanup) and
+Phase 10 (HTTP service Trinity contract finalisation).  The full
+plan is in [[file:src/doc/trinity-implementation-plan.org][src/doc/trinity-implementation-plan.org]]; pinned versions and
+the =A*= ambiguity register live in [[file:src/doc/version-pins.org][src/doc/version-pins.org]].
 
 * Repository Layout
 
@@ -67,6 +67,7 @@ pinned versions and the =A*= ambiguity register live in
 - =astrology= – tropical-zodiac positions, Placidus ascendant / MC (PoC path; Trinity uses =trinity/astro=)
 - =human_design= – PoC personality / design snapshots, design-time bisection, gate/line mapping (legacy; retired at Phase 12)
 - =hd/calc= – Phase 5+ canonical Trinity calculation primitives.  Holds =SolveDesignTime= (pure bisection, backward-only, all canon constants compiled in) and =MapToGateLine= (mandala anchor 277.5°, start-inclusive / end-exclusive interval rule)
+- =hd/structure= – Phase 7 structural derivations.  =Compute(personality, design)= produces channels (lex-sorted), centers (canon order), definition (5-class union-find), type (5-way decision tree), authority (8-way priority), profile, and incarnation_cross.
 - =trinity/input= – Phase 2 Trinity input validator with full Document 04 rules
 - =trinity/output= – Phase 3 envelope types (=SuccessEnvelope=, =ErrorEnvelope=) with canon-ordered JSON keys
 - =trinity/astro= – Phase 4 Trinity astrology pipeline (signs, houses, 13 objects, angles)
