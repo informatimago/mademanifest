@@ -9,14 +9,17 @@ import (
 )
 
 // TrinityCase is a single end-to-end probe against the live engine.
-// Body is sent verbatim to POST /manifest; WantStatus and
-// WantErrorType are the canonical status code / error_type expected
-// in the response.
+// Body is sent verbatim to POST /manifest.  Exactly one of
+// WantSuccess and WantErrorType is set: WantSuccess=true asserts a
+// SuccessEnvelope shape; WantErrorType names the expected
+// error_type for an ErrorEnvelope.  WantStatus pins the HTTP
+// response status code in either case.
 type TrinityCase struct {
 	Name          string
 	Body          []byte
 	WantStatus    int
-	WantErrorType string // empty means a success envelope is expected
+	WantSuccess   bool
+	WantErrorType string
 }
 
 // TrinityRejectionCases is the canonical end-to-end probe matrix
@@ -40,10 +43,10 @@ func TrinityRejectionCases() []TrinityCase {
 }`
 	return []TrinityCase{
 		{
-			Name:          "valid baseline -> execution_failure (placeholder, Phase 3+)",
-			Body:          []byte(baseline),
-			WantStatus:    http.StatusInternalServerError,
-			WantErrorType: output.ErrorExecutionFailure,
+			Name:        "valid baseline -> 200 success envelope",
+			Body:        []byte(baseline),
+			WantStatus:  http.StatusOK,
+			WantSuccess: true,
 		},
 		{
 			Name: "missing birth_date -> incomplete_input",
@@ -159,6 +162,15 @@ func runTrinityCase(t *testing.T, baseURL string, c TrinityCase) {
 	if status != c.WantStatus {
 		t.Fatalf("status = %d, want %d (body: %s)", status, c.WantStatus, raw)
 	}
+	if c.WantSuccess {
+		assertSuccessEnvelope(t, raw)
+		return
+	}
+	assertErrorEnvelope(t, raw, c.WantErrorType)
+}
+
+func assertErrorEnvelope(t *testing.T, raw []byte, wantType string) {
+	t.Helper()
 	var env output.ErrorEnvelope
 	if decErr := json.Unmarshal(raw, &env); decErr != nil {
 		t.Fatalf("decode envelope: %v\nbody: %s", decErr, raw)
@@ -167,9 +179,9 @@ func runTrinityCase(t *testing.T, baseURL string, c TrinityCase) {
 		t.Errorf("envelope status = %q, want %q\nbody: %s",
 			env.Status, output.StatusError, raw)
 	}
-	if env.Error.Type != c.WantErrorType {
+	if env.Error.Type != wantType {
 		t.Errorf("error_type = %q, want %q\nbody: %s",
-			env.Error.Type, c.WantErrorType, raw)
+			env.Error.Type, wantType, raw)
 	}
 	if env.Error.Message == "" {
 		t.Errorf("envelope error.message must not be empty\nbody: %s", raw)
@@ -177,5 +189,47 @@ func runTrinityCase(t *testing.T, baseURL string, c TrinityCase) {
 	if env.Metadata != output.CurrentMetadata() {
 		t.Errorf("envelope metadata = %+v\nwant %+v\nbody: %s",
 			env.Metadata, output.CurrentMetadata(), raw)
+	}
+}
+
+// assertSuccessEnvelope validates the Phase 3 SuccessEnvelope
+// *shape* end-to-end: top-level keys present, status string,
+// metadata block, input_echo round-tripped, and the system
+// constants pinned.  Phase 4-8 will add content assertions for
+// the calculation sub-fields; this helper deliberately stays
+// shape-only so it remains the canonical invariant under those
+// later phase changes.
+func assertSuccessEnvelope(t *testing.T, raw []byte) {
+	t.Helper()
+	var env output.SuccessEnvelope
+	if decErr := json.Unmarshal(raw, &env); decErr != nil {
+		t.Fatalf("decode success envelope: %v\nbody: %s", decErr, raw)
+	}
+	if env.Status != output.StatusSuccess {
+		t.Errorf("envelope status = %q, want %q\nbody: %s",
+			env.Status, output.StatusSuccess, raw)
+	}
+	if env.Metadata != output.CurrentMetadata() {
+		t.Errorf("envelope metadata = %+v\nwant %+v\nbody: %s",
+			env.Metadata, output.CurrentMetadata(), raw)
+	}
+	if env.InputEcho.BirthDate == "" || env.InputEcho.BirthTime == "" ||
+		env.InputEcho.Timezone == "" {
+		t.Errorf("input_echo string fields empty: %+v\nbody: %s",
+			env.InputEcho, raw)
+	}
+	if env.Astrology.System.Zodiac != "tropical" ||
+		env.Astrology.System.HouseSystem != "placidus" ||
+		env.Astrology.System.NodeType != "mean" {
+		t.Errorf("astrology.system not canon: %+v\nbody: %s",
+			env.Astrology.System, raw)
+	}
+	if env.HumanDesign.System.NodeType != "true" {
+		t.Errorf("human_design.system.node_type = %q, want true\nbody: %s",
+			env.HumanDesign.System.NodeType, raw)
+	}
+	if env.GeneKeys.System.DerivationBasis != "human_design" {
+		t.Errorf("gene_keys.system.derivation_basis = %q, want human_design\nbody: %s",
+			env.GeneKeys.System.DerivationBasis, raw)
 	}
 }

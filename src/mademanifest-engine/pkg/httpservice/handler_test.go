@@ -76,12 +76,16 @@ func TestHandleManifestValidatesAndReturnsErrorEnvelope(t *testing.T) {
 	}
 }
 
-// TestHandleManifestValidPayloadReturnsExecutionFailure documents
-// the Phase 2 placeholder: a fully-valid Trinity payload returns
-// execution_failure with HTTP 500 because the calculation pipeline
-// is not yet wired.  Once Phases 3-8 land, this test must be
-// updated to expect a success envelope.
-func TestHandleManifestValidPayloadReturnsExecutionFailure(t *testing.T) {
+// TestHandleManifestValidPayloadReturnsSuccessEnvelope drives the
+// Phase 3 success path: a fully-valid Trinity payload now returns
+// HTTP 200 with the canonical SuccessEnvelope (placeholder content
+// in the calculation sub-fields, real metadata + input_echo).
+//
+// Phase 4-8 will replace the placeholder calculation fields with
+// real values.  Those phases must update the *content* assertions
+// in this test but should not need to change the *shape* assertions
+// (top-level keys, status, metadata, input_echo).
+func TestHandleManifestValidPayloadReturnsSuccessEnvelope(t *testing.T) {
 	handler := New(canon.Paths{})
 	req := httptest.NewRequest(http.MethodPost, "/manifest",
 		strings.NewReader(canonicalBaseline))
@@ -90,20 +94,41 @@ func TestHandleManifestValidPayloadReturnsExecutionFailure(t *testing.T) {
 
 	handler.handleManifest(rec, req)
 
-	if rec.Code != http.StatusInternalServerError {
-		t.Fatalf("status = %d, want 500; body = %s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
 	}
-	var env output.ErrorEnvelope
+	if got := rec.Header().Get("Content-Type"); got != "application/json" {
+		t.Fatalf("Content-Type = %q", got)
+	}
+	var env output.SuccessEnvelope
 	if err := json.Unmarshal(rec.Body.Bytes(), &env); err != nil {
 		t.Fatalf("decode envelope: %v\nbody: %s", err, rec.Body.String())
 	}
-	if env.Error.Type != output.ErrorExecutionFailure {
-		t.Errorf("error_type = %q, want %q",
-			env.Error.Type, output.ErrorExecutionFailure)
+	if env.Status != output.StatusSuccess {
+		t.Errorf("envelope status = %q, want %q",
+			env.Status, output.StatusSuccess)
 	}
-	if !strings.Contains(env.Error.Message, "not yet implemented") {
-		t.Errorf("placeholder message expected to mention \"not yet implemented\"; got %q",
-			env.Error.Message)
+	if env.Metadata != output.CurrentMetadata() {
+		t.Errorf("envelope metadata = %+v, want %+v",
+			env.Metadata, output.CurrentMetadata())
+	}
+	if env.InputEcho.BirthDate != "1990-04-09" ||
+		env.InputEcho.BirthTime != "18:04" ||
+		env.InputEcho.Timezone != "Europe/Amsterdam" {
+		t.Errorf("input_echo string fields drifted: %+v", env.InputEcho)
+	}
+	if env.Astrology.System.Zodiac != "tropical" ||
+		env.Astrology.System.HouseSystem != "placidus" ||
+		env.Astrology.System.NodeType != "mean" {
+		t.Errorf("astrology.system not canon: %+v", env.Astrology.System)
+	}
+	if env.HumanDesign.System.NodeType != "true" {
+		t.Errorf("human_design.system.node_type = %q, want true",
+			env.HumanDesign.System.NodeType)
+	}
+	if env.GeneKeys.System.DerivationBasis != "human_design" {
+		t.Errorf("gene_keys.system.derivation_basis = %q, want human_design",
+			env.GeneKeys.System.DerivationBasis)
 	}
 }
 

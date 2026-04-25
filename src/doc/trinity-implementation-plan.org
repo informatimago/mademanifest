@@ -28,7 +28,7 @@
 |   0   | Done        | Test harness + CI matrix landed.                                     |
 |   1   | Done        | Canonical constants + version pins + =GET /version= + =--version=.  |
 |   2   | Done        | =pkg/trinity/input= validator + =pkg/trinity/output= error envelope; HTTP handler rewired; rejection matrix wired into local/docker/k8s harnesses.  Phase 3 scope partially landed (=ErrorEnvelope=, =Metadata=, status-code policy) so Phase 2 has an envelope to return. |
-|   3   | Partial     | =ErrorEnvelope= + =Metadata= + status-code policy landed in Phase 2.  =SuccessEnvelope= and the key-order-stable serializer remain. |
+|   3   | Done        | =SuccessEnvelope= + =InputEcho= + =Astrology= + =HumanDesignOut= + =GeneKeysOut= types (canon-ordered fields); =Longitude= (6 dp) and =DesignTime= (RFC 3339 UTC, A3 floor) typed marshalers; placeholder success constructor; HTTP handler returns 200 + success envelope on valid payload; integration matrix gained a success baseline. |
 |   4   | Not started |                                                                      |
 |   5   | Not started |                                                                      |
 |   6   | Not started |                                                                      |

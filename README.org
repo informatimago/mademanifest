@@ -19,13 +19,14 @@ harness exercises it in all three runtimes.
 | Phase 0 integration harness             | Done – local + docker + kind, shared helpers                     |
 | Phase 1 canon constants + version pins  | Done – =pkg/canon/constants.go=, =pkg/canon/sources.go=, =GET /version=, =--version= |
 | Phase 2 Trinity input contract          | Done – =pkg/trinity/input= validator with full Document 04 rules; rejection matrix exercised through local/docker/k8s |
-| Phase 3 Trinity output envelope         | Partial – =ErrorEnvelope= + =Metadata= + status-code policy landed alongside Phase 2; =SuccessEnvelope= still pending |
+| Phase 3 Trinity output envelope         | Done – =SuccessEnvelope= with canon-ordered fields, =Longitude= (6 dp) + =DesignTime= (RFC 3339 UTC floor, A3) typed marshalers, placeholder success path returns HTTP 200 |
 | Trinity Human Design structural layer   | Phase 7 – not yet started (channels, centers, definition, type, authority, profile, incarnation cross) |
 | Trinity Golden Test Pack                | Phase 11 – not yet started                                       |
 | Canon ambiguities A1..A8                | Open – see =src/doc/version-pins.org=                            |
 
-The next phase is Phase 3 (success envelope) followed by Phase 4
-(astrology calculation rewrite).  The full plan is in
+The next phase is Phase 4 (astrology calculation rewrite – populate
+=Astrology.Angles=, =Astrology.HouseCusps=, =Astrology.Objects= with
+real values).  The full plan is in
 [[file:src/doc/trinity-implementation-plan.org][src/doc/trinity-implementation-plan.org]]; pinned versions and the =A*=
 ambiguity register live in [[file:src/doc/version-pins.org][src/doc/version-pins.org]].
 
