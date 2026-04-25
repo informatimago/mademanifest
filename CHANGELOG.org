@@ -1,0 +1,98 @@
+#+TITLE: MadeManifest Engine — Changelog
+#+OPTIONS: toc:1 num:nil
+
+This file follows the version impact rules in
+=specifications/trinity/= Document 08 (Determinism and Versioning).
+Every release entry below pins the five Trinity version axes
+(engine, canon, mapping, input_schema, source_stack) and the two
+diagnostic version fields (swisseph, tzdb) that the engine surfaces
+on =GET /version=.
+
+* v1.0.0-trinity — 2026-04-25
+
+The Trinity v1 release.  The engine now implements the
+=specifications/trinity/= contract end-to-end: canonical input
+validation (Document 04), canonical output envelope (Document 07),
+canonical calculation pipeline (Document 05), canonical mapping
+(Document 06), determinism and versioning rules (Document 08), and
+the Phase 11 Golden Test Pack (Document 10) — all wired through a
+hardened HTTP service deployable on Docker and Kubernetes.
+
+** Version pins
+
+| Field                  | Value             |
+|------------------------+-------------------|
+| =engine_version=       | =v1.0.0-trinity= |
+| =canon_version=        | =trinity-v1-rev-0= |
+| =mapping_version=      | =trinity-v1-rev-0= |
+| =input_schema_version= | =trinity-v1-rev-0= |
+| =source_stack_version= | =trinity-v1-rev-0= |
+| =swisseph_version=     | =2.10.03=         |
+| =tzdb_version=         | =2023c=           |
+
+** Phase summary
+
+The migration from the pre-Trinity Golden PoC contract to Trinity
+v1 ran across 15 phases (0..14).  Each phase landed code, unit
+tests, integration tests across the three runtime harnesses
+(local subprocess / Docker container / kind cluster), and doc
+updates.  Highlights:
+
+- *Phase 0* — Three-runtime test harness, build-tag gating
+  (=integration_local= / =integration_docker= / =integration_k8s=),
+  five-job CI matrix.
+- *Phase 1* — =pkg/canon= compiled-in constants, version pins,
+  =GET /version= endpoint, =--version= flag.
+- *Phase 2* — =pkg/trinity/input= validator with full Document 04
+  rules; nine-case rejection matrix wired into local/docker/k8s.
+- *Phase 3* — Trinity success / error envelope types, typed
+  marshalers (=Longitude= 6 dp, =DesignTime= RFC 3339 UTC floor),
+  status-code policy.
+- *Phase 4* — =pkg/trinity/astro= astrology pipeline (signs,
+  houses, 13 objects, angles).
+- *Phase 5* — =pkg/hd/calc.SolveDesignTime= canonical bisection
+  solver; backward-only search; ≥ 20-call forbidden-shortcut
+  sentinel.
+- *Phase 6* — Mandala mapping with anchor 277.5°; =SE_NODE_POLICY=
+  env shim retired; per-domain node policy via =north_node_true=.
+- *Phase 7* — =pkg/hd/structure.Compute= structural derivations
+  (channels, centers, definition, type, authority, profile,
+  incarnation_cross).
+- *Phase 8* — =pkg/trinity/genekeys= canonical Gene Keys block;
+  =lifes_work= → =life_work= rename completed.
+- *Phase 9* — Determinism cleanup: =pkg/canon.SelfCheck()=,
+  =ephemeris.ValidateEphePath()=, =ephe_path_resolved= surfaced in
+  =/version=, env-immunity verified across all three runtimes.
+- *Phase 10* — HTTP Trinity contract finalised: =Content-Type=
+  enforcement (415 + invalid_input), 1 MiB body cap (413 +
+  unsupported_input), malformed-JSON path validated.
+- *Phase 11* — Golden Test Pack of 23 frozen fixtures (3 +5 +5 +5
+  +2 +3 across the canon categories); =pkg/golden= runner with
+  semantic JSON equality and A4-aware error comparison.
+- *Phase 12* — PoC contract retired: =pkg/emit_golden=,
+  =pkg/process_input=, =pkg/engine= (file-based), =pkg/human_design=,
+  =pkg/gene_keys=, =pkg/astrology=, =pkg/geolocation=, =cmd/main.go=,
+  =src/canon/*.json=, and the legacy golden fixture removed.
+  Compile-time guard rejects any future re-import.
+- *Phase 13* — Deployment hardening: pinned base-image digests,
+  non-root runtime user, =HEALTHCHECK=, =securityContext=
+  (=runAsNonRoot=, =readOnlyRootFilesystem=, drop ALL caps,
+  =seccomp=RuntimeDefault=), =NetworkPolicy= limiting ingress to
+  ingress-nginx, =HorizontalPodAutoscaler= 1..10 replicas at 70%
+  CPU.
+- *Phase 14* — Release + acceptance: this changelog,
+  =src/doc/trinity-acceptance-2026-04-25.org= report, nightly CI
+  job posting the report as an artefact, =v1.0.0-trinity= tag.
+
+** Open canon ambiguities (A1..A8)
+
+All A* items still carry =UNRESOLVED= status; the engine ships
+working assumptions documented in =src/doc/version-pins.org=.
+The canon owner must address each before the next release bumps
+=canon_version= past =trinity-v1-rev-0=.
+
+** Acceptance
+
+See =src/doc/trinity-acceptance-2026-04-25.org= for the full
+acceptance report (canon coverage, fixture pack inventory, test-run
+logs, container + k8s manifest digests).

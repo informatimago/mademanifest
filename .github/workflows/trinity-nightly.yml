@@ -1,0 +1,138 @@
+name: Trinity Nightly Acceptance
+
+# Phase 14 nightly acceptance run.  Re-runs the full Trinity Golden
+# Pack on local / docker / k8s and uploads the standing acceptance
+# report (src/doc/trinity-acceptance-<date>.org) plus the captured
+# test-run logs as a workflow artefact.
+#
+# The trigger is a daily cron at 04:30 UTC plus a manual
+# workflow_dispatch.  We do NOT trigger on push so PR latency stays
+# bounded by trinity-ci.yml; the nightly job is the soak run that
+# guards against drift the per-PR CI does not have time to catch
+# (Swiss Ephemeris CVE windows, base-image digest republishes,
+# kind / kubectl version creep, etc).
+
+on:
+  schedule:
+    # 04:30 UTC = 06:30 CEST = 21:30 PDT.  Picked to land outside
+    # the busiest GitHub Actions windows.
+    - cron: '30 4 * * *'
+  workflow_dispatch:
+
+env:
+  SRC_DIR: src
+  ENGINE_DIR: src/mademanifest-engine
+
+jobs:
+  acceptance:
+    name: Trinity Golden Pack (full matrix)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: src/mademanifest-engine/go.mod
+          cache-dependency-path: src/mademanifest-engine/go.sum
+
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential ca-certificates patch rsync
+
+      - name: Build and install Swiss Ephemeris
+        run: |
+          set -euo pipefail
+          cd "$SRC_DIR/ephemeris/swisseph"
+          rm -rf swisseph-2.10.03
+          tar zxf swisseph-2.10.03.tar.gz
+          cd swisseph-2.10.03
+          patch -p1 < ../../../swisseph-makefile-install.patch
+          make PREFIX=/usr/local libswe.so libswe.a
+          sudo install -d /usr/local/lib /usr/local/include /usr/local/share/swisseph
+          sudo install -m 644 libswe.so libswe.a /usr/local/lib/
+          sudo install -m 644 sweph.h swephexp.h /usr/local/include/
+          sudo rsync -a "$GITHUB_WORKSPACE/$SRC_DIR/ephemeris/data/REQUIRED_EPHEMERIS_FILES/" /usr/local/share/swisseph/
+          sudo ldconfig
+
+      - name: Install kind
+        run: |
+          set -euo pipefail
+          version="v0.24.0"
+          curl -fsSL -o kind "https://kind.sigs.k8s.io/dl/${version}/kind-linux-amd64"
+          chmod +x kind
+          sudo mv kind /usr/local/bin/kind
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: "v1.30.0"
+
+      - name: Make logs directory
+        run: mkdir -p acceptance-logs
+
+      - name: Capture engine version
+        env:
+          LD_LIBRARY_PATH: /usr/local/lib
+          SE_EPHE_PATH: /usr/local/share/swisseph
+        working-directory: ${{ env.ENGINE_DIR }}
+        run: |
+          set -euo pipefail
+          go run ./cmd/httpserver --version | tee "$GITHUB_WORKSPACE/acceptance-logs/version.json"
+
+      - name: Capture base image digests
+        run: |
+          set -euo pipefail
+          {
+            echo "Resolved at $(date -u +%FT%TZ)"
+            echo
+            for tag in golang:1.22-bookworm debian:bookworm-slim ; do
+              echo "== ${tag} =="
+              docker pull --platform linux/amd64 --quiet "$tag"
+              docker image inspect --format '{{index .RepoDigests 0}}' "$tag"
+              echo
+            done
+          } | tee acceptance-logs/base-image-digests.txt
+
+      - name: make test-unit
+        env:
+          LD_LIBRARY_PATH: /usr/local/lib
+          SE_EPHE_PATH: /usr/local/share/swisseph
+        run: make -C "$SRC_DIR" test-unit 2>&1 | tee acceptance-logs/test-unit.log
+
+      - name: make test-integration-local
+        env:
+          LD_LIBRARY_PATH: /usr/local/lib
+          SE_EPHE_PATH: /usr/local/share/swisseph
+        run: |
+          make -C "$SRC_DIR" test-integration-local 2>&1 \
+            | tee acceptance-logs/test-integration-local.log
+
+      - name: make test-integration-docker
+        env:
+          LD_LIBRARY_PATH: /usr/local/lib
+          SE_EPHE_PATH: /usr/local/share/swisseph
+        run: |
+          make -C "$SRC_DIR" test-integration-docker 2>&1 \
+            | tee acceptance-logs/test-integration-docker.log
+
+      - name: make test-integration-k8s
+        env:
+          LD_LIBRARY_PATH: /usr/local/lib
+          SE_EPHE_PATH: /usr/local/share/swisseph
+        run: |
+          make -C "$SRC_DIR" test-integration-k8s 2>&1 \
+            | tee acceptance-logs/test-integration-k8s.log
+
+      - name: Stage acceptance report
+        run: |
+          # Bundle the standing acceptance report next to the
+          # captured logs so the artefact is self-contained.
+          cp -v "$SRC_DIR"/doc/trinity-acceptance-*.org acceptance-logs/
+
+      - name: Upload acceptance artefact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trinity-acceptance-${{ github.run_id }}
+          path: acceptance-logs/
+          retention-days: 90

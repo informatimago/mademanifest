@@ -30,15 +30,19 @@ harness exercises it in all three runtimes.
 | Phase 11 Golden Test Pack               | Done – =pkg/golden= loads + runs =src/golden/trinity/<category>/<name>/{input,expected}.json= with canon minimums (3 / 5 / 5 / 5 / 2 / 3) enforced at load time; success cases compare envelopes minus metadata, error cases compare =error_type= per A4; =TestTrinityGoldenPack= wired into local / docker / kind |
 | Phase 12 PoC retirement                 | Done – removed =pkg/emit_golden= / =pkg/process_input= / =pkg/engine= / =pkg/human_design= / =pkg/gene_keys= / =pkg/astrology= / =pkg/geolocation=, =cmd/main.go=, =src/canon/*.json=, =src/golden/GOLDEN_TEST_CASE_V1.json=; =cmd/httpserver= is the only runtime surface; HTTP =Handler.CanonPaths= and =Processor= =canonPaths= argument retired; Makefile, Dockerfile, and dev scripts retargeted at the Trinity pack; compile-time guard rejects any future re-import of the retired packages |
 | Phase 13 Deployment hardening           | Done – Dockerfile pins =golang:1.22-bookworm= and =debian:bookworm-slim= base-image digests, runs as non-root =appuser= (UID 10001), ships =HEALTHCHECK CMD curl=; deployment manifests add pod- and container-level =securityContext= (=runAsNonRoot=, =readOnlyRootFilesystem=, drop ALL caps, =seccomp=RuntimeDefault=), =/tmp= tmpfs, image digest pin; new =networkpolicy.yaml= restricts ingress to ingress-nginx; new =hpa.yaml= scales 1..10 replicas at 70% CPU; =AssertHardenedDeploymentShape= verifies posture every k8s test run; gated =AssertNetworkPolicyEnforced= and =AssertHPAScalesUnderLoad= (=TRINITY_NETWORK_POLICY_ENFORCED=1= / =TRINITY_LOAD_TEST=1=); =validate-kubernetes= CI job extended to validate the new manifests + the kustomize-assembled output |
-| Canon ambiguities A1..A8                | Open – see =src/doc/version-pins.org=                            |
+| Phase 14 Release + acceptance           | Done – =EngineVersion= -> =v1.0.0-trinity=; =CHANGELOG.org= at repo root; acceptance report =src/doc/trinity-acceptance-2026-04-25.org= covers canon ambiguity status (A1..A8 still UNRESOLVED with documented working assumptions), pack coverage (23 fixtures across 6 categories), per-leg test-run wall times, and container + manifest digests; nightly CI workflow =trinity-nightly.yml= runs the full pack at 04:30 UTC and uploads the acceptance report + per-leg logs as a 90-day artefact; tag =v1.0.0-trinity= |
+| Canon ambiguities A1..A8                | UNRESOLVED at v1.0.0-trinity – see =src/doc/version-pins.org= and the Phase 14 acceptance report; resolution gates the next =canon_version= bump |
 
-The next phase is Phase 14 (release + acceptance: tag
-=v1.0.0-trinity= once the full pack passes on all three runtimes,
-ship the acceptance report under =src/doc/trinity-acceptance-<date>.org=,
-add a nightly CI job that re-runs the pack and posts the artefact).
-The full plan is in
-[[file:src/doc/trinity-implementation-plan.org][src/doc/trinity-implementation-plan.org]]; pinned versions and the
-=A*= ambiguity register live in [[file:src/doc/version-pins.org][src/doc/version-pins.org]].
+Trinity v1 is shipped.  =v1.0.0-trinity= is the conditional
+acceptance release: every required golden test passes on local
+subprocess, Docker container, and kind cluster, but A1..A8 carry
+=UNRESOLVED= status awaiting canon-owner review.  See
+[[file:src/doc/trinity-implementation-plan.org][src/doc/trinity-implementation-plan.org]] for the full migration
+history, [[file:src/doc/version-pins.org][src/doc/version-pins.org]] for the pinned versions and
+=A*= register, and
+[[file:src/doc/trinity-acceptance-2026-04-25.org][src/doc/trinity-acceptance-2026-04-25.org]] for the acceptance
+report.  Nightly soak runs publish their artefacts via
+=.github/workflows/trinity-nightly.yml=.
 
 * Repository Layout
 

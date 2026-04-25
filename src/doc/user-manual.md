@@ -1,6 +1,6 @@
 ---
 title: MadeManifest Calculation Engine — User Manual
-date: 2026-04-24
+date: 2026-04-25
 ---
 
 # MadeManifest Calculation Engine User Manual
@@ -13,6 +13,10 @@ The engine implements the Trinity v1 runtime contract defined in
 [`specifications/trinity/`](../../specifications/trinity/).  Phase 12
 of the implementation plan retired the pre-Trinity "Golden PoC"
 file-based CLI; the HTTP service is now the only runtime surface.
+Phase 14 shipped `v1.0.0-trinity` with conditional acceptance — see
+the [acceptance report](trinity-acceptance-2026-04-25.org) for the
+canon ambiguity status (A1..A8 still UNRESOLVED with documented
+working assumptions) and the test-run / digest pin attestations.
 See the companion docs for the transition history and the pinned
 versions:
 
@@ -23,6 +27,9 @@ versions:
   (A1..A8).
 - [`requirement-tracking.org`](requirement-tracking.org) — detailed
   gap analysis between the original PoC and the Trinity canon.
+- [`trinity-acceptance-2026-04-25.org`](trinity-acceptance-2026-04-25.org)
+  — Phase 14 acceptance report.
+- [`../../CHANGELOG.org`](../../CHANGELOG.org) — release notes.
 
 ## Overview
 
@@ -461,7 +468,7 @@ curl -s http://localhost:8080/version
 
 ```json
 {
-  "engine_version": "v0.1.0-phase-13",
+  "engine_version": "v1.0.0-trinity",
   "canon_version": "trinity-v1-rev-0",
   "mapping_version": "trinity-v1-rev-0",
   "input_schema_version": "trinity-v1-rev-0",

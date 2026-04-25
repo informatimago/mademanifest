@@ -1,0 +1,276 @@
+#+TITLE: MadeManifest Engine — Trinity v1 Acceptance Report
+#+DATE: 2026-04-25
+#+OPTIONS: toc:2 num:t
+
+This is the Phase 14 release-and-acceptance summary for the
+=v1.0.0-trinity= tag.  It satisfies the deliverables enumerated in
+=src/doc/trinity-implementation-plan.org= §"Phase 14 – Release And
+Acceptance":
+
+- canon items still deferred (=A1..A8= status),
+- pack coverage,
+- automated test run logs,
+- container + k8s image digests.
+
+* Release Identification
+
+| Field                  | Value                  |
+|------------------------+------------------------|
+| Release tag            | =v1.0.0-trinity=      |
+| Release date           | 2026-04-25             |
+| Source revision (Phase 14 base) | =ede9013= (Phase 13)  |
+| Build host             | macOS arm64            |
+| Build target           | linux/amd64 (CI), darwin/arm64 (dev) |
+
+** Engine version pins
+
+| Field                  | Value             |
+|------------------------+-------------------|
+| =engine_version=       | =v1.0.0-trinity= |
+| =canon_version=        | =trinity-v1-rev-0= |
+| =mapping_version=      | =trinity-v1-rev-0= |
+| =input_schema_version= | =trinity-v1-rev-0= |
+| =source_stack_version= | =trinity-v1-rev-0= |
+| =swisseph_version=     | =2.10.03=         |
+| =tzdb_version=         | =2023c=           |
+
+The seven version fields above are exposed at runtime via
+=GET /version=, plus the Phase 9 diagnostic =ephe_path_resolved=
+which reports the deployment-resolved Swiss Ephemeris data
+directory.  =metadata= in success / error envelopes carries the
+five canon-pinned fields only.
+
+* Canon Ambiguity Status (A1..A8)
+
+All eight register entries from
+=specifications/trinity/report.org= remain =UNRESOLVED= at this
+release.  The engine ships working assumptions documented in
+=src/doc/version-pins.org= and tagged in code with the matching
+=A*= identifier.  The canon owner must address each item before the
+next release bumps =canon_version= past =trinity-v1-rev-0=.
+
+| ID | Topic                                       | Status     | Working assumption                                    |
+|----+---------------------------------------------+------------+-------------------------------------------------------|
+| A1 | IANA tzdb release                          | UNRESOLVED | Pin to Go 1.22 embedded =time/tzdata= (release 2023c) |
+| A2 | House interval ownership                   | UNRESOLVED | Start-inclusive / end-exclusive on cusps; 12→1 wrap   |
+| A3 | Design-time second selection               | UNRESOLVED | Bracket midpoint, floor to whole second on emit       |
+| A4 | Error message catalog                      | UNRESOLVED | Match =error_type= only; =message= informational      |
+| A5 | =unsupported_input= boundary               | UNRESOLVED | Reject seconds-present, sub-minute, multi-person      |
+| A6 | IANA link names                            | UNRESOLVED | Reject =US/Eastern=, =Etc/GMT+3= and other aliases    |
+| A7 | Golden first-fixture oracle                | UNRESOLVED | Capture once + cross-check published reference         |
+| A8 | Doc 05/06/07 consistency pass               | UNRESOLVED | Follow =trinity.org= (anchor 277.5°, gate 38 first); legacy JSON canon already retired in Phase 12 |
+
+For each entry, the canon owner's review is gated on:
+- A1, A6 — IANA tzdb release confirmation (pin to a specific year-letter).
+- A2 — explicit canon language for boundary ownership on cusps.
+- A3 — choice between lower bound, midpoint, upper bound, or
+       nearest-second emission of =design_time_utc=.
+- A4 — error-message text catalog or explicit confirmation that
+       only =error_type= is contractual.
+- A5 — explicit list of scenarios that must produce
+       =unsupported_input= rather than =invalid_input=.
+- A7 — review and freeze of the eleven success-case oracles in
+       =src/golden/trinity/=.
+- A8 — confirmation that =trinity.org= mandala anchor 277.5° is
+       the canonical value (Phase 12 retirement assumed yes).
+
+* Golden Test Pack Coverage
+
+The Phase 11 Golden Test Pack lives under =src/golden/trinity/=
+and meets every Document 10 minimum.
+
+** Per-category fixture counts
+
+| Category               | Required minimum | Shipped count | Path                                              |
+|------------------------+------------------+---------------+---------------------------------------------------|
+| =valid_baseline=       | 3                | 3             | =src/golden/trinity/valid_baseline/=             |
+| =valid_edge=           | 5                | 5             | =src/golden/trinity/valid_edge/=                 |
+| =invalid_input=        | 5                | 5             | =src/golden/trinity/invalid_input/=              |
+| =incomplete_input=     | 5                | 5             | =src/golden/trinity/incomplete_input/=           |
+| =unsupported_input=    | 2                | 2             | =src/golden/trinity/unsupported_input/=          |
+| =regression_sentinel=  | 3                | 3             | =src/golden/trinity/regression_sentinel/=        |
+| *Total*                | 23               | 23            |                                                   |
+
+** Fixture inventory
+
+*** valid_baseline (3)
+- =schiedam_1990_04_09= — Phase 4 anchor case; Schiedam, NL.
+- =new_york_1985_07_21= — Western hemisphere, DST timezone.
+- =tokyo_2000_01_01=    — Asian timezone, midnight rollover.
+
+*** valid_edge (5)
+- =midnight_zero_zero=     — 00:00 boundary.
+- =one_minute_to_midnight= — 23:59 boundary.
+- =leap_year_feb_29=       — 2000-02-29 leap day.
+- =arctic_high_latitude=   — Reykjavik, lat 64.
+- =equator_pacific=        — Pacific/Auckland, lat near 0,
+  lon near 178.
+
+*** invalid_input (5)
+- =latitude_as_string=     — strict numeric typing (Document 04).
+- =date_invalid_month=     — =1990-13-01= rejected by Gregorian round-trip.
+- =date_invalid_day=       — =1990-02-30= same.
+- =timezone_abbreviation=  — =CET= (no slash, abbreviation).
+- =timezone_link_name=     — =US/Eastern= (A6 link-name reject).
+
+*** incomplete_input (5)
+- One per required field: =birth_date=, =birth_time=, =timezone=,
+  =latitude=, =longitude=.
+
+*** unsupported_input (2)
+- =birth_time_with_seconds=      — sub-minute precision.
+- =birth_time_with_milliseconds= — finer-grained sub-minute.
+
+*** regression_sentinel (3)
+- =schiedam_anchor_277_5_deg=    — "rejected old gate anchor"
+  sentinel; full pipeline through canon mandala.
+- =emotional_authority_6_59=     — UK 1979 case exercising the
+  =emotional= authority pre-empts =sacral= rule.
+- =placidus_iceland_high_lat=    — Reykjavik 1995 case; high-
+  latitude Placidus regression.
+
+** Comparison rules (Phase 11)
+
+- Success fixtures: full =SuccessEnvelope= compared field-by-field
+  with the metadata block excluded from the comparison and
+  asserted separately against =output.CurrentMetadata()=.
+  Phase bumps that change =engine_version= therefore do not
+  invalidate fixtures.
+- Error fixtures: =error_type= + envelope shape (status, metadata,
+  non-empty message) per ambiguity A4.
+
+* Automated Test Run Logs
+
+The full Phase 14 acceptance run was driven from the macOS dev
+machine on 2026-04-25 against the =v1.0.0-trinity= source
+revision.  All four legs green.
+
+| Leg                      | Command                                | Wall time | Status |
+|--------------------------+----------------------------------------+-----------+--------|
+| Unit                     | =go test ./pkg/...=                    | ≈ 1.5 s   | ok     |
+| Integration (local)      | =make test-integration-local=          | 3.1 s     | ok     |
+| Integration (docker)     | =make test-integration-docker=         | 4.5 s     | ok     |
+| Integration (kubernetes) | =make test-integration-k8s=            | 44.9 s    | ok     |
+
+CI run on the Phase 13 base revision (=ede9013=) confirmed every
+job green on =ubuntu-latest=:
+
+| GitHub Actions job              | Wall time |
+|---------------------------------+-----------|
+| Unit + helper self-tests        | 40 s      |
+| Validate Kubernetes Manifests   | 8 s       |
+| Integration (local subprocess)  | 39 s      |
+| Integration (docker)            | 1 m 21 s  |
+| Integration (kubernetes via kind) | 3 m 0 s |
+
+(see =.github/workflows/trinity-ci.yml= for the workflow definition;
+=.github/workflows/trinity-nightly.yml= adds a Phase 14 nightly job
+that re-runs the full pack and uploads this acceptance report as
+an artefact.)
+
+* Container And Kubernetes Manifest Digests
+
+** Base image digests (linux/amd64)
+
+| Stage   | Tag                       | Digest                                                                       |
+|---------+---------------------------+------------------------------------------------------------------------------|
+| builder | =golang:1.22-bookworm=    | =sha256:3d699e4d15d0f8f13c9195c0632a16702b8cbdece2955af1c23b37ae5d55a253= |
+| runtime | =debian:bookworm-slim=    | =sha256:f9c6a2fd2ddbc23e336b6257a5245e31f996953ef06cd13a59fa0a1df2d5c252= |
+
+Both digests resolved via =docker pull --platform linux/amd64= at
+the Phase 13 commit.  Re-resolve when bumping a tag; the digest
+pin must stay matched to the named tag in the same commit.
+
+** Production image identity
+
+| Field           | Value                                                                            |
+|-----------------+----------------------------------------------------------------------------------|
+| Image name      | =mademanifest-engine:v1.0.0-trinity=                                            |
+| Local image ID  | =sha256:9adcc87f30d1457e86fbde7bce01c3f7672fd01606fe57782b5063ee86e1821a=     |
+| Build context   | =src/= at revision =ede9013= (with EngineVersion bumped to =v1.0.0-trinity=) |
+| Engine version  | =v1.0.0-trinity= (verified via =--version= and =GET /version=)                |
+| Approx size     | 123 MB                                                                          |
+
+The local image ID above is the artefact produced by the macOS
+Docker daemon during this acceptance run.  Production deployments
+publish a registry-side digest under
+=registry.example.com/mademanifest@sha256:...=; that digest is
+pinned in =src/deploy/kubernetes/deployment.yaml= and rewritten by
+the kustomize overlay used by integration tests.
+
+** Kustomize manifest inventory
+
+=src/deploy/kubernetes/= ships five resources via =kustomization.yaml=:
+
+| Manifest             | Purpose                                                            |
+|----------------------+--------------------------------------------------------------------|
+| =configmap.yaml=     | =PORT=8080=, =SE_EPHE_PATH=/usr/local/share/swisseph=             |
+| =deployment.yaml=    | One container, hardened securityContext, /tmp tmpfs               |
+| =service.yaml=       | =ClusterIP=, port 80 → containerPort 8080                         |
+| =networkpolicy.yaml= | Phase 13: ingress restricted to namespace =ingress-nginx=         |
+| =hpa.yaml=           | Phase 13: 1..10 replicas, 70% average CPU utilisation             |
+
+** Container security posture (Phase 13)
+
+| Control                        | Source manifest                                |
+|--------------------------------+------------------------------------------------|
+| =USER 10001:10001=             | =src/Dockerfile=                               |
+| =HEALTHCHECK CMD curl=         | =src/Dockerfile=                               |
+| pod =runAsNonRoot=             | =src/deploy/kubernetes/deployment.yaml=        |
+| pod =runAsUser=10001=          | =src/deploy/kubernetes/deployment.yaml=        |
+| pod =seccomp=RuntimeDefault=   | =src/deploy/kubernetes/deployment.yaml=        |
+| =allowPrivilegeEscalation=false= | =src/deploy/kubernetes/deployment.yaml=      |
+| =readOnlyRootFilesystem=true=  | =src/deploy/kubernetes/deployment.yaml=        |
+| =capabilities.drop=[ALL]=      | =src/deploy/kubernetes/deployment.yaml=        |
+| =NetworkPolicy= → ingress-nginx | =src/deploy/kubernetes/networkpolicy.yaml=    |
+| HPA: 1..10 replicas, 70% CPU   | =src/deploy/kubernetes/hpa.yaml=               |
+
+* Acceptance Decision
+
+Per =trinity.org= §"Delivery And Acceptance" the minimum
+acceptance conditions are:
+
+- [X] all required in-scope features implemented (Phases 0..13).
+- [-] no canon-critical ambiguity remains unresolved in the
+  delivered scope — *deferred*: A1..A8 carry =UNRESOLVED= status;
+  the engine ships working assumptions documented in =version-pins.org=.
+- [X] required metadata present and correct
+  (=output.CurrentMetadata= asserted by every test pass).
+- [X] required golden tests pass on local, docker, and kind.
+- [X] output matches canon exactly for the success cases the
+  oracle covers (per A7 the canon owner has not yet approved the
+  freeze; the per-section oracles cross-check against the
+  published Schiedam PoC chart and against trinity.org canonical
+  decision trees).
+- [X] no undisclosed canon deviation — every working assumption is
+  tagged with its =A*= identifier in code and =version-pins.org=.
+- [X] no out-of-scope shortcuts simulating compliance.
+
+Conditional acceptance: =v1.0.0-trinity= ships pending the canon
+owner's resolution of A1..A8.  Resolution of any =A*= item that
+changes a compiled-in constant (anchor, error_type mapping,
+unsupported_input boundary, etc.) requires a new =canon_version=
+bump per Document 08; the Phase 11 golden pack must be regenerated
+in lockstep.
+
+* Reproducing This Report
+
+#+begin_src bash
+# 1. Check out the v1.0.0-trinity tag.
+git checkout v1.0.0-trinity
+
+# 2. Build the production image and capture the digest.
+docker build -t mademanifest-engine:v1.0.0-trinity src/
+
+# 3. Run the full test matrix.
+make -C src test-unit
+make -C src test-integration-local
+make -C src test-integration-docker
+make -C src test-integration-k8s
+
+# 4. Generate this report's wall-time numbers and image digest
+#    fields.  The fixture inventory and canon pins are sourced
+#    from the in-tree files this report references.
+docker images --no-trunc mademanifest-engine
+mademanifest-engine --version
+#+end_src
