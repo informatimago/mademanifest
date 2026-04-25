@@ -101,6 +101,8 @@ echo
 echo "==> Port-forwarding svc/mademanifest to 127.0.0.1:$PORT"
 echo "    Ctrl-C to stop.  Try it from another terminal with:"
 echo "      src/scripts/k8s-local-test.sh"
+echo "    Or open the browser test client (form + result tables):"
+echo "      open src/scripts/client.html"
 echo
 
 # NOT `exec`: the cleanup trap belongs to this shell, so we must keep

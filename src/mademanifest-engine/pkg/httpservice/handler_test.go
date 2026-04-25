@@ -471,3 +471,62 @@ func TestHandleManifestRejectsMalformedJSON(t *testing.T) {
 		})
 	}
 }
+
+// TestCORSPreflightShortCircuits is the CORS sentinel: an OPTIONS
+// request to any wired route must return HTTP 204 with the
+// canonical Access-Control-Allow-* headers, BEFORE the underlying
+// handler runs.  This is what unblocks browser test UIs (such as
+// src/scripts/client.html) from POSTing to the engine through a
+// fetch() that triggers a preflight.
+func TestCORSPreflightShortCircuits(t *testing.T) {
+	handler := New()
+	mux := http.NewServeMux()
+	handler.Register(mux)
+
+	for _, path := range []string{"/healthz", "/version", "/manifest"} {
+		t.Run(path, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodOptions, path, nil)
+			rec := httptest.NewRecorder()
+			mux.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusNoContent {
+				t.Errorf("OPTIONS %s status = %d, want 204",
+					path, rec.Code)
+			}
+			if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "*" {
+				t.Errorf("OPTIONS %s Access-Control-Allow-Origin = %q, want *",
+					path, got)
+			}
+			if got := rec.Header().Get("Access-Control-Allow-Methods"); !strings.Contains(got, "POST") {
+				t.Errorf("OPTIONS %s Access-Control-Allow-Methods = %q, want to include POST",
+					path, got)
+			}
+			if got := rec.Header().Get("Access-Control-Allow-Headers"); !strings.Contains(got, "Content-Type") {
+				t.Errorf("OPTIONS %s Access-Control-Allow-Headers = %q, want to include Content-Type",
+					path, got)
+			}
+		})
+	}
+}
+
+// TestCORSHeadersOnSuccessResponse verifies that the CORS headers
+// are also emitted on the actual GET / POST response (not only on
+// the preflight).  Browsers require Access-Control-Allow-Origin on
+// the response to the real request.
+func TestCORSHeadersOnSuccessResponse(t *testing.T) {
+	handler := New()
+	mux := http.NewServeMux()
+	handler.Register(mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/version", nil)
+	req.Header.Set("Origin", "http://localhost:8000")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("/version status = %d, want 200", rec.Code)
+	}
+	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "*" {
+		t.Errorf("Access-Control-Allow-Origin = %q, want *", got)
+	}
+}

@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MadeManifest Engine — test client</title>
+<style>
+  :root {
+    --bg: #fafafa;
+    --fg: #111;
+    --muted: #555;
+    --accent: #1f4ea1;
+    --accent-fg: #fff;
+    --border: #d4d4d4;
+    --row-alt: #f3f3f3;
+    --ok-bg: #e6f4ea;
+    --ok-fg: #1e6a3a;
+    --err-bg: #fde7e7;
+    --err-fg: #8a1f1f;
+    --code-bg: #1e1e1e;
+    --code-fg: #f0f0f0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica,
+          Arial, sans-serif;
+    background: var(--bg); color: var(--fg);
+    margin: 0; padding: 1.5rem;
+  }
+  h1 { margin: 0 0 0.5rem; font-size: 1.3rem; }
+  h2 { margin: 1.5rem 0 0.5rem; font-size: 1.05rem;
+       padding-bottom: 0.25rem; border-bottom: 1px solid var(--border); }
+  h3 { margin: 1rem 0 0.4rem; font-size: 0.95rem; color: var(--muted); }
+  p.intro { margin: 0 0 1rem; color: var(--muted); max-width: 60rem; }
+  fieldset { border: 1px solid var(--border); padding: 1rem 1.25rem;
+             margin: 0 0 1rem; border-radius: 4px; background: #fff; }
+  legend { padding: 0 0.4rem; color: var(--muted); font-size: 0.85rem; }
+  label { display: block; margin-bottom: 0.6rem; }
+  label > span.label-text { display: inline-block; width: 11rem;
+                            color: var(--muted); }
+  input[type=text], input[type=date], input[type=time],
+  input[type=number], input[type=url], select {
+    font: inherit; padding: 0.3rem 0.5rem; border: 1px solid var(--border);
+    border-radius: 3px; min-width: 14rem;
+  }
+  input[type=number] { width: 8rem; min-width: 0; }
+  button {
+    font: inherit; padding: 0.45rem 0.9rem; border: 0; border-radius: 3px;
+    background: var(--accent); color: var(--accent-fg); cursor: pointer;
+    margin-right: 0.5rem;
+  }
+  button.secondary { background: #ddd; color: #111; }
+  button:disabled { opacity: 0.5; cursor: progress; }
+  table { border-collapse: collapse; width: 100%; margin: 0.25rem 0 0.75rem;
+          background: #fff; }
+  th, td { text-align: left; padding: 0.35rem 0.6rem;
+           border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: #f0f0f0; font-weight: 600; }
+  tbody tr:nth-child(even) { background: var(--row-alt); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .pill {
+    display: inline-block; padding: 0.1rem 0.5rem; border-radius: 999px;
+    font-size: 0.75rem; vertical-align: 1px;
+  }
+  .pill.defined   { background: var(--ok-bg);  color: var(--ok-fg); }
+  .pill.undefined { background: #f1f1f1;       color: #666; }
+  .status-bar {
+    margin: 0 0 1rem; padding: 0.5rem 0.75rem; border-radius: 3px;
+    font-size: 0.9rem;
+  }
+  .status-bar.ok    { background: var(--ok-bg);  color: var(--ok-fg); }
+  .status-bar.err   { background: var(--err-bg); color: var(--err-fg); }
+  .status-bar code  { font-family: ui-monospace, monospace; }
+  pre {
+    background: var(--code-bg); color: var(--code-fg); padding: 0.75rem;
+    border-radius: 4px; overflow: auto; font-size: 0.8rem;
+  }
+  .grid-two {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+  }
+  details { margin-bottom: 0.5rem; }
+  summary { cursor: pointer; color: var(--muted); }
+  .meta-block { font-size: 0.8rem; color: var(--muted); }
+  .meta-block code { background: #eee; padding: 0 0.25rem; border-radius: 2px; }
+  @media (max-width: 800px) {
+    .grid-two { grid-template-columns: 1fr; }
+    label > span.label-text { display: block; width: auto; margin-bottom: 0.2rem; }
+  }
+</style>
+</head>
+<body>
+<h1>MadeManifest Engine — test client</h1>
+<p class="intro">
+  Drives a running mademanifest engine over HTTP.  Designed to be
+  used after <code>src/scripts/k8s-local-up.sh</code> has port-
+  forwarded the kind cluster's <code>mademanifest</code> service to
+  <code>http://127.0.0.1:8080</code>.  Open this file directly in a
+  browser; the engine ships permissive CORS headers so the page
+  works from any origin (including <code>file://</code>).
+</p>
+
+<form id="form">
+  <fieldset>
+    <legend>Engine</legend>
+    <label>
+      <span class="label-text">Base URL</span>
+      <input type="url" id="base-url" value="http://127.0.0.1:8080"
+             autocomplete="off" required />
+    </label>
+    <label>
+      <span class="label-text">Endpoint</span>
+      <input type="text" id="endpoint" value="/manifest"
+             autocomplete="off" required />
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Trinity input payload</legend>
+    <label>
+      <span class="label-text">birth_date</span>
+      <input type="date" id="birth_date" value="1990-04-09" required />
+    </label>
+    <label>
+      <span class="label-text">birth_time (HH:MM)</span>
+      <input type="time" id="birth_time" value="18:04" required />
+    </label>
+    <label>
+      <span class="label-text">timezone (IANA)</span>
+      <input type="text" id="timezone" value="Europe/Amsterdam"
+             list="tz-list" autocomplete="off" required />
+      <datalist id="tz-list">
+        <option value="Europe/Amsterdam"></option>
+        <option value="Europe/London"></option>
+        <option value="Europe/Paris"></option>
+        <option value="Europe/Berlin"></option>
+        <option value="America/New_York"></option>
+        <option value="America/Los_Angeles"></option>
+        <option value="America/Chicago"></option>
+        <option value="America/Sao_Paulo"></option>
+        <option value="Asia/Tokyo"></option>
+        <option value="Asia/Shanghai"></option>
+        <option value="Asia/Kolkata"></option>
+        <option value="Australia/Sydney"></option>
+        <option value="Atlantic/Reykjavik"></option>
+        <option value="Africa/Abidjan"></option>
+        <option value="Pacific/Auckland"></option>
+      </datalist>
+    </label>
+    <label>
+      <span class="label-text">latitude</span>
+      <input type="number" id="latitude" value="51.9167"
+             min="-90" max="90" step="any" required />
+    </label>
+    <label>
+      <span class="label-text">longitude</span>
+      <input type="number" id="longitude" value="4.4"
+             min="-180" max="180" step="any" required />
+    </label>
+  </fieldset>
+
+  <button type="submit" id="submit-btn">POST /manifest</button>
+  <button type="button" id="download-input-btn" class="secondary">Download input.json</button>
+  <button type="button" id="download-output-btn" class="secondary" disabled>Download output.json</button>
+</form>
+
+<div id="status" class="status-bar" hidden></div>
+
+<div id="results" hidden>
+  <h2>Response summary</h2>
+  <div id="meta-block" class="meta-block"></div>
+
+  <div id="success-blocks" hidden>
+    <h2>input_echo</h2>
+    <div id="input-echo"></div>
+
+    <h2>astrology</h2>
+    <div class="grid-two">
+      <div>
+        <h3>system</h3>
+        <div id="astro-system"></div>
+        <h3>angles</h3>
+        <div id="astro-angles"></div>
+      </div>
+      <div>
+        <h3>house_cusps</h3>
+        <div id="astro-cusps"></div>
+      </div>
+    </div>
+    <h3>objects</h3>
+    <div id="astro-objects"></div>
+
+    <h2>human_design</h2>
+    <div class="grid-two">
+      <div>
+        <h3>system</h3>
+        <div id="hd-system"></div>
+        <h3>type / authority / definition / profile</h3>
+        <div id="hd-summary"></div>
+        <h3>incarnation_cross</h3>
+        <div id="hd-cross"></div>
+      </div>
+      <div>
+        <h3>centers</h3>
+        <div id="hd-centers"></div>
+        <h3>channels</h3>
+        <div id="hd-channels"></div>
+      </div>
+    </div>
+    <h3>personality_activations</h3>
+    <div id="hd-personality"></div>
+    <h3>design_activations</h3>
+    <div id="hd-design"></div>
+
+    <h2>gene_keys</h2>
+    <div id="gk-system"></div>
+    <div id="gk-activations"></div>
+  </div>
+
+  <div id="error-block" hidden>
+    <h2>Error envelope</h2>
+    <div id="error-table"></div>
+  </div>
+
+  <details>
+    <summary>Raw response JSON</summary>
+    <pre id="raw-json"></pre>
+  </details>
+</div>
+
+<script>
+"use strict";
+
+// ---------- Form / submission ---------------------------------------------
+
+const $ = (id) => document.getElementById(id);
+
+function buildPayload() {
+  return {
+    birth_date: $("birth_date").value,
+    birth_time: $("birth_time").value,
+    timezone:   $("timezone").value.trim(),
+    latitude:   parseFloat($("latitude").value),
+    longitude:  parseFloat($("longitude").value),
+  };
+}
+
+function targetURL() {
+  return $("base-url").value.replace(/\/+$/, "") + $("endpoint").value;
+}
+
+let lastInput = null;
+let lastOutput = null;
+
+async function submitForm(ev) {
+  ev.preventDefault();
+  const submitBtn = $("submit-btn");
+  submitBtn.disabled = true;
+  setStatus("Sending request…", "info");
+  hideResults();
+
+  const url = targetURL();
+  const payload = buildPayload();
+  lastInput = payload;
+  $("download-output-btn").disabled = true;
+
+  try {
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload, null, 2),
+    });
+    const text = await resp.text();
+    let body = null;
+    try { body = JSON.parse(text); }
+    catch (e) {
+      throw new Error(
+        "engine returned non-JSON body (HTTP " + resp.status + "): " + text);
+    }
+    lastOutput = body;
+    $("download-output-btn").disabled = false;
+    renderResponse(resp.status, body);
+  } catch (err) {
+    setStatus("Transport error: " + err.message, "err");
+  } finally {
+    submitBtn.disabled = false;
+  }
+}
+
+function setStatus(msg, kind) {
+  const bar = $("status");
+  bar.textContent = msg;
+  bar.className = "status-bar " + (kind === "err" ? "err"
+                               : kind === "ok"  ? "ok"
+                               : "");
+  bar.hidden = false;
+}
+
+function hideResults() {
+  $("results").hidden = true;
+  $("success-blocks").hidden = true;
+  $("error-block").hidden = true;
+}
+
+// ---------- Rendering -----------------------------------------------------
+
+function renderResponse(httpStatus, body) {
+  $("results").hidden = false;
+  $("raw-json").textContent = JSON.stringify(body, null, 2);
+
+  const meta = body && body.metadata ? body.metadata : null;
+  $("meta-block").innerHTML = renderMetaSummary(httpStatus, body, meta);
+
+  if (body && body.status === "success") {
+    setStatus("HTTP " + httpStatus + " · success", "ok");
+    $("success-blocks").hidden = false;
+    $("error-block").hidden = true;
+    renderSuccess(body);
+  } else if (body && body.status === "error") {
+    setStatus("HTTP " + httpStatus + " · error_type = "
+              + (body.error && body.error.error_type), "err");
+    $("success-blocks").hidden = true;
+    $("error-block").hidden = false;
+    renderError(body);
+  } else {
+    setStatus("HTTP " + httpStatus + " · unrecognized envelope shape", "err");
+  }
+}
+
+function renderMetaSummary(httpStatus, body, meta) {
+  const parts = ["HTTP <code>" + httpStatus + "</code>"];
+  if (body && body.status) {
+    parts.push("status <code>" + escapeHTML(body.status) + "</code>");
+  }
+  if (meta) {
+    parts.push("engine <code>" + escapeHTML(meta.engine_version) + "</code>");
+    parts.push("canon <code>" + escapeHTML(meta.canon_version) + "</code>");
+  }
+  return parts.join(" · ");
+}
+
+function renderSuccess(body) {
+  $("input-echo").innerHTML = kvTable(body.input_echo);
+
+  const astro = body.astrology || {};
+  $("astro-system").innerHTML = kvTable(astro.system);
+  $("astro-angles").innerHTML = kvTable({
+    "ascendant.longitude": fmtNum(astro.angles && astro.angles.ascendant && astro.angles.ascendant.longitude),
+    "ascendant.sign":      astro.angles && astro.angles.ascendant && astro.angles.ascendant.sign,
+    "midheaven.longitude": fmtNum(astro.angles && astro.angles.midheaven && astro.angles.midheaven.longitude),
+    "midheaven.sign":      astro.angles && astro.angles.midheaven && astro.angles.midheaven.sign,
+  });
+  $("astro-cusps").innerHTML = arrayTable(
+    astro.house_cusps,
+    [["house", "house"], ["longitude", "longitude", true], ["sign", "sign"]]);
+  $("astro-objects").innerHTML = arrayTable(
+    astro.objects,
+    [["object_id", "object_id"], ["longitude", "longitude", true],
+     ["sign", "sign"], ["house", "house"]]);
+
+  const hd = body.human_design || {};
+  $("hd-system").innerHTML = kvTable(hd.system);
+  $("hd-summary").innerHTML = kvTable({
+    type:       hd.type,
+    authority:  hd.authority,
+    definition: hd.definition,
+    profile:    hd.profile,
+  });
+  $("hd-cross").innerHTML = kvTable(flattenCross(hd.incarnation_cross));
+  $("hd-centers").innerHTML = arrayTable(
+    hd.centers,
+    [["center_id", "center_id"], ["state", "state", false, pillCell]]);
+  $("hd-channels").innerHTML = arrayTable(
+    hd.channels,
+    [["channel_id", "channel_id"],
+     ["gate_a", "gate_a"], ["gate_b", "gate_b"],
+     ["center_a", "center_a"], ["center_b", "center_b"]]);
+  $("hd-personality").innerHTML = arrayTable(
+    hd.personality_activations,
+    [["object_id", "object_id"], ["gate", "gate"], ["line", "line"]]);
+  $("hd-design").innerHTML = arrayTable(
+    hd.design_activations,
+    [["object_id", "object_id"], ["gate", "gate"], ["line", "line"]]);
+
+  const gk = body.gene_keys || {};
+  $("gk-system").innerHTML = kvTable(gk.system);
+  $("gk-activations").innerHTML = kvTable(flattenGK(gk.activations));
+}
+
+function renderError(body) {
+  const e = body.error || {};
+  $("error-table").innerHTML = kvTable({
+    error_type: e.error_type,
+    message:    e.message,
+  });
+}
+
+// ---------- Table helpers -------------------------------------------------
+
+function kvTable(obj) {
+  if (!obj || typeof obj !== "object") return "<em>missing</em>";
+  const rows = Object.keys(obj).map(k => {
+    const v = obj[k];
+    return "<tr><th>" + escapeHTML(k) + "</th><td>"
+      + escapeHTML(formatValue(v)) + "</td></tr>";
+  }).join("");
+  return "<table><tbody>" + rows + "</tbody></table>";
+}
+
+// arrayTable(rows, columns) where columns = [[label, key, isNum?, render?], ...]
+function arrayTable(rows, columns) {
+  if (!Array.isArray(rows) || rows.length === 0) return "<em>empty</em>";
+  const head = columns.map(([label, _key, num]) =>
+    "<th" + (num ? ' class="num"' : "") + ">" + escapeHTML(label) + "</th>"
+  ).join("");
+  const body = rows.map(r =>
+    "<tr>" + columns.map(([_label, key, num, render]) => {
+      const cls = num ? ' class="num"' : "";
+      const val = render ? render(r[key], r) : escapeHTML(formatValue(r[key]));
+      return "<td" + cls + ">" + val + "</td>";
+    }).join("") + "</tr>"
+  ).join("");
+  return "<table><thead><tr>" + head + "</tr></thead><tbody>"
+    + body + "</tbody></table>";
+}
+
+function pillCell(state) {
+  const cls = state === "defined" ? "defined" : "undefined";
+  return '<span class="pill ' + cls + '">' + escapeHTML(state || "?") + '</span>';
+}
+
+function flattenCross(cross) {
+  if (!cross) return null;
+  const fmt = (gl) => gl ? (gl.gate + "." + gl.line) : "";
+  return {
+    personality_sun:   fmt(cross.personality_sun),
+    personality_earth: fmt(cross.personality_earth),
+    design_sun:        fmt(cross.design_sun),
+    design_earth:      fmt(cross.design_earth),
+  };
+}
+
+function flattenGK(act) {
+  if (!act) return null;
+  const fmt = (a) => a ? (a.key + "." + a.line) : "";
+  return {
+    life_work: fmt(act.life_work),
+    evolution: fmt(act.evolution),
+    radiance:  fmt(act.radiance),
+    purpose:   fmt(act.purpose),
+  };
+}
+
+function formatValue(v) {
+  if (v === null || v === undefined) return "";
+  if (typeof v === "number") return fmtNum(v);
+  if (typeof v === "object") return JSON.stringify(v);
+  return String(v);
+}
+
+function fmtNum(v) {
+  if (v === null || v === undefined || v === "") return "";
+  const n = Number(v);
+  if (!Number.isFinite(n)) return String(v);
+  // Engine emits longitudes to 6 decimals.  Match precision but
+  // strip trailing zeros for compact display.
+  return n.toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
+}
+
+function escapeHTML(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+// ---------- Downloads -----------------------------------------------------
+
+function download(name, payload) {
+  const blob = new Blob([JSON.stringify(payload, null, 2) + "\n"],
+    { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function downloadInput()  {
+  const name = "input-" + timestamp() + ".json";
+  download(name, lastInput || buildPayload());
+}
+function downloadOutput() {
+  if (!lastOutput) return;
+  download("output-" + timestamp() + ".json", lastOutput);
+}
+function timestamp() {
+  return new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+}
+
+// ---------- Wiring --------------------------------------------------------
+
+document.addEventListener("DOMContentLoaded", () => {
+  $("form").addEventListener("submit", submitForm);
+  $("download-input-btn").addEventListener("click", downloadInput);
+  $("download-output-btn").addEventListener("click", downloadOutput);
+});
+</script>
+</body>
+</html>
