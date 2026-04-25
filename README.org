@@ -18,15 +18,16 @@ harness exercises it in all three runtimes.
 | Golden PoC contract (pre-Trinity)       | Green on local, docker, and kind                                 |
 | Phase 0 integration harness             | Done – local + docker + kind, shared helpers                     |
 | Phase 1 canon constants + version pins  | Done – =pkg/canon/constants.go=, =pkg/canon/sources.go=, =GET /version=, =--version= |
-| Trinity input / output contract         | Phase 2 + 3 – not yet started                                    |
+| Phase 2 Trinity input contract          | Done – =pkg/trinity/input= validator with full Document 04 rules; rejection matrix exercised through local/docker/k8s |
+| Phase 3 Trinity output envelope         | Partial – =ErrorEnvelope= + =Metadata= + status-code policy landed alongside Phase 2; =SuccessEnvelope= still pending |
 | Trinity Human Design structural layer   | Phase 7 – not yet started (channels, centers, definition, type, authority, profile, incarnation cross) |
 | Trinity Golden Test Pack                | Phase 11 – not yet started                                       |
 | Canon ambiguities A1..A8                | Open – see =src/doc/version-pins.org=                            |
 
-The next phase is Phase 2: Trinity input DTO + validator.  The full
-plan is in [[file:src/doc/trinity-implementation-plan.org][src/doc/trinity-implementation-plan.org]]; pinned versions and
-the =A*= ambiguity register live in
-[[file:src/doc/version-pins.org][src/doc/version-pins.org]].
+The next phase is Phase 3 (success envelope) followed by Phase 4
+(astrology calculation rewrite).  The full plan is in
+[[file:src/doc/trinity-implementation-plan.org][src/doc/trinity-implementation-plan.org]]; pinned versions and the =A*=
+ambiguity register live in [[file:src/doc/version-pins.org][src/doc/version-pins.org]].
 
 * Repository Layout
 

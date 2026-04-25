@@ -14,8 +14,6 @@ package integration
 
 import (
 	"net/http"
-	"os"
-	"path/filepath"
 	"testing"
 )
 
@@ -39,24 +37,16 @@ func TestLocalHarnessServesVersion(t *testing.T) {
 	AssertVersionEndpointMatchesCanon(t, srv.BaseURL)
 }
 
-func TestLocalHarnessPostsGoldenFixture(t *testing.T) {
+// TestLocalHarnessTrinityRejectionMatrix exercises the Phase 2
+// validator end-to-end through the real binary: every rejection
+// category from trinity.org § Validation Rules plus the placeholder
+// success path.  The POC golden fixture is no longer driven through
+// /manifest – it now violates the Trinity input contract (unknown
+// fields case_id, birth, engine_contract, expected) and is rejected
+// as invalid_input.
+func TestLocalHarnessTrinityRejectionMatrix(t *testing.T) {
 	srv := StartLocalServer(t, LocalServerOptions{})
 	t.Cleanup(srv.Shutdown)
 
-	goldenPath := filepath.Join(RepoRoot(t), "src", "golden", "GOLDEN_TEST_CASE_V1.json")
-	body, err := os.ReadFile(goldenPath)
-	if err != nil {
-		t.Fatalf("read golden fixture: %v", err)
-	}
-
-	status, raw, err := PostManifest(srv.BaseURL, body, nil)
-	if err != nil {
-		t.Fatalf("POST /manifest: %v", err)
-	}
-	if status != http.StatusOK {
-		t.Fatalf("POST /manifest status = %d; body = %s", status, raw)
-	}
-	if len(raw) == 0 {
-		t.Fatal("POST /manifest returned empty body")
-	}
+	AssertTrinityRejectionMatrix(t, srv.BaseURL)
 }

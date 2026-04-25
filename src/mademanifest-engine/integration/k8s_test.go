@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"path/filepath"
 	"testing"
 )
 
@@ -49,21 +48,6 @@ func TestK8sHarnessServesVersion(t *testing.T) {
 	AssertVersionEndpointMatchesCanon(t, sharedK8s.BaseURL)
 }
 
-func TestK8sHarnessPostsGoldenFixture(t *testing.T) {
-	goldenPath := filepath.Join(RepoRoot(t), "src", "golden", "GOLDEN_TEST_CASE_V1.json")
-	body, err := os.ReadFile(goldenPath)
-	if err != nil {
-		t.Fatalf("read golden fixture: %v", err)
-	}
-
-	status, raw, err := PostManifest(sharedK8s.BaseURL, body, nil)
-	if err != nil {
-		t.Fatalf("POST /manifest: %v", err)
-	}
-	if status != http.StatusOK {
-		t.Fatalf("POST /manifest status = %d; body = %s", status, raw)
-	}
-	if len(raw) == 0 {
-		t.Fatal("POST /manifest returned empty body")
-	}
+func TestK8sHarnessTrinityRejectionMatrix(t *testing.T) {
+	AssertTrinityRejectionMatrix(t, sharedK8s.BaseURL)
 }

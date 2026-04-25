@@ -8,26 +8,34 @@ import (
 	"net/http"
 
 	"mademanifest-engine/pkg/canon"
-	"mademanifest-engine/pkg/engine"
+	"mademanifest-engine/pkg/trinity/input"
+	"mademanifest-engine/pkg/trinity/output"
 )
 
-type Processor func(bodyReader io.Reader, canonPaths canon.Paths) ([]byte, error)
+// Processor consumes the request body and returns the bytes to send
+// back, the HTTP status code to attach, and an error.  A non-nil
+// error is treated as a server-side execution_failure: the handler
+// wraps it in a Trinity error envelope and returns HTTP 500.
+//
+// When err is nil, body must be a complete JSON document (the Trinity
+// envelope) and status the canonical HTTP code chosen by
+// output.StatusCodeForErrorType for rejections, or 200 for the
+// (Phase 3+) success path.
+type Processor func(bodyReader io.Reader, canonPaths canon.Paths) (body []byte, status int, err error)
 
 type Handler struct {
 	CanonPaths canon.Paths
 	Process    Processor
 }
 
+// New wires the default Trinity processor.  Phase 2 implements the
+// validator and the rejection path; the success branch returns
+// execution_failure with a placeholder message until later phases
+// land the calculation pipeline behind the same surface.
 func New(canonPaths canon.Paths) Handler {
 	return Handler{
 		CanonPaths: canonPaths,
-		Process: func(bodyReader io.Reader, canonPaths canon.Paths) ([]byte, error) {
-			output, err := engine.Run(bodyReader, canonPaths)
-			if err != nil {
-				return nil, err
-			}
-			return engine.Render(output, false)
-		},
+		Process:    trinityProcess,
 	}
 }
 
@@ -42,8 +50,8 @@ func (h Handler) handleHealth(w http.ResponseWriter, _ *http.Request) {
 }
 
 // handleVersion returns the compiled-in pinned versions as JSON.
-// This is the Phase 1 deliverable; later phases embed the same
-// VersionInfo into every Trinity response envelope's metadata block.
+// This is the Phase 1 deliverable; later phases embed the matching
+// metadata block into every Trinity response envelope.
 func (h Handler) handleVersion(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", http.MethodGet)
@@ -67,21 +75,69 @@ func (h Handler) handleManifest(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			log.Printf("manifest handler panic: %v", recovered)
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal processing error"})
+			env := output.NewError(output.ErrorExecutionFailure,
+				"internal processing error")
+			writeJSON(w, http.StatusInternalServerError, env)
 		}
 	}()
 
-	output, err := h.Process(r.Body, h.CanonPaths)
+	body, status, err := h.Process(r.Body, h.CanonPaths)
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		log.Printf("manifest processor error: %v", err)
+		env := output.NewError(output.ErrorExecutionFailure, err.Error())
+		writeJSON(w, http.StatusInternalServerError, env)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if _, err := w.Write(output); err != nil {
+	w.WriteHeader(status)
+	if _, err := w.Write(body); err != nil {
 		log.Printf("write response: %v", err)
 	}
+}
+
+// trinityProcess is the default Phase 2 manifest processor.  It
+// reads the request body, runs it through the Trinity input
+// validator, and returns either:
+//
+//   * a Trinity error envelope with the validator's classification
+//     plus the matching HTTP status code (rejection path), or
+//   * a Trinity error envelope with execution_failure on a
+//     successfully validated payload, because Phases 3-8 have not
+//     yet wired the calculation pipeline (placeholder path).
+//
+// Phase 3 narrows the placeholder branch to the canon-conflict /
+// execution_failure semantics defined by the success/error envelope
+// pair; later phases populate the success path.
+func trinityProcess(bodyReader io.Reader, _ canon.Paths) ([]byte, int, error) {
+	raw, err := io.ReadAll(bodyReader)
+	if err != nil {
+		// I/O failures (truncated upload, MaxBytesReader trip)
+		// surface as execution_failure: the validator never ran.
+		return nil, 0, fmt.Errorf("read request body: %w", err)
+	}
+
+	if _, rej := input.Validate(raw); rej != nil {
+		env := output.NewError(string(rej.Type), rej.Message)
+		body, encErr := json.Marshal(env)
+		if encErr != nil {
+			return nil, 0, fmt.Errorf("marshal error envelope: %w", encErr)
+		}
+		return body, output.StatusCodeForErrorType(string(rej.Type)), nil
+	}
+
+	// Validated successfully – but the Trinity calculation pipeline
+	// is not yet wired (Phases 3-8).  Return execution_failure with
+	// a developer-facing message rather than fabricate a fake
+	// success.
+	env := output.NewError(output.ErrorExecutionFailure,
+		"Trinity calculation pipeline not yet implemented; see "+
+			"src/doc/trinity-implementation-plan.org Phases 3-8.")
+	body, encErr := json.Marshal(env)
+	if encErr != nil {
+		return nil, 0, fmt.Errorf("marshal placeholder envelope: %w", encErr)
+	}
+	return body, output.StatusCodeForErrorType(output.ErrorExecutionFailure), nil
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {
