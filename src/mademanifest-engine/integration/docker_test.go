@@ -37,3 +37,12 @@ func TestDockerHarnessTrinityRejectionMatrix(t *testing.T) {
 
 	AssertTrinityRejectionMatrix(t, srv.BaseURL)
 }
+
+// TestDockerHarnessSchiedamAstrologyMatchesOracle is the Phase 4
+// regression sentinel running against the production Docker image.
+func TestDockerHarnessSchiedamAstrologyMatchesOracle(t *testing.T) {
+	srv := StartDockerContainer(t, DockerOptions{})
+	t.Cleanup(srv.Shutdown)
+
+	AssertSchiedamAstrologyMatchesOracle(t, srv.BaseURL)
+}

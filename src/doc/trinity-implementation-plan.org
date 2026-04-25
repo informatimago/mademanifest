@@ -29,7 +29,7 @@
 |   1   | Done        | Canonical constants + version pins + =GET /version= + =--version=.  |
 |   2   | Done        | =pkg/trinity/input= validator + =pkg/trinity/output= error envelope; HTTP handler rewired; rejection matrix wired into local/docker/k8s harnesses.  Phase 3 scope partially landed (=ErrorEnvelope=, =Metadata=, status-code policy) so Phase 2 has an envelope to return. |
 |   3   | Done        | =SuccessEnvelope= + =InputEcho= + =Astrology= + =HumanDesignOut= + =GeneKeysOut= types (canon-ordered fields); =Longitude= (6 dp) and =DesignTime= (RFC 3339 UTC, A3 floor) typed marshalers; placeholder success constructor; HTTP handler returns 200 + success envelope on valid payload; integration matrix gained a success baseline. |
-|   4   | Not started |                                                                      |
+|   4   | Done        | =pkg/trinity/astro= with =SignFor=, =HouseFor= (A2 wrap), and =ComputeAstrology=; Earth = Sun + 180 mod 360; angles + 12 cusps + 13 objects; HTTP handler replaces the astrology placeholder with computed values; Schiedam oracle fixture frozen under =src/golden/trinity/baseline/=; regression sentinel wired into local/docker/k8s harnesses; =EngineVersion= -> =v0.1.0-phase-4=. |
 |   5   | Not started |                                                                      |
 |   6   | Not started |                                                                      |
 |   7   | Not started |                                                                      |

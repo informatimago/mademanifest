@@ -122,6 +122,21 @@ func TestHandleManifestValidPayloadReturnsSuccessEnvelope(t *testing.T) {
 		env.Astrology.System.NodeType != "mean" {
 		t.Errorf("astrology.system not canon: %+v", env.Astrology.System)
 	}
+	// Phase 4: the astrology placeholder is replaced with real
+	// values.  Pin the structural shape – content (specific
+	// longitudes) is asserted by the integration baseline test.
+	if got, want := len(env.Astrology.Objects), 13; got != want {
+		t.Errorf("astrology.objects length = %d, want %d", got, want)
+	}
+	if got, want := len(env.Astrology.HouseCusps), 12; got != want {
+		t.Errorf("astrology.house_cusps length = %d, want %d", got, want)
+	}
+	if env.Astrology.Angles.Ascendant.Sign == "" {
+		t.Errorf("astrology.angles.ascendant.sign empty")
+	}
+	if env.Astrology.Angles.Midheaven.Sign == "" {
+		t.Errorf("astrology.angles.midheaven.sign empty")
+	}
 	if env.HumanDesign.System.NodeType != "true" {
 		t.Errorf("human_design.system.node_type = %q, want true",
 			env.HumanDesign.System.NodeType)

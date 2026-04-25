@@ -50,3 +50,14 @@ func TestLocalHarnessTrinityRejectionMatrix(t *testing.T) {
 
 	AssertTrinityRejectionMatrix(t, srv.BaseURL)
 }
+
+// TestLocalHarnessSchiedamAstrologyMatchesOracle is the Phase 4
+// regression sentinel: the canonical Schiedam payload run through
+// the live HTTP service must produce the frozen astrology oracle
+// captured under src/golden/trinity/baseline/.
+func TestLocalHarnessSchiedamAstrologyMatchesOracle(t *testing.T) {
+	srv := StartLocalServer(t, LocalServerOptions{})
+	t.Cleanup(srv.Shutdown)
+
+	AssertSchiedamAstrologyMatchesOracle(t, srv.BaseURL)
+}

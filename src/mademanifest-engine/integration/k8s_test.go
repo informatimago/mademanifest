@@ -51,3 +51,9 @@ func TestK8sHarnessServesVersion(t *testing.T) {
 func TestK8sHarnessTrinityRejectionMatrix(t *testing.T) {
 	AssertTrinityRejectionMatrix(t, sharedK8s.BaseURL)
 }
+
+// TestK8sHarnessSchiedamAstrologyMatchesOracle is the Phase 4
+// regression sentinel running against the kind-deployed service.
+func TestK8sHarnessSchiedamAstrologyMatchesOracle(t *testing.T) {
+	AssertSchiedamAstrologyMatchesOracle(t, sharedK8s.BaseURL)
+}

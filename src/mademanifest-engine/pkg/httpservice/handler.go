@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"mademanifest-engine/pkg/canon"
+	"mademanifest-engine/pkg/trinity/astro"
 	"mademanifest-engine/pkg/trinity/input"
 	"mademanifest-engine/pkg/trinity/output"
 )
@@ -129,10 +130,20 @@ func trinityProcess(bodyReader io.Reader, _ canon.Paths) ([]byte, int, error) {
 		return body, output.StatusCodeForErrorType(string(rej.Type)), nil
 	}
 
-	// Validation succeeded.  Emit the canonical success envelope
-	// with placeholder calculation values; Phases 4-8 replace those
-	// values one section at a time.
+	// Validation succeeded.  Build the canonical success envelope,
+	// then replace each placeholder section with computed values
+	// as the calculation phases come online.  Phase 4 wires the
+	// astrology section; Phases 5-8 will fill the remaining
+	// placeholders (HD design time, activations, channels,
+	// centers, structural derivations, gene keys).
 	env := output.NewPlaceholderSuccess(payload)
+
+	astroSection, err := astro.ComputeAstrology(payload)
+	if err != nil {
+		return nil, 0, fmt.Errorf("compute astrology: %w", err)
+	}
+	env.Astrology = astroSection
+
 	body, encErr := json.Marshal(env)
 	if encErr != nil {
 		return nil, 0, fmt.Errorf("marshal success envelope: %w", encErr)
