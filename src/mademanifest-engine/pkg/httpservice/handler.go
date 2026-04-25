@@ -135,8 +135,9 @@ func trinityProcess(bodyReader io.Reader, _ canon.Paths) ([]byte, int, error) {
 	// then replace each placeholder section with computed values
 	// as the calculation phases come online.  Phase 4 wires the
 	// astrology section; Phase 5 wires human_design.system.design_time_utc;
-	// Phases 6-8 will fill the remaining placeholders (activations,
-	// channels, centers, structural derivations, gene keys).
+	// Phase 6 wires the personality + design activation arrays;
+	// Phases 7-8 will fill the remaining placeholders (channels,
+	// centers, structural derivations, gene keys).
 	env := output.NewPlaceholderSuccess(payload)
 
 	astroSection, err := astro.ComputeAstrology(payload)
@@ -150,6 +151,18 @@ func trinityProcess(bodyReader io.Reader, _ canon.Paths) ([]byte, int, error) {
 		return nil, 0, fmt.Errorf("compute design time: %w", err)
 	}
 	env.HumanDesign.System.DesignTimeUTC = output.DesignTime(designTime)
+
+	// Phase 6: personality + design activation arrays.  We re-use
+	// the already-computed design moment (designTime) to avoid
+	// running the bisection solver a second time.  Personality is
+	// the snapshot at birth.
+	designJD := hd.DesignJDFromTime(designTime)
+	personality, design, err := hd.ComputeActivations(payload, designJD)
+	if err != nil {
+		return nil, 0, fmt.Errorf("compute activations: %w", err)
+	}
+	env.HumanDesign.PersonalityActivations = personality
+	env.HumanDesign.DesignActivations = design
 
 	body, encErr := json.Marshal(env)
 	if encErr != nil {

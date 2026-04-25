@@ -98,8 +98,23 @@ var asterConstants = []struct {
 	{"neptune",  sweph.SE_NEPTUNE},
 	{"pluto",    sweph.SE_PLUTO},
 	{"chiron",   sweph.SE_CHIRON},
+
+	// Node policy by domain (trinity.org §"Node policy by domain"):
+	//   * astrology   → SE_MEAN_NODE
+	//   * human_design → SE_TRUE_NODE
+	//   * gene_keys    → derived from human_design, also true
+	//
+	// The two distinct names below let callers pick the policy
+	// explicitly without an environment-variable switch.  Phase 6
+	// retired the SE_NODE_POLICY environment lookup that previously
+	// made the same name return either MEAN or TRUE depending on
+	// runtime state — that crosstalk broke the determinism the
+	// canon mandates and is incompatible with deploying the engine
+	// to multi-tenant environments where envvars cannot be trusted
+	// to stay constant across requests.
 	{"north_node_mean",  sweph.SE_MEAN_NODE},
-	{"north_node",       sweph.SE_MEAN_NODE},
+	{"north_node",       sweph.SE_MEAN_NODE},  // legacy: same as mean for backward-compat
+	{"north_node_true",  sweph.SE_TRUE_NODE},
 }
 
 func CalculatePositions(julianDay float64) map[string]float64 {
@@ -120,16 +135,28 @@ func AsterConstantByName(name string) int {
 	panic("unknown aster: " + name)
 }
 
+// GetPlanetLongAtTime returns the geocentric ecliptic longitude in
+// degrees for the named body at the given Julian Day.  Node policy
+// is selected by the body name:
+//
+//   * "north_node"      → SE_MEAN_NODE (legacy name; astrology default)
+//   * "north_node_mean" → SE_MEAN_NODE
+//   * "north_node_true" → SE_TRUE_NODE (Human Design canon)
+//   * "south_node"      → MEAN-node + 180° (legacy)
+//   * "south_node_true" → TRUE-node + 180° (Human Design canon)
+//
+// Phase 6 removed the SE_NODE_POLICY environment-variable switch
+// that previously toggled "north_node" between mean and true at
+// runtime; that switch was incompatible with the canon's
+// per-domain policy (astrology must always be mean, HD must always
+// be true) and broke determinism across deployments.
 func GetPlanetLongAtTime(julianDay float64, astre string) float64 {
-	if astre == "south_node" {
-		return math.Mod(180.0 +  longitude(julianDay,AsterConstantByName("north_node")), 360.0)
-	} else if astre == "north_node" {
-		// Node policy: mean node for astrology, true node for human_design
-		if os.Getenv("SE_NODE_POLICY") == "true" {
-			return longitude(julianDay, sweph.SE_TRUE_NODE)
-		}
-		return longitude(julianDay, sweph.SE_MEAN_NODE)
-	} else {
-		return longitude(julianDay,AsterConstantByName(astre))
+	switch astre {
+	case "south_node":
+		return math.Mod(180.0+longitude(julianDay, AsterConstantByName("north_node")), 360.0)
+	case "south_node_true":
+		return math.Mod(180.0+longitude(julianDay, AsterConstantByName("north_node_true")), 360.0)
+	default:
+		return longitude(julianDay, AsterConstantByName(astre))
 	}
 }

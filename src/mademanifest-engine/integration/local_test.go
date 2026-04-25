@@ -71,3 +71,14 @@ func TestLocalHarnessSchiedamDesignTimeMatchesOracle(t *testing.T) {
 
 	AssertSchiedamDesignTimeMatchesOracle(t, srv.BaseURL)
 }
+
+// TestLocalHarnessSchiedamActivationsMatchOracle is the Phase 6
+// regression sentinel: the canonical Schiedam payload must produce
+// the frozen personality_activations + design_activations arrays
+// computed against the canon mandala anchor 277.5° with TRUE-node HD.
+func TestLocalHarnessSchiedamActivationsMatchOracle(t *testing.T) {
+	srv := StartLocalServer(t, LocalServerOptions{})
+	t.Cleanup(srv.Shutdown)
+
+	AssertSchiedamActivationsMatchOracle(t, srv.BaseURL)
+}

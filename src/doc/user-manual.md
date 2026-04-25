@@ -296,25 +296,48 @@ Design-time solver (Trinity / Phase 5):
 > file-based PoC CLI; that path is retired in Phase 12.  Exact-second
 > rounding is tracked as ambiguity *A3* in `version-pins.org`.
 
-Mapping to gates and lines (current PoC code path):
+Mapping to gates and lines (Trinity / Phase 6):
 
-- Canon numeric constants come from the canon JSON files
-  (`mandala_constants.json` pins the anchor at **313.25°** in the
-  PoC bundle).
-- Interval rule: start inclusive, end exclusive.
-- `gate_index = floor(r / gate_width)`,
-  `line_index = floor((r % gate_width) / line_width)`.
-- The 64-entry gate sequence is the fixed canon array.
-- Output value format: `gate.line` with one decimal place
-  (e.g. `51.5`).
+- Canon numeric constants come from `pkg/canon/constants.go`:
+  - `MandalaAnchorDeg` = **277.5°** (gate 38 starts here)
+  - `GateWidthDeg`     = 5.625°
+  - `LineWidthDeg`     = 0.9375°
+  - `GateOrder`        = 64-entry canonical gate sequence (starts with 38)
+- Algorithm (`pkg/hd/calc.MapToGateLine`):
+  - `r = (longitude − MandalaAnchorDeg) mod 360`
+  - `gate_index = floor(r / GateWidthDeg)`
+  - `line_index = floor((r mod GateWidthDeg) / LineWidthDeg)`
+  - return `(GateOrder[gate_index], line_index + 1)`
+- Interval rule: start inclusive, end exclusive — a longitude
+  exactly on a gate or line boundary belongs to the *new* segment.
+- The function consumes only the longitude argument and the
+  compiled-in canon constants; no environment variables, no input
+  parameters.
+- Activation snapshots use Swiss Ephemeris with the canon's
+  per-domain node policy (Document 03 §"Node policy by domain"):
+  - astrology: `north_node_mean` = SE_MEAN_NODE
+  - human_design: `north_node` = SE_TRUE_NODE (Phase 6+)
+  - gene_keys: derived from human_design (also true)
+- Output: `human_design.personality_activations` and
+  `human_design.design_activations` are 13-entry arrays of
+  `{object_id, gate, line}` in `canon.HDSnapshotOrder`.
 
-> **Transition note (A8).**  The compiled Trinity canon in
-> `pkg/canon/constants.go` uses the different mandala anchor
-> **277.5°** (sequence starting with gate 38) specified by
-> `trinity.org`.  The legacy anchor in the JSON files is explicitly
-> marked "rejected" in the Trinity regression sentinels.  Phase 9
-> retires the JSON-driven path, at which point the compiled canon
-> takes over and the output numbers will change.
+> **Transition note (A8 — landed via Phase 6).**  The compiled
+> Trinity canon in `pkg/canon/constants.go` uses the canonical
+> mandala anchor **277.5°** (sequence starting with gate 38)
+> specified by `trinity.org`.  The legacy anchor 313.25° in
+> `src/canon/mandala_constants.json` is explicitly marked "rejected"
+> in the Trinity regression sentinels.  The Trinity HTTP path uses
+> the compiled canon today; the legacy JSON-driven PoC CLI path
+> still uses the legacy anchor and will be retired in Phase 12.
+
+> **Transition note (Phase 6 — landed).**  The
+> `SE_NODE_POLICY` environment-variable switch in
+> `pkg/ephemeris.GetPlanetLongAtTime` was retired in Phase 6.  Each
+> caller selects the node policy explicitly by body name:
+> `"north_node"`/`"north_node_mean"` for SE_MEAN_NODE,
+> `"north_node_true"` for SE_TRUE_NODE.  Trinity HD activations
+> always use the true policy; Trinity astrology always uses mean.
 
 ### 5. Gene Keys module
 
@@ -384,7 +407,7 @@ curl -s http://localhost:8080/version
 
 ```json
 {
-  "engine_version": "v0.1.0-phase-5",
+  "engine_version": "v0.1.0-phase-6",
   "canon_version": "trinity-v1-rev-0",
   "mapping_version": "trinity-v1-rev-0",
   "input_schema_version": "trinity-v1-rev-0",

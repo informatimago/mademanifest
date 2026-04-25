@@ -20,7 +20,7 @@ in a later phase.
 
 | Constant             | Value              | Canonical source                    | A-ambiguity |
 |----------------------+--------------------+-------------------------------------+-------------|
-| =EngineVersion=      | =v0.1.0-phase-5=  | this build                          | –           |
+| =EngineVersion=      | =v0.1.0-phase-6=  | this build                          | –           |
 | =CanonVersion=       | =trinity-v1-rev-0= | =trinity.org= (scope + calc + map + output) | A8 |
 | =MappingVersion=     | =trinity-v1-rev-0= | =trinity.org= §"Mapping Canon"     | A8          |
 | =InputSchemaVersion= | =trinity-v1-rev-0= | Document 04                         | A5, A6      |
@@ -39,6 +39,22 @@ in a later phase.
 | =hd/calc.StopAbsSunDiffDeg=             | 0.0001  | =trinity.org= §"Design-Time Derivation" line 264 | A3          |
 | =hd/calc.StopBracketSeconds=            | 1.0     | =trinity.org= §"Design-Time Derivation" line 265 | A3          |
 | =hd/calc.initialBracketHalfWidthDays=   | 5.0     | =trinity.org= §"Design-Time Derivation" line 260 (engineer's choice within "approximately 88 days back") | – |
+
+* Per-Domain Node Policy
+
+Each Trinity output domain pins its own =sweph= node body, per
+=Document 03 §"Node policy by domain"= and =trinity.org= line 68:
+
+| Domain        | Body alias                | sweph constant   | Phase landed |
+|---------------+---------------------------+------------------+--------------|
+| astrology     | =north_node_mean=         | =SE_MEAN_NODE=   | Phase 4      |
+| human_design  | =north_node_true=         | =SE_TRUE_NODE=   | Phase 6      |
+| gene_keys     | (derived from HD)         | =SE_TRUE_NODE=   | Phase 8      |
+
+The =SE_NODE_POLICY= environment-variable switch that previously
+toggled =GetPlanetLongAtTime("north_node")= between mean and true at
+runtime was retired in Phase 6: each caller now selects the policy
+explicitly by body name.
 
 The A8 flag on =MandalaAnchorDeg= reflects a concrete divergence
 between the compiled-in canon and the legacy JSON files under

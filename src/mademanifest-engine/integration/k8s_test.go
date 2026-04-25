@@ -63,3 +63,9 @@ func TestK8sHarnessSchiedamAstrologyMatchesOracle(t *testing.T) {
 func TestK8sHarnessSchiedamDesignTimeMatchesOracle(t *testing.T) {
 	AssertSchiedamDesignTimeMatchesOracle(t, sharedK8s.BaseURL)
 }
+
+// TestK8sHarnessSchiedamActivationsMatchOracle is the Phase 6
+// regression sentinel running against the kind-deployed service.
+func TestK8sHarnessSchiedamActivationsMatchOracle(t *testing.T) {
+	AssertSchiedamActivationsMatchOracle(t, sharedK8s.BaseURL)
+}

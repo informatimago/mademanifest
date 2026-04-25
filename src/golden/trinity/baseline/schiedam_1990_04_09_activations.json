@@ -1,0 +1,32 @@
+{
+  "personality_activations": [
+    {"object_id": "sun",        "gate": 42, "line": 1},
+    {"object_id": "earth",      "gate": 32, "line": 1},
+    {"object_id": "north_node", "gate": 13, "line": 4},
+    {"object_id": "south_node", "gate":  7, "line": 4},
+    {"object_id": "moon",       "gate": 57, "line": 2},
+    {"object_id": "mercury",    "gate": 24, "line": 3},
+    {"object_id": "venus",      "gate": 55, "line": 6},
+    {"object_id": "mars",       "gate": 49, "line": 6},
+    {"object_id": "jupiter",    "gate": 52, "line": 3},
+    {"object_id": "saturn",     "gate": 60, "line": 1},
+    {"object_id": "uranus",     "gate": 38, "line": 3},
+    {"object_id": "neptune",    "gate": 54, "line": 2},
+    {"object_id": "pluto",      "gate": 43, "line": 1}
+  ],
+  "design_activations": [
+    {"object_id": "sun",        "gate": 61, "line": 3},
+    {"object_id": "earth",      "gate": 62, "line": 3},
+    {"object_id": "north_node", "gate": 13, "line": 6},
+    {"object_id": "south_node", "gate":  7, "line": 6},
+    {"object_id": "moon",       "gate": 31, "line": 3},
+    {"object_id": "mercury",    "gate": 54, "line": 2},
+    {"object_id": "venus",      "gate": 41, "line": 3},
+    {"object_id": "mars",       "gate": 26, "line": 3},
+    {"object_id": "jupiter",    "gate": 52, "line": 3},
+    {"object_id": "saturn",     "gate": 54, "line": 5},
+    {"object_id": "uranus",     "gate": 58, "line": 5},
+    {"object_id": "neptune",    "gate": 38, "line": 6},
+    {"object_id": "pluto",      "gate": 43, "line": 1}
+  ]
+}
