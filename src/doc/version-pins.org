@@ -20,7 +20,7 @@ in a later phase.
 
 | Constant             | Value              | Canonical source                    | A-ambiguity |
 |----------------------+--------------------+-------------------------------------+-------------|
-| =EngineVersion=      | =v0.1.0-phase-12= | this build                          | –           |
+| =EngineVersion=      | =v0.1.0-phase-13= | this build                          | –           |
 | =CanonVersion=       | =trinity-v1-rev-0= | =trinity.org= (scope + calc + map + output) | A8 |
 | =MappingVersion=     | =trinity-v1-rev-0= | =trinity.org= §"Mapping Canon"     | A8          |
 | =InputSchemaVersion= | =trinity-v1-rev-0= | Document 04                         | A5, A6      |
@@ -77,6 +77,37 @@ Phase 9 removes the JSON-driven loader.
 | =CenterOrder=        | 9    | =trinity.org= §"HD Centers"     |
 | =MotorCenters=       | 4    | =trinity.org= §"HD Centers"     |
 | =ChannelTable=       | 36   | =trinity.org= §"Channel Table"  |
+
+* Container And Deployment Pins (Phase 13)
+
+The Phase 13 deployment-hardening pass pinned the Docker base
+images to immutable digests and added a kustomize hardening overlay.
+
+** Base image digests (linux/amd64)
+
+| Stage   | Tag                       | Digest                                                                       |
+|---------+---------------------------+------------------------------------------------------------------------------|
+| builder | =golang:1.22-bookworm=    | =sha256:3d699e4d15d0f8f13c9195c0632a16702b8cbdece2955af1c23b37ae5d55a253= |
+| runtime | =debian:bookworm-slim=    | =sha256:f9c6a2fd2ddbc23e336b6257a5245e31f996953ef06cd13a59fa0a1df2d5c252= |
+
+Re-resolve with =docker pull --platform linux/amd64 <ref>= when
+bumping a tag.  The digest pins MUST stay matched to the named tag
+in the same commit.
+
+** Container security posture
+
+| Control                     | Source                          |
+|-----------------------------+---------------------------------|
+| =USER 10001:10001=          | =src/Dockerfile=                |
+| =HEALTHCHECK CMD curl=      | =src/Dockerfile=                |
+| pod =runAsNonRoot=          | =src/deploy/kubernetes/deployment.yaml= |
+| pod =runAsUser=10001=       | =src/deploy/kubernetes/deployment.yaml= |
+| pod =seccomp=RuntimeDefault= | =src/deploy/kubernetes/deployment.yaml= |
+| =allowPrivilegeEscalation=false= | =src/deploy/kubernetes/deployment.yaml= |
+| =readOnlyRootFilesystem=true= | =src/deploy/kubernetes/deployment.yaml= |
+| =capabilities.drop=[ALL]=    | =src/deploy/kubernetes/deployment.yaml= |
+| NetworkPolicy → ingress-nginx | =src/deploy/kubernetes/networkpolicy.yaml= |
+| HPA: 1..10 replicas, 70% CPU | =src/deploy/kubernetes/hpa.yaml=    |
 
 * A-Ambiguity Register
 

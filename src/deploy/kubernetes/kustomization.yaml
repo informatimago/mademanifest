@@ -4,3 +4,6 @@ resources:
   - configmap.yaml
   - deployment.yaml
   - service.yaml
+  # Phase 13 deployment hardening adds the two manifests below.
+  - networkpolicy.yaml
+  - hpa.yaml

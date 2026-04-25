@@ -1,0 +1,30 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: mademanifest
+  labels:
+    app: mademanifest
+spec:
+  # Phase 13 horizontal scaling policy.  The HPA owns the replica
+  # count once the deployment is up; the deployment's `replicas: 1`
+  # is the cold-start floor before the HPA controller has CPU
+  # samples.
+  #
+  # Target utilisation = 70% of the deployment's CPU request
+  # (100m).  When the rolling average across pods crosses 70m the
+  # controller scales the deployment up; the typical cooldown is
+  # ~3 minutes for downscale, so brief spikes do not thrash the pod
+  # count.
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: mademanifest
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

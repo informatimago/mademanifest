@@ -150,6 +150,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: "v1.30.0"
       - name: Install kubeconform
         run: |
           set -euo pipefail
@@ -160,10 +164,22 @@ jobs:
           sudo mv kubeconform /usr/local/bin/kubeconform
       - name: Validate manifests
         run: |
+          # Phase 13 added networkpolicy.yaml and hpa.yaml.  Each
+          # standalone file must validate against the canonical
+          # OpenAPI schemas.
           kubeconform -strict -summary \
             "$SRC_DIR/deploy/kubernetes/configmap.yaml" \
             "$SRC_DIR/deploy/kubernetes/deployment.yaml" \
-            "$SRC_DIR/deploy/kubernetes/service.yaml"
+            "$SRC_DIR/deploy/kubernetes/service.yaml" \
+            "$SRC_DIR/deploy/kubernetes/networkpolicy.yaml" \
+            "$SRC_DIR/deploy/kubernetes/hpa.yaml"
+      - name: Validate kustomize build
+        run: |
+          # Phase 13 also asserts the kustomize-assembled output
+          # validates as a whole (catches overlay-time merge errors
+          # that per-file validation would miss).
+          kubectl kustomize "$SRC_DIR/deploy/kubernetes" \
+            | kubeconform -strict -summary -
 
   integration-k8s:
     name: Integration (kubernetes via kind)

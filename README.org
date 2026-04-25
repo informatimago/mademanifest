@@ -29,12 +29,14 @@ harness exercises it in all three runtimes.
 | Phase 10 HTTP Trinity contract          | Done – =POST /manifest= enforces =Content-Type: application/json= (415 + invalid_input on missing or wrong type), caps request bodies at =MaxRequestBodyBytes = 1 MiB= (413 + unsupported_input on overflow), and keeps the Phase 2 invalid_input classification for malformed JSON; =GET /healthz= remains liveness-only with no version leak; =AssertHTTPContract= verifies all five paths end-to-end through local / docker / kind |
 | Phase 11 Golden Test Pack               | Done – =pkg/golden= loads + runs =src/golden/trinity/<category>/<name>/{input,expected}.json= with canon minimums (3 / 5 / 5 / 5 / 2 / 3) enforced at load time; success cases compare envelopes minus metadata, error cases compare =error_type= per A4; =TestTrinityGoldenPack= wired into local / docker / kind |
 | Phase 12 PoC retirement                 | Done – removed =pkg/emit_golden= / =pkg/process_input= / =pkg/engine= / =pkg/human_design= / =pkg/gene_keys= / =pkg/astrology= / =pkg/geolocation=, =cmd/main.go=, =src/canon/*.json=, =src/golden/GOLDEN_TEST_CASE_V1.json=; =cmd/httpserver= is the only runtime surface; HTTP =Handler.CanonPaths= and =Processor= =canonPaths= argument retired; Makefile, Dockerfile, and dev scripts retargeted at the Trinity pack; compile-time guard rejects any future re-import of the retired packages |
+| Phase 13 Deployment hardening           | Done – Dockerfile pins =golang:1.22-bookworm= and =debian:bookworm-slim= base-image digests, runs as non-root =appuser= (UID 10001), ships =HEALTHCHECK CMD curl=; deployment manifests add pod- and container-level =securityContext= (=runAsNonRoot=, =readOnlyRootFilesystem=, drop ALL caps, =seccomp=RuntimeDefault=), =/tmp= tmpfs, image digest pin; new =networkpolicy.yaml= restricts ingress to ingress-nginx; new =hpa.yaml= scales 1..10 replicas at 70% CPU; =AssertHardenedDeploymentShape= verifies posture every k8s test run; gated =AssertNetworkPolicyEnforced= and =AssertHPAScalesUnderLoad= (=TRINITY_NETWORK_POLICY_ENFORCED=1= / =TRINITY_LOAD_TEST=1=); =validate-kubernetes= CI job extended to validate the new manifests + the kustomize-assembled output |
 | Canon ambiguities A1..A8                | Open – see =src/doc/version-pins.org=                            |
 
-The next phase is Phase 13 (deployment hardening: pin the Docker
-base-image digest, add =HEALTHCHECK=, run as non-root, add
-=securityContext=, =NetworkPolicy=, and an HPA to the kustomize
-overlay).  The full plan is in
+The next phase is Phase 14 (release + acceptance: tag
+=v1.0.0-trinity= once the full pack passes on all three runtimes,
+ship the acceptance report under =src/doc/trinity-acceptance-<date>.org=,
+add a nightly CI job that re-runs the pack and posts the artefact).
+The full plan is in
 [[file:src/doc/trinity-implementation-plan.org][src/doc/trinity-implementation-plan.org]]; pinned versions and the
 =A*= ambiguity register live in [[file:src/doc/version-pins.org][src/doc/version-pins.org]].
 

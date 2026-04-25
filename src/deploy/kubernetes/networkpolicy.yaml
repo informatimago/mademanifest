@@ -1,0 +1,44 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mademanifest
+  labels:
+    app: mademanifest
+spec:
+  # Phase 13 ingress hardening.  The mademanifest service must only
+  # receive HTTP traffic from the cluster ingress controller; nothing
+  # else inside the cluster (sidecars excepted, since intra-pod
+  # localhost traffic is never NetworkPolicy-gated) needs to reach
+  # the engine.
+  #
+  # The policy targets pods labelled `app: mademanifest` and
+  # restricts ingress to:
+  #
+  #   * pods that carry the canonical ingress-controller label
+  #     (`app.kubernetes.io/name: ingress-nginx` is the typical
+  #     ingress-nginx convention; deployments that use a different
+  #     ingress controller must edit this selector to match).
+  #   * port 8080 only.
+  #
+  # All egress is left unrestricted so the engine can reach the
+  # ephemeris data path on the same pod and so future
+  # pod-to-tracing/metrics-collector traffic does not require a
+  # separate NetworkPolicy.  Egress restrictions are deferred to
+  # Phase 14 (release + acceptance), which can revisit them once the
+  # observability stack is pinned.
+  podSelector:
+    matchLabels:
+      app: mademanifest
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080

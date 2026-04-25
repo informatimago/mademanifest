@@ -461,7 +461,7 @@ curl -s http://localhost:8080/version
 
 ```json
 {
-  "engine_version": "v0.1.0-phase-12",
+  "engine_version": "v0.1.0-phase-13",
   "canon_version": "trinity-v1-rev-0",
   "mapping_version": "trinity-v1-rev-0",
   "input_schema_version": "trinity-v1-rev-0",
@@ -555,6 +555,65 @@ To capture a fresh fixture set against a different (or
 re-engineered) engine build, start `cmd/httpserver` and post the
 existing `input.json` files; freeze the resulting body (with the
 `metadata` key removed) as `expected.json`.
+
+## Deployment Hardening
+
+Phase 13 hardens the production runtime surface across two layers:
+
+### Container image (`src/Dockerfile`)
+
+- Both base images are pinned to immutable digests
+  (`golang:1.22-bookworm@sha256:3d699e4d...` for the builder,
+  `debian:bookworm-slim@sha256:f9c6a2fd...` for the runtime).
+  Re-resolve with `docker pull --platform linux/amd64 <ref>` when
+  bumping a tag; the digest pin must stay matched to the named tag
+  in the same commit.
+- The runtime stage runs as a non-root user `appuser` (UID 10001)
+  via the `USER 10001:10001` directive.
+- A `HEALTHCHECK` directive probes `http://localhost:8080/healthz`
+  with `curl --fail`; the path matches the K8s liveness probe so
+  Docker and Kubernetes share the same readiness signal.
+- `SE_EPHE_PATH` points at `/usr/local/share/swisseph`, an entirely
+  read-only data directory.
+
+### Kubernetes manifests (`src/deploy/kubernetes/`)
+
+- `deployment.yaml` adds:
+  - pod-level `securityContext`: `runAsNonRoot: true`,
+    `runAsUser: 10001`, `runAsGroup: 10001`, `fsGroup: 10001`,
+    `seccompProfile: RuntimeDefault`.
+  - container-level `securityContext`:
+    `allowPrivilegeEscalation: false`,
+    `readOnlyRootFilesystem: true`,
+    `capabilities.drop: [ALL]`.
+  - a 16 MiB `tmpfs` `/tmp` mount (Swiss Ephemeris loader scratch
+    path; required because the root filesystem is read-only).
+  - the production image reference is now an immutable digest pin
+    (`registry.example.com/mademanifest@sha256:...`); kustomize
+    overlays rewrite the reference at apply time, but production
+    deployments must ship a real digest.
+- `networkpolicy.yaml` (new) restricts ingress to pods labelled
+  `app.kubernetes.io/name: ingress-nginx` in the `ingress-nginx`
+  namespace on TCP/8080.  Egress is left unrestricted; that
+  decision is revisited in Phase 14.
+- `hpa.yaml` (new) wires a `HorizontalPodAutoscaler` that scales
+  the deployment between 1 and 10 replicas at 70% average CPU
+  utilisation against the deployment's CPU `request: 100m`.
+
+### Integration sentinels
+
+- `AssertHardenedDeploymentShape` runs every k8s integration test:
+  it verifies via `kubectl` that the NetworkPolicy + HPA exist
+  with canon targets and that every pod / container carries the
+  hardened security posture.
+- `AssertNetworkPolicyEnforced` (gated on
+  `TRINITY_NETWORK_POLICY_ENFORCED=1`) probes traffic from outside
+  the ingress namespace with a `busybox` pod.  Skipped by default
+  because kindnet does not enforce NetworkPolicy.
+- `AssertHPAScalesUnderLoad` (gated on `TRINITY_LOAD_TEST=1`) drives
+  sustained `/healthz` traffic and asserts the deployment scales
+  beyond the cold-start floor.  Skipped by default because
+  `metrics-server` is not installed in the default kind cluster.
 
 ## Determinism Requirements
 

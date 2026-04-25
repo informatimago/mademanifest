@@ -4,5 +4,6 @@ metadata:
   name: mademanifest-config
 data:
   PORT: "8080"
-  CANON_DIRECTORY: /app/canon
+  # Phase 12 retired CANON_DIRECTORY: the engine reads the canonical
+  # constants directly from pkg/canon, never from a JSON file.
   SE_EPHE_PATH: /usr/local/share/swisseph

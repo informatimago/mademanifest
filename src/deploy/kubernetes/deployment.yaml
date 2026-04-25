@@ -5,6 +5,10 @@ metadata:
   labels:
     app: mademanifest
 spec:
+  # The replica count is the floor enforced by the deployment.  The
+  # HorizontalPodAutoscaler in hpa.yaml owns the upper bound and the
+  # CPU-driven scaling decision; never reconcile this number with
+  # kubectl scale, the HPA will fight you.
   replicas: 1
   selector:
     matchLabels:
@@ -14,9 +18,26 @@ spec:
       labels:
         app: mademanifest
     spec:
+      # Phase 13 pod-level securityContext.  runAsNonRoot enforces
+      # what the Dockerfile `USER 10001:10001` line already gives
+      # us; the redundant gate exists because pod admission
+      # controllers check the K8s securityContext, not the image's
+      # USER directive.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: mademanifest
-          image: registry.example.com/mademanifest:latest
+          # Phase 13 pins the production image to a digest at the
+          # registry shown here.  The kustomize overlay used by the
+          # integration tests rewrites name + tag at apply time;
+          # production deployments must ship an immutable digest
+          # pin (`@sha256:...`), never a `:latest` reference.
+          image: registry.example.com/mademanifest@sha256:0000000000000000000000000000000000000000000000000000000000000000
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef:
@@ -37,9 +58,39 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 20
           resources:
+            # CPU / memory requests are the floor the scheduler
+            # reserves.  The HPA scales pod count based on CPU
+            # utilisation against the request value (70% target =
+            # scale up when average utilisation crosses 70m of the
+            # 100m request).  The limit is the noisy-neighbour cap;
+            # a single request stays well below 50m even with the
+            # full Trinity pipeline running.
             requests:
               cpu: 100m
               memory: 128Mi
             limits:
               cpu: 500m
               memory: 512Mi
+          # Phase 13 per-container securityContext: belt-and-braces
+          # the pod-level controls above and add the read-only-root-
+          # filesystem gate that pod-level securityContext does not
+          # support.
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          # The Swiss Ephemeris loader writes scratch files to /tmp
+          # on first call; with readOnlyRootFilesystem the only
+          # writable path is the tmpfs volume mounted here.  Size is
+          # capped at 16 MiB which exceeds the largest .se1 cache
+          # the loader keeps resident.
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Mi

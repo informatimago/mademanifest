@@ -1,4 +1,16 @@
-FROM golang:1.22-bookworm AS builder
+# Phase 13 deployment hardening:
+#   * Pinned base-image digests (reproducible builds; CVE auditability).
+#   * Non-root runtime user `appuser` (UID 10001).
+#   * HEALTHCHECK probes /healthz (matches the k8s liveness probe).
+#   * SE_EPHE_PATH is intentionally a read-only data directory: the
+#     engine never writes to it.  K8s pods set readOnlyRootFilesystem;
+#     the only writable path needed at runtime is /tmp (tmpfs volume
+#     in the manifest).
+#
+# Base image digests resolved via `docker pull --platform linux/amd64`
+# at the time of this commit.  Re-resolve with the same command when
+# bumping the tag; the digest pins MUST stay matched to the named tag.
+FROM golang:1.22-bookworm@sha256:3d699e4d15d0f8f13c9195c0632a16702b8cbdece2955af1c23b37ae5d55a253 AS builder
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -37,18 +49,31 @@ COPY mademanifest-engine ./mademanifest-engine
 WORKDIR /build/mademanifest-engine
 RUN CGO_LDFLAGS="-lm" go build -o /out/mademanifest-http ./cmd/httpserver
 
-FROM debian:bookworm-slim
+FROM debian:bookworm-slim@sha256:f9c6a2fd2ddbc23e336b6257a5245e31f996953ef06cd13a59fa0a1df2d5c252
 
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
+        curl \
         libgcc-s1 \
         libstdc++6 \
     && rm -rf /var/lib/apt/lists/*
 
+# Create the unprivileged runtime user used by the k8s securityContext
+# (runAsUser: 10001).  We do not need a writable /home for the engine,
+# so /home/appuser is created but stays root-owned and read-only to
+# appuser; the only filesystem writes the engine performs at runtime
+# are to a tmpfs /tmp mounted by the k8s manifest.
+RUN groupadd --system --gid 10001 appuser \
+    && useradd --system --uid 10001 --gid appuser --no-create-home --shell /sbin/nologin appuser
+
 ENV PORT=8080
+# SE_EPHE_PATH points at a read-only data directory installed by the
+# builder stage above.  The engine reads .se1 files from this path
+# but never writes to it; in k8s the path is on the read-only root
+# filesystem.
 ENV SE_EPHE_PATH=/usr/local/share/swisseph
 
 WORKDIR /app
@@ -59,6 +84,14 @@ COPY --from=builder /out/mademanifest-http /usr/local/bin/mademanifest-http
 
 RUN ldconfig
 
+USER 10001:10001
+
 EXPOSE 8080
+
+# HEALTHCHECK probes /healthz with curl.  The k8s liveness/readiness
+# probes use the same path; this directive provides the same signal
+# to the container runtime when the image is run outside k8s.
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl --fail --silent --show-error http://localhost:8080/healthz || exit 1
 
 CMD ["/usr/local/bin/mademanifest-http"]

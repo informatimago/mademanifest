@@ -104,3 +104,26 @@ func TestK8sHarnessHTTPContract(t *testing.T) {
 func TestK8sHarnessTrinityGoldenPack(t *testing.T) {
 	AssertTrinityGoldenPack(t, sharedK8s.BaseURL)
 }
+
+// TestK8sHarnessHardenedManifestsApplied is the Phase 13 sentinel:
+// the kind-deployed service must satisfy every hardening invariant
+// (NetworkPolicy + HPA exist with canon targets; pod runs as
+// non-root; container has readOnlyRootFilesystem and dropped
+// capabilities; resource requests/limits set).
+func TestK8sHarnessHardenedManifestsApplied(t *testing.T) {
+	AssertHardenedDeploymentShape(t, "default")
+}
+
+// TestK8sHarnessNetworkPolicyEnforced is the Phase 13 enforcement
+// sentinel.  Skipped unless TRINITY_NETWORK_POLICY_ENFORCED=1
+// because the default kind cluster does not enforce NetworkPolicy.
+func TestK8sHarnessNetworkPolicyEnforced(t *testing.T) {
+	AssertNetworkPolicyEnforced(t, "default")
+}
+
+// TestK8sHarnessHPAScalesUnderLoad is the Phase 13 horizontal
+// scaling sentinel.  Skipped unless TRINITY_LOAD_TEST=1 because
+// metrics-server is not installed in the default kind cluster.
+func TestK8sHarnessHPAScalesUnderLoad(t *testing.T) {
+	AssertHPAScalesUnderLoad(t, "default", sharedK8s.BaseURL)
+}
