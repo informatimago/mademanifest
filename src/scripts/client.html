@@ -93,10 +93,19 @@
 <p class="intro">
   Drives a running mademanifest engine over HTTP.  Designed to be
   used after <code>src/scripts/k8s-local-up.sh</code> has port-
-  forwarded the kind cluster's <code>mademanifest</code> service to
-  <code>http://127.0.0.1:8080</code>.  Open this file directly in a
-  browser; the engine ships permissive CORS headers so the page
-  works from any origin (including <code>file://</code>).
+  forwarded the kind cluster's <code>mademanifest</code> service
+  to <code>http://127.0.0.1:8080</code>.  Open this file directly
+  in a browser.
+</p>
+<p class="intro">
+  The engine must be started with <code>--dev-cors</code>
+  (or <code>TRINITY_DEV_CORS=1</code>) so the browser's preflight
+  succeeds; <code>k8s-local-up.sh</code> flips that switch on the
+  deployment for you, and direct
+  <code>./mademanifest-engine --dev-cors</code> invocations work
+  too.  Production deployments leave the flag off — wildcard CORS
+  is gratuitous attack surface in front of an authenticated
+  ingress.
 </p>
 
 <form id="form">

@@ -15,8 +15,21 @@
 // Either failure is fatal; the engine refuses to start.
 //
 // Environment:
-//   PORT           HTTP listen port (default 8080)
-//   SE_EPHE_PATH   Swiss Ephemeris data directory (canon-required)
+//   PORT              HTTP listen port (default 8080)
+//   SE_EPHE_PATH      Swiss Ephemeris data directory (canon-required)
+//   TRINITY_DEV_CORS  Set to "1" to enable the same CORS posture as
+//                     the --dev-cors flag (k8s-friendly knob; never
+//                     set this in production).
+//
+// Flags:
+//   --version, -v     Print pinned versions as JSON and exit.
+//   --dev-cors        Enable wildcard CORS + OPTIONS preflight on
+//                     every wired route.  Required for the browser
+//                     test client at src/scripts/client.html; OFF
+//                     by default and never to be enabled in
+//                     production deployments (see the docstring on
+//                     pkg/httpservice.withCORS for the threat
+//                     model).
 //
 // CANON_DIRECTORY is no longer consulted: Phase 9 made the compiled
 // canon authoritative, and Phase 12 removed the legacy JSON
@@ -39,6 +52,8 @@ import (
 func main() {
 	versionFlag := flag.Bool("version", false, "print pinned versions as JSON and exit")
 	flag.BoolVar(versionFlag, "v", false, "print pinned versions as JSON and exit")
+	devCORSFlag := flag.Bool("dev-cors", false,
+		"enable wildcard CORS + OPTIONS preflight (development only; do not enable in production)")
 	flag.Parse()
 
 	if *versionFlag {
@@ -66,12 +81,24 @@ func main() {
 		port = "8080"
 	}
 
+	// CORS opt-in: --dev-cors flag wins; TRINITY_DEV_CORS=1 is the
+	// k8s-friendly env-var equivalent so deployment manifests can
+	// flip the bit without rewriting container args.  Production
+	// deployments must leave both unset.
+	devCORS := *devCORSFlag || os.Getenv("TRINITY_DEV_CORS") == "1"
+	if devCORS {
+		log.Printf("WARNING: --dev-cors enabled; never run with this in production")
+	}
+
+	handler := httpservice.New()
+	handler.DevCORS = devCORS
+
 	mux := http.NewServeMux()
-	httpservice.New().Register(mux)
+	handler.Register(mux)
 
 	addr := ":" + port
-	log.Printf("HTTP service listening on %s (engine_version=%s canon_version=%s ephe_path=%s)",
-		addr, canon.EngineVersion, canon.CanonVersion, ephemeris.ResolvedEphePath())
+	log.Printf("HTTP service listening on %s (engine_version=%s canon_version=%s ephe_path=%s dev_cors=%v)",
+		addr, canon.EngineVersion, canon.CanonVersion, ephemeris.ResolvedEphePath(), devCORS)
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		log.Fatalf("listen and serve: %v", err)
 	}

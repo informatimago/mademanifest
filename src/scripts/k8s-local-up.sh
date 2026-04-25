@@ -64,18 +64,29 @@ fi
 echo "==> Loading $IMAGE into cluster"
 kind load docker-image "$IMAGE" --name "$CLUSTER"
 
-# Render the base kustomization with an in-line image override rather
-# than materialising a temp overlay directory.  `sed` rewrites the
-# placeholder image reference emitted by the base Deployment before
-# kubectl applies it.
+# Render the base kustomization with an in-line image override
+# rather than materialising a temp overlay directory.  The Phase 13
+# deployment pins the production image as `…@sha256:0000…`, so the
+# regex matches both the legacy `:latest` form and the digest form.
 rendered=$(kubectl kustomize "$ROOT_DIR/deploy/kubernetes" \
-  | sed "s|registry.example.com/mademanifest:latest|$IMAGE|g")
+  | sed -E "s|registry.example.com/mademanifest[:@][^ ]+|$IMAGE|g")
 
 echo "==> Applying manifests to namespace $NAMESPACE"
 printf '%s\n' "$rendered" | kubectl apply --namespace "$NAMESPACE" -f -
 
 echo "==> Waiting for rollout of deployment/mademanifest"
 kubectl rollout status deployment/mademanifest --namespace "$NAMESPACE" --timeout=120s
+
+# Phase 14 / dev-test: the engine ships with CORS OFF by default.
+# The browser test client at src/scripts/client.html runs from a
+# different origin (file:// or a static-file server) and triggers
+# a CORS preflight on every POST /manifest, so for the local-dev
+# workflow we flip the dev-only TRINITY_DEV_CORS=1 env on the
+# running deployment.  Production deployments never set this var.
+echo "==> Enabling --dev-cors via TRINITY_DEV_CORS=1 (development only)"
+kubectl set env deployment/mademanifest \
+  --namespace "$NAMESPACE" TRINITY_DEV_CORS=1 >/dev/null
+kubectl rollout status deployment/mademanifest --namespace "$NAMESPACE" --timeout=60s
 
 cleanup_ran=false
 cleanup() {

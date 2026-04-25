@@ -472,14 +472,51 @@ func TestHandleManifestRejectsMalformedJSON(t *testing.T) {
 	}
 }
 
-// TestCORSPreflightShortCircuits is the CORS sentinel: an OPTIONS
-// request to any wired route must return HTTP 204 with the
-// canonical Access-Control-Allow-* headers, BEFORE the underlying
-// handler runs.  This is what unblocks browser test UIs (such as
-// src/scripts/client.html) from POSTing to the engine through a
-// fetch() that triggers a preflight.
-func TestCORSPreflightShortCircuits(t *testing.T) {
+// TestCORSDefaultDisabledRejectsOptions pins the production-safe
+// posture: a freshly-constructed Handler has DevCORS = false, so
+// OPTIONS preflight on any wired route falls through to the
+// per-handler method check (or the default mux path) and does
+// not return 204.  No Access-Control-Allow-* headers are emitted.
+// Production deployments must keep this default.
+func TestCORSDefaultDisabledRejectsOptions(t *testing.T) {
 	handler := New()
+	mux := http.NewServeMux()
+	handler.Register(mux)
+
+	for _, path := range []string{"/healthz", "/version", "/manifest"} {
+		t.Run(path, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodOptions, path, nil)
+			rec := httptest.NewRecorder()
+			mux.ServeHTTP(rec, req)
+
+			// /version and /manifest send 405 explicitly; /healthz
+			// has no method gate so it 200s.  The point of this test
+			// is the *absence* of CORS headers, not the status, so
+			// we assert only that the preflight does NOT return 204
+			// and that no Allow-Origin header is set.
+			if rec.Code == http.StatusNoContent {
+				t.Errorf("OPTIONS %s status = 204; expected the request to fall through (CORS off by default)",
+					path)
+			}
+			if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "" {
+				t.Errorf("OPTIONS %s Access-Control-Allow-Origin = %q, want empty (CORS off)",
+					path, got)
+			}
+		})
+	}
+}
+
+// TestCORSDevPreflightShortCircuits is the dev-mode CORS sentinel:
+// when Handler.DevCORS = true (toggled by the cmd/httpserver
+// `--dev-cors` flag or TRINITY_DEV_CORS=1), an OPTIONS request to
+// any wired route returns HTTP 204 with the canonical
+// Access-Control-Allow-* headers BEFORE the underlying handler
+// runs.  This is what unblocks the browser test client at
+// src/scripts/client.html from POSTing to the engine through a
+// fetch() that triggers a preflight.
+func TestCORSDevPreflightShortCircuits(t *testing.T) {
+	handler := New()
+	handler.DevCORS = true
 	mux := http.NewServeMux()
 	handler.Register(mux)
 
@@ -509,12 +546,13 @@ func TestCORSPreflightShortCircuits(t *testing.T) {
 	}
 }
 
-// TestCORSHeadersOnSuccessResponse verifies that the CORS headers
-// are also emitted on the actual GET / POST response (not only on
-// the preflight).  Browsers require Access-Control-Allow-Origin on
-// the response to the real request.
-func TestCORSHeadersOnSuccessResponse(t *testing.T) {
+// TestCORSDevHeadersOnSuccessResponse verifies that with
+// DevCORS = true the CORS headers also appear on the actual GET /
+// POST response (not only on the preflight).  Browsers require
+// Access-Control-Allow-Origin on the response to the real request.
+func TestCORSDevHeadersOnSuccessResponse(t *testing.T) {
 	handler := New()
+	handler.DevCORS = true
 	mux := http.NewServeMux()
 	handler.Register(mux)
 
@@ -528,5 +566,26 @@ func TestCORSHeadersOnSuccessResponse(t *testing.T) {
 	}
 	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "*" {
 		t.Errorf("Access-Control-Allow-Origin = %q, want *", got)
+	}
+}
+
+// TestCORSDefaultNoHeadersOnSuccessResponse pins the
+// production-safe posture for the success path: with DevCORS off
+// the canonical Trinity response carries no Access-Control-* header.
+func TestCORSDefaultNoHeadersOnSuccessResponse(t *testing.T) {
+	handler := New()
+	mux := http.NewServeMux()
+	handler.Register(mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/version", nil)
+	req.Header.Set("Origin", "http://localhost:8000")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("/version status = %d, want 200", rec.Code)
+	}
+	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "" {
+		t.Errorf("Access-Control-Allow-Origin = %q, want empty (CORS off by default)", got)
 	}
 }

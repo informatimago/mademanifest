@@ -213,10 +213,80 @@ Notes:
 - The up script reuses a pre-existing =trinity-dev= cluster instead
   of deleting it, so iterative runs stay fast.
 - Image tag defaults to =mademanifest:dev=; the kustomize base's
-  placeholder =registry.example.com/mademanifest:latest= is rewritten
-  in-line before apply (no temp overlay directory).
+  pinned image reference (digest or tag) is rewritten in-line
+  before apply (no temp overlay directory).
 - The test script writes the full =/manifest= response to a
   =/tmp/mademanifest-response-*.json= file and prints the path.
+
+*** Browser Test Client (form + result tables)
+
+The repository ships a single-file HTML+JavaScript test client at
+[[file:src/scripts/client.html][src/scripts/client.html]] that pairs with the same port-forward.
+It renders a form pre-populated with the canonical Schiedam
+baseline, builds the Trinity input JSON, sends =POST /manifest=,
+and renders the response as nested HTML tables (input_echo,
+astrology system + angles + house cusps + 13 objects, human_design
+system + activations + channels + centers + type / authority /
+definition / profile + incarnation_cross, gene_keys), with
+download buttons for the input and output JSON files.
+
+CORS is opt-in for security.  The engine ships with CORS *off* by
+default (production-safe) and exposes a =--dev-cors= flag (and a
+matching =TRINITY_DEV_CORS=1= environment variable for k8s
+deployments) that flips on the wildcard
+=Access-Control-Allow-Origin: *= header plus the OPTIONS preflight
+short-circuit needed for browser fetches with
+=Content-Type: application/json=.  Wildcard CORS in front of an
+authenticated ingress is gratuitous attack surface even on a
+stateless calculation service, so production deployments must
+leave both knobs unset.
+
+Workflow with the kind cluster:
+
+#+begin_src bash
+# Terminal 1: brings up kind, applies kustomize, sets
+# TRINITY_DEV_CORS=1 on the deployment, opens port-forward.
+src/scripts/k8s-local-up.sh
+
+# Browser:
+open src/scripts/client.html
+#+end_src
+
+The page targets =http://127.0.0.1:8080= by default; the "Base URL"
+field at the top of the form lets you point it at a different
+host or port (e.g. =http://127.0.0.1:9090= when the up script was
+invoked with =--port 9090=).
+
+Workflow without kind (direct binary):
+
+#+begin_src bash
+make -C src compile
+SE_EPHE_PATH=/usr/local/share/swisseph PORT=8080 \
+    src/mademanifest-engine/mademanifest-engine --dev-cors
+
+# Browser:
+open src/scripts/client.html
+#+end_src
+
+The =--dev-cors= flag prints a startup warning so it is obvious
+when the engine is running with CORS enabled.
+
+Workflow against a Docker container (dev image):
+
+#+begin_src bash
+docker run --rm -p 8080:8080 \
+    -e TRINITY_DEV_CORS=1 \
+    mademanifest-engine:itest
+
+# Browser:
+open src/scripts/client.html
+#+end_src
+
+The Phase 13 NetworkPolicy in =src/deploy/kubernetes/networkpolicy.yaml=
+still applies in any Kubernetes deployment: even with =--dev-cors=
+on, only the ingress controller can reach the service from inside
+the cluster.  The CORS opt-in only affects which browser origins
+can drive an already-reachable instance.
 
 * Testing
 

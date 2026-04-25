@@ -48,11 +48,19 @@ type Processor func(bodyReader io.Reader) (body []byte, status int, err error)
 // CanonPaths field that originally piped legacy canon JSON paths
 // through the handler; the trinity processor now reads canon
 // directly from pkg/canon.
+//
+// DevCORS is OFF by default and must remain so in production.
+// See the docstring on withCORS for the threat model and the dev
+// workflow that enables it.
 type Handler struct {
 	Process Processor
+	DevCORS bool
 }
 
-// New wires the default Trinity processor.
+// New wires the default Trinity processor.  CORS is OFF; flip
+// Handler.DevCORS = true (or pass --dev-cors / TRINITY_DEV_CORS=1
+// to cmd/httpserver) to enable it for the local browser test
+// client.
 func New() Handler {
 	return Handler{
 		Process: trinityProcess,
@@ -60,27 +68,37 @@ func New() Handler {
 }
 
 func (h Handler) Register(mux *http.ServeMux) {
-	mux.HandleFunc("/healthz", withCORS(h.handleHealth))
-	mux.HandleFunc("/version", withCORS(h.handleVersion))
-	mux.HandleFunc("/manifest", withCORS(h.handleManifest))
+	healthz := http.HandlerFunc(h.handleHealth)
+	version := http.HandlerFunc(h.handleVersion)
+	manifest := http.HandlerFunc(h.handleManifest)
+	if h.DevCORS {
+		healthz = withCORS(healthz)
+		version = withCORS(version)
+		manifest = withCORS(manifest)
+	}
+	mux.Handle("/healthz", healthz)
+	mux.Handle("/version", version)
+	mux.Handle("/manifest", manifest)
 }
 
 // withCORS wraps an http.HandlerFunc with permissive CORS headers
 // and short-circuits OPTIONS preflight requests with HTTP 204.
 //
-// The engine is a stateless calculation service with no
-// authentication, no PII storage, and no side effects: a browser
-// from any origin can submit a Trinity payload and receive a
-// Trinity envelope.  Production network-level scoping is the
-// kustomize NetworkPolicy from Phase 13 (ingress restricted to
-// the cluster ingress controller); CORS only matters for local
-// dev / test UIs (see src/scripts/client.html), where it lets
-// browsers POST to the engine without bouncing off a preflight
-// 405.
+// CORS is OFF by default and is only enabled when
+// Handler.DevCORS is true (toggled by the cmd/httpserver
+// `--dev-cors` flag or the TRINITY_DEV_CORS=1 environment
+// variable).  Production deployments must leave it OFF: even
+// though the engine is stateless and has no PII or auth, a
+// wildcard CORS posture would let any web origin call the engine
+// on a user's behalf, adding gratuitous attack surface (e.g.
+// CSRF-style amplification of computational load) for zero
+// benefit in production where requests arrive through an
+// authenticated ingress controller.
 //
-// The wildcard origin is intentional: the response carries no
-// credentials and no auth tokens, so allowing any origin is the
-// canonical "open API" stance.
+// When ON the middleware emits Access-Control-Allow-Origin: *,
+// answers OPTIONS preflight with HTTP 204, and is enabled only
+// for the local-dev workflow described in
+// src/scripts/k8s-local-up.sh and src/scripts/client.html.
 func withCORS(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
