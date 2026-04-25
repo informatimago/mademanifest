@@ -257,6 +257,15 @@ func createKindCluster(name string) error {
 // /private/var; kustomize resolves symlinks while walking the relative
 // path and otherwise ends up looking for non-existent directories like
 // /private/Users/....
+//
+// Phase 9: the overlay also hard-codes a SE_NODE_POLICY=true env on
+// the mademanifest container.  After Phase 6 retired the env-driven
+// node policy shim, that variable must have no effect; injecting it
+// here and asserting the canonical Phase 4-8 oracles still match
+// makes every k8s integration test an env-immunity sentinel.  The
+// docker harness covers the same invariant via DockerOptions.ExtraEnv,
+// and the local harness via LocalServerOptions.ExtraEnv – this is
+// the third leg.
 func writeKustomizeOverlay(basePath, imageTag string) (string, error) {
 	dir, err := os.MkdirTemp("", "trinity-k8s-overlay-*")
 	if err != nil {
@@ -286,15 +295,40 @@ func writeKustomizeOverlay(basePath, imageTag string) (string, error) {
 	if !ok {
 		newTag = "latest"
 	}
+
+	// Strategic-merge patch that adds SE_NODE_POLICY=true to the
+	// mademanifest container.  The env is the Phase 9 env-immunity
+	// probe described in the function docstring.
+	patchPath := "envimmunity-patch.yaml"
+	patchBody := `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mademanifest
+spec:
+  template:
+    spec:
+      containers:
+        - name: mademanifest
+          env:
+            - name: SE_NODE_POLICY
+              value: "true"
+`
+	if err := os.WriteFile(filepath.Join(dir, patchPath), []byte(patchBody), 0644); err != nil {
+		os.RemoveAll(dir)
+		return "", fmt.Errorf("write env-immunity patch: %w", err)
+	}
+
 	content := fmt.Sprintf(`apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - %s
+patches:
+  - path: %s
 images:
   - name: registry.example.com/mademanifest
     newName: %s
     newTag: %s
-`, relBase, newName, newTag)
+`, relBase, patchPath, newName, newTag)
 	if err := os.WriteFile(filepath.Join(dir, "kustomization.yaml"), []byte(content), 0644); err != nil {
 		os.RemoveAll(dir)
 		return "", fmt.Errorf("write overlay: %w", err)

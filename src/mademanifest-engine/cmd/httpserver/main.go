@@ -9,6 +9,7 @@ import (
 
 	"mademanifest-engine/pkg/canon"
 	"mademanifest-engine/pkg/engine"
+	"mademanifest-engine/pkg/ephemeris"
 	"mademanifest-engine/pkg/httpservice"
 )
 
@@ -24,6 +25,17 @@ func main() {
 			log.Fatalf("encode versions: %v", err)
 		}
 		return
+	}
+
+	// Phase 9 boot-time self-checks.  The engine refuses to start
+	// when any of these fail; the alternative is silently serving
+	// non-canonical results to clients, which violates the canon
+	// determinism rules (trinity.org §"Determinism And Versioning").
+	if err := canon.SelfCheck(); err != nil {
+		log.Fatalf("canon self-check failed: %v", err)
+	}
+	if err := ephemeris.ValidateEphePath(); err != nil {
+		log.Fatalf("ephemeris path validation failed: %v", err)
 	}
 
 	port := os.Getenv("PORT")
@@ -45,8 +57,8 @@ func main() {
 	httpservice.New(canonPaths).Register(mux)
 
 	addr := ":" + port
-	log.Printf("HTTP service listening on %s (engine_version=%s canon_version=%s)",
-		addr, canon.EngineVersion, canon.CanonVersion)
+	log.Printf("HTTP service listening on %s (engine_version=%s canon_version=%s ephe_path=%s)",
+		addr, canon.EngineVersion, canon.CanonVersion, ephemeris.ResolvedEphePath())
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		log.Fatalf("listen and serve: %v", err)
 	}

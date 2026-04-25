@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"mademanifest-engine/pkg/canon"
+	"mademanifest-engine/pkg/ephemeris"
 	"mademanifest-engine/pkg/hd/structure"
 	"mademanifest-engine/pkg/trinity/astro"
 	"mademanifest-engine/pkg/trinity/genekeys"
@@ -53,16 +54,31 @@ func (h Handler) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// handleVersion returns the compiled-in pinned versions as JSON.
-// This is the Phase 1 deliverable; later phases embed the matching
-// metadata block into every Trinity response envelope.
+// VersionResponse is the wire shape of GET /version.  It embeds the
+// canon.VersionInfo block (engine_version, canon_version, etc.) and
+// adds a deployment-resolved diagnostic field for the Swiss
+// Ephemeris data path.  Phase 9 surfaces ephe_path_resolved here so
+// operators can confirm at runtime exactly which ephemeris bundle
+// the engine has loaded.  The field never appears in the trinity
+// success/error response metadata block – that is reserved for
+// canon version pins (trinity.org §"Metadata" lines 451-462).
+type VersionResponse struct {
+	canon.VersionInfo
+	EphePathResolved string `json:"ephe_path_resolved"`
+}
+
+// handleVersion returns the compiled-in pinned versions as JSON,
+// plus the resolved ephemeris path (Phase 9 diagnostic).
 func (h Handler) handleVersion(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", http.MethodGet)
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, canon.Versions())
+	writeJSON(w, http.StatusOK, VersionResponse{
+		VersionInfo:      canon.Versions(),
+		EphePathResolved: ephemeris.ResolvedEphePath(),
+	})
 }
 
 func (h Handler) handleManifest(w http.ResponseWriter, r *http.Request) {

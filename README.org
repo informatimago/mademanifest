@@ -25,17 +25,17 @@ harness exercises it in all three runtimes.
 | Phase 6 HD gate/line mapping            | Done – =pkg/hd/calc.MapToGateLine= (canon constants only, anchor 277.5°, start-inclusive / end-exclusive); =pkg/trinity/hd= computes personality + design activations via SE_TRUE_NODE; =SE_NODE_POLICY= env shim removed; Schiedam personality + design activation oracle frozen |
 | Phase 7 HD structural layer             | Done – =pkg/hd/structure.Compute= derives channels (lex-sorted), centers (canon order), definition (union-find over active channels), type (5-way decision tree), authority (8-way priority), profile, incarnation_cross; Schiedam structural oracle (3 channels, triple_split, projector / splenic, profile 1/3) frozen |
 | Phase 8 Gene Keys canonical output      | Done – =pkg/trinity/genekeys.Compute= derives the four positions directly from HD pillar activations; canonical =life_work= field name; canon-fence JSON-key whitelist rejects any drift toward text / shadow / gift / essence fields; Schiedam Gene Keys oracle (=42.1 / 32.1 / 61.3 / 62.3=) frozen |
+| Phase 9 Determinism cleanup             | Done – =pkg/canon.SelfCheck()= validates every compiled constant at boot, =ephemeris.ValidateEphePath()= sanity-checks the deployment-resolved Swiss Ephemeris path; httpserver =main()= refuses to start on either failure.  =/version= surfaces =ephe_path_resolved= (never in metadata).  =SE_NODE_POLICY= env immunity is verified end-to-end through local subprocess, Docker container, and kind cluster (kustomize overlay injects =SE_NODE_POLICY=true= and the canonical Phase 4-8 oracles must stay bit-identical). |
 | Trinity Golden Test Pack                | Phase 11 – not yet started                                       |
 | Canon ambiguities A1..A8                | Open – see =src/doc/version-pins.org=                            |
 
-The next phase is Phase 9 (determinism cleanup: retire any
-remaining runtime-affecting environment variables, make =pkg/canon=
-the single source of every calculation constant, refuse to boot on
-canon-self-check failure), then Phase 10 (HTTP service Trinity
-contract finalisation: content-type enforcement, body-size cap,
-malformed-JSON path).  The full plan is in
-[[file:src/doc/trinity-implementation-plan.org][src/doc/trinity-implementation-plan.org]]; pinned versions and the
-=A*= ambiguity register live in [[file:src/doc/version-pins.org][src/doc/version-pins.org]].
+The next phase is Phase 10 (HTTP service Trinity contract
+finalisation: content-type enforcement, body-size cap, malformed-
+JSON path), then Phase 11 (Golden Test Pack: minimum 3 baseline,
+5 valid_edge, 5 invalid_input, 5 incomplete_input, 2 unsupported_input,
+3 regression_sentinel fixtures with automated runner).  The full
+plan is in [[file:src/doc/trinity-implementation-plan.org][src/doc/trinity-implementation-plan.org]]; pinned versions
+and the =A*= ambiguity register live in [[file:src/doc/version-pins.org][src/doc/version-pins.org]].
 
 * Repository Layout
 

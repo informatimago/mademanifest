@@ -11,11 +11,15 @@ import (
 
 // AssertVersionEndpointMatchesCanon calls GET baseURL/version and
 // fails the test unless the response is 200 with a Content-Type of
-// application/json and a JSON body deep-equal to canon.Versions().
+// application/json and a JSON body whose canonical fields equal
+// canon.Versions().  Phase 9 added the diagnostic
+// "ephe_path_resolved" field; this helper verifies the canon block
+// matches and the diagnostic field is present and non-empty.
 //
 // Shared by the local, docker, and k8s harness smoke tests so every
 // runtime exercises the same invariant: the build deployed into that
-// runtime must expose exactly the compiled-in pinned versions.
+// runtime must expose exactly the compiled-in pinned versions plus
+// a diagnosable resolved ephemeris path.
 func AssertVersionEndpointMatchesCanon(t testing.TB, baseURL string) {
 	t.Helper()
 	status, raw, err := GetJSON(baseURL, "/version")
@@ -33,6 +37,24 @@ func AssertVersionEndpointMatchesCanon(t testing.TB, baseURL string) {
 	if got != want {
 		t.Fatalf("/version payload:\n got:  %s\n want: %+v",
 			prettyJSON(raw), want)
+	}
+
+	// Phase 9: ephe_path_resolved must be present and non-empty.
+	// The exact value depends on the runtime (subprocess sees the
+	// repo-local checkout, the container sees an in-image path),
+	// so we only assert presence and non-emptiness here.
+	var generic map[string]any
+	if err := json.Unmarshal(raw, &generic); err != nil {
+		t.Fatalf("decode /version (generic): %v", err)
+	}
+	pathField, ok := generic["ephe_path_resolved"].(string)
+	if !ok {
+		t.Fatalf("/version: ephe_path_resolved missing or not a string\nbody: %s",
+			prettyJSON(raw))
+	}
+	if pathField == "" {
+		t.Fatalf("/version: ephe_path_resolved is empty\nbody: %s",
+			prettyJSON(raw))
 	}
 }
 

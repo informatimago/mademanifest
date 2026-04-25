@@ -17,6 +17,27 @@ import (
 var swe_initialized = false
 const requiredSwissEphVersion = "2.10.03"
 
+// resolveEphemerisPath returns the directory the engine should pass
+// to swephgo.SetEphePath.  Order of preference:
+//
+//   1. The SE_EPHE_PATH environment variable (deployment setting,
+//      retained as Phase 9 explicitly allows: see plan §"Phase 9 –
+//      Determinism Cleanup").  If non-empty, the returned value is
+//      whatever the operator configured.
+//   2. The repo-local checkout under
+//      src/ephemeris/data/REQUIRED_EPHEMERIS_FILES, resolved
+//      relative to this source file (works for `go test` and any
+//      run-in-place developer workflow).
+//   3. The system install directory /usr/local/share/swisseph
+//      (Makefile target swisseph-install-data).
+//   4. A relative fallback string the swephgo bindings can still
+//      use when the binary is launched from src/mademanifest-engine.
+//
+// ResolvedEphePath returns the absolute, fs-canonical equivalent of
+// resolveEphemerisPath() so /version can surface a diagnosable path
+// to operators.  Phase 9 surfaces this in /version (never in the
+// trinity response metadata block — that is reserved for the canon
+// version pins).
 func resolveEphemerisPath() string {
 	if ephePath := os.Getenv("SE_EPHE_PATH"); ephePath != "" {
 		return ephePath
@@ -40,6 +61,48 @@ func resolveEphemerisPath() string {
 	}
 
 	return "../ephemeris/data/REQUIRED_EPHEMERIS_FILES/"
+}
+
+// ResolvedEphePath returns the directory the engine will pass to
+// the Swiss Ephemeris loader, resolved through the same precedence
+// rules as resolveEphemerisPath() and then expanded to an absolute
+// fs-canonical path.  When the resolved path does not exist on
+// disk, the relative form is returned verbatim so callers can
+// surface "this is what the engine *would* try" diagnostics.
+//
+// Phase 9 surfaces this value in GET /version under
+// "ephe_path_resolved" so operators can confirm at runtime exactly
+// which ephemeris bundle the engine has loaded.  The value never
+// appears in the trinity success/error response metadata block —
+// that is reserved for canon version pins per trinity.org line 451.
+func ResolvedEphePath() string {
+	candidate := resolveEphemerisPath()
+	abs, err := filepath.Abs(candidate)
+	if err != nil {
+		return candidate
+	}
+	return abs
+}
+
+// ValidateEphePath probes the resolved ephemeris path on boot and
+// returns an error if it is unusable.  "Usable" means the path
+// resolves to an existing directory; we do not crack open the .se1
+// files here because the swephgo loader does that lazily on the
+// first ephemeris call (and will log.Fatal on failure).
+//
+// httpserver/main.go calls this immediately after canon.SelfCheck
+// so an obviously-misconfigured deployment fails fast at boot
+// rather than mid-request.
+func ValidateEphePath() error {
+	abs := ResolvedEphePath()
+	info, err := os.Stat(abs)
+	if err != nil {
+		return fmt.Errorf("ephemeris path %q: %w", abs, err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("ephemeris path %q is not a directory", abs)
+	}
+	return nil
 }
 
 func requireSwissEphVersion() {

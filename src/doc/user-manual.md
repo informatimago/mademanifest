@@ -466,15 +466,24 @@ curl -s http://localhost:8080/version
 
 ```json
 {
-  "engine_version": "v0.1.0-phase-8",
+  "engine_version": "v0.1.0-phase-9",
   "canon_version": "trinity-v1-rev-0",
   "mapping_version": "trinity-v1-rev-0",
   "input_schema_version": "trinity-v1-rev-0",
   "source_stack_version": "trinity-v1-rev-0",
   "swisseph_version": "2.10.03",
-  "tzdb_version": "2023c"
+  "tzdb_version": "2023c",
+  "ephe_path_resolved": "/usr/local/share/swisseph"
 }
 ```
+
+The `ephe_path_resolved` field is a Phase 9 deployment diagnostic:
+it surfaces the absolute filesystem path the engine resolved
+`SE_EPHE_PATH` to, so operators can confirm at runtime which
+ephemeris bundle the binary loaded.  The field appears in
+`/version` only; it never appears in the trinity success/error
+response metadata block (`metadata` is reserved for canon version
+pins per `trinity.org` lines 451-462).
 
 ### `--version` (CLI and HTTP server)
 
@@ -502,21 +511,32 @@ fmt.Println(info.CanonVersion, info.SwissEphVersion)
 | `source_stack_version` | Swiss Ephemeris or tzdb release changes.                                              |
 | `swisseph_version`     | Pinned by trinity.org — verified at first ephemeris call; mismatch aborts the engine. |
 | `tzdb_version`         | Tracked as ambiguity *A1*; currently inherits Go 1.22 embedded tzdata (2023c).        |
+| `ephe_path_resolved`   | Deployment-resolved Swiss Ephemeris path; appears only in `/version`, never in metadata. |
 
 See [`version-pins.org`](version-pins.org) for the full A-register.
 
 ## Determinism Requirements
 
-- Use only the canon files provided; once Phase 9 lands, the canon
-  constants are compiled into the binary and the JSON loader is
-  retired.
+- The trinity HTTP path consumes only the compiled-in
+  `pkg/canon/constants.go`.  The legacy `src/canon/*.json` files are
+  loaded only by the PoC CLI path and are scheduled for retirement
+  in Phase 12.
+- The engine refuses to boot when its compiled constants fail
+  `pkg/canon.SelfCheck()` or when the resolved ephemeris path fails
+  `pkg/ephemeris.ValidateEphePath()`.  Phase 9 pins this invariant.
 - Use only Swiss Ephemeris version `2.10.03` and the bundled
   ephemeris data.  The runtime aborts if it detects a different
   library version.
 - Do not hardcode results; run the full computation pipeline.
-- Output must be bit-exact identical to the golden output (PoC) or
-  semantically identical to the Trinity expected output (Phase 11+).
+- Output must be semantically identical to the Trinity expected
+  output (Phase 11+).
 - No hidden state: no mutable caches, no implicit environment
   defaults, no third-party service responses, no stored run history.
-  Remaining environment-variable overrides (`SE_NODE_POLICY`,
-  `SE_EPHE_PATH` override) are tracked for removal in Phase 9.
+- The only allowed runtime environment variables are deployment
+  settings — `SE_EPHE_PATH` (Swiss Ephemeris data directory),
+  `CANON_DIRECTORY` (legacy PoC canon root, ignored by the trinity
+  HTTP path), and `PORT` (HTTP listen port).  Phase 6 retired the
+  `SE_NODE_POLICY` env shim; Phase 9 verifies env-immunity end-to-
+  end through local subprocess, Docker container, and kind cluster
+  (the kustomize overlay injects `SE_NODE_POLICY=true` and the
+  canonical Phase 4-8 oracles must remain bit-identical).

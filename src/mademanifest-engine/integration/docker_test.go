@@ -82,3 +82,17 @@ func TestDockerHarnessSchiedamGeneKeysMatchOracle(t *testing.T) {
 
 	AssertSchiedamGeneKeysMatchOracle(t, srv.BaseURL)
 }
+
+// TestDockerHarnessEnvImmuneToSENodePolicy is the Phase 9
+// determinism sentinel running against the production Docker image.
+// The container is launched with -e SE_NODE_POLICY=true (the retired
+// Phase 6 env shim) and must still produce bit-identical canonical
+// output for every Phase 4-8 oracle.
+func TestDockerHarnessEnvImmuneToSENodePolicy(t *testing.T) {
+	srv := StartDockerContainer(t, DockerOptions{
+		ExtraEnv: []string{"SE_NODE_POLICY=true"},
+	})
+	t.Cleanup(srv.Shutdown)
+
+	AssertEnvImmuneCanonicalSchiedam(t, srv.BaseURL)
+}

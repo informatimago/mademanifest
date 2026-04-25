@@ -105,3 +105,18 @@ func TestLocalHarnessSchiedamGeneKeysMatchOracle(t *testing.T) {
 
 	AssertSchiedamGeneKeysMatchOracle(t, srv.BaseURL)
 }
+
+// TestLocalHarnessEnvImmuneToSENodePolicy is the Phase 9
+// determinism sentinel: launching the local subprocess with
+// SE_NODE_POLICY=true (the retired Phase 6 env shim) must leave
+// every Phase 4-8 oracle bit-identical.  This pins the rule that
+// the engine has no implicit environment defaults that affect
+// output (trinity.org §"Determinism And Versioning" line 593).
+func TestLocalHarnessEnvImmuneToSENodePolicy(t *testing.T) {
+	srv := StartLocalServer(t, LocalServerOptions{
+		ExtraEnv: []string{"SE_NODE_POLICY=true"},
+	})
+	t.Cleanup(srv.Shutdown)
+
+	AssertEnvImmuneCanonicalSchiedam(t, srv.BaseURL)
+}

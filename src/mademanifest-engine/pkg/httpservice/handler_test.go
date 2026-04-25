@@ -233,6 +233,34 @@ func TestHandleVersionReturnsCompiledInValues(t *testing.T) {
 	}
 }
 
+// TestHandleVersionSurfacesEphePathResolved – Phase 9 invariant.
+// /version must include the deployment-resolved ephemeris data
+// path under the canonical key "ephe_path_resolved".  The value is
+// a diagnostic, not a canon constant, so the field appears only in
+// /version – never in the trinity success/error response metadata.
+func TestHandleVersionSurfacesEphePathResolved(t *testing.T) {
+	handler := New(canon.Paths{})
+	req := httptest.NewRequest(http.MethodGet, "/version", nil)
+	rec := httptest.NewRecorder()
+
+	handler.handleVersion(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("/version status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	var generic map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &generic); err != nil {
+		t.Fatalf("decode /version: %v", err)
+	}
+	got, ok := generic["ephe_path_resolved"].(string)
+	if !ok {
+		t.Fatalf("ephe_path_resolved missing or not string: %v", generic)
+	}
+	if got == "" {
+		t.Errorf("ephe_path_resolved is empty; want a non-empty path")
+	}
+}
+
 // TestHandleVersionRejectsWrongMethod – Phase 1 invariant.
 func TestHandleVersionRejectsWrongMethod(t *testing.T) {
 	handler := New(canon.Paths{})

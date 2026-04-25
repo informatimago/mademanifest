@@ -81,3 +81,14 @@ func TestK8sHarnessSchiedamStructureMatchesOracle(t *testing.T) {
 func TestK8sHarnessSchiedamGeneKeysMatchOracle(t *testing.T) {
 	AssertSchiedamGeneKeysMatchOracle(t, sharedK8s.BaseURL)
 }
+
+// TestK8sHarnessEnvImmuneToSENodePolicy is the Phase 9 determinism
+// sentinel running against the kind-deployed service.  The shared
+// k8s harness injects SE_NODE_POLICY=true into the mademanifest
+// deployment via the kustomize overlay; this test re-asserts every
+// Phase 4-8 oracle through that deployment to make the env-immunity
+// guarantee an explicit, named test rather than an implicit side
+// effect of the per-section sentinels.
+func TestK8sHarnessEnvImmuneToSENodePolicy(t *testing.T) {
+	AssertEnvImmuneCanonicalSchiedam(t, sharedK8s.BaseURL)
+}
