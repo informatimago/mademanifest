@@ -46,3 +46,12 @@ func TestDockerHarnessSchiedamAstrologyMatchesOracle(t *testing.T) {
 
 	AssertSchiedamAstrologyMatchesOracle(t, srv.BaseURL)
 }
+
+// TestDockerHarnessSchiedamDesignTimeMatchesOracle is the Phase 5
+// regression sentinel running against the production Docker image.
+func TestDockerHarnessSchiedamDesignTimeMatchesOracle(t *testing.T) {
+	srv := StartDockerContainer(t, DockerOptions{})
+	t.Cleanup(srv.Shutdown)
+
+	AssertSchiedamDesignTimeMatchesOracle(t, srv.BaseURL)
+}

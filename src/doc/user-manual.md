@@ -253,10 +253,12 @@ Using Swiss Ephemeris (pinned to `2.10.03`) and tropical zodiac:
   within the sign.
 - The `north_node_mean` field in astrology output is the mean node.
 
-> **Transition note.**  Phase 4 replaces `{sign, deg, min}` with the
-> Trinity canonical `{object_id, longitude, sign, house}` output, and
-> adds explicit house cusps 1–12 and Earth as a first-class astrology
-> object.
+> **Transition note (Phase 4 — landed).**  The Trinity canonical
+> `{object_id, longitude, sign, house}` output is now emitted by
+> `POST /manifest`, with explicit house cusps 1–12 and Earth as a
+> first-class astrology object.  The legacy `{sign, deg, min}` shape
+> survives only in the Golden PoC contract path and is retired in
+> Phase 12.
 
 ### 4. Human Design module
 
@@ -266,21 +268,33 @@ Two snapshots:
 - **Design** at the prior moment when the Sun longitude equals
   `birth_sun − sun_offset_deg`.
 
-Design-time solver:
+Design-time solver (Trinity / Phase 5):
 
-- Target Sun longitude = `Sun(birth) − sun_offset_deg` (normalised
-  0–360°).
-- Initial bracket: `birth − (sun_offset_deg ± 5)` days.
-- Expand bracket by 2-day steps up to 10 times until a sign change is
-  found.
-- Bisect until the absolute Sun difference is below the threshold, or
-  the time bracket is below the second threshold (whichever comes
-  first).
+- Target Sun longitude = `Sun(birth) − 88.0°` (normalised 0–360°).
+  The 88° offset is canon-pinned in
+  `pkg/hd/calc.SunOffsetDeg`.
+- Search direction: backward only.
+- Initial bracket: `birth − (88 ± 5)` days.  The bracket is widened
+  on either side in 2-day steps if the canonical 10-day window does
+  not bracket the root (this is a defensive fallback; the canonical
+  case starts already bracketed because the Sun moves ~0.985°/day).
+- Pure bisection (no secant fallback, no fixed-day shortcut, no
+  precomputed lookup).
+- Stop conditions:
+  - `|Sun(t) − target| < 0.0001°`  (canon: `StopAbsSunDiffDeg`), or
+  - bracket width < 1 second (canon: `StopBracketSeconds`).
+- The midpoint of the final bracket is returned as the design moment;
+  Phase 3's `output.DesignTime` marshaler floors that value to whole
+  seconds before emitting `human_design.system.design_time_utc`.
 
-> **Transition note.**  Phase 5 hard-codes `sun_offset_deg = 88.0` as
-> canon, removes the input-driven parameters, and tightens the
-> solver's stop conditions.  Exact-second rounding is tracked as
-> ambiguity *A3* in `version-pins.org`.
+> **Transition note (Phase 5 — landed).**  Trinity calls now emit
+> `human_design.system.design_time_utc` from
+> `pkg/trinity/hd.ComputeDesignTime`, which calls the canonical
+> bisection solver in `pkg/hd/calc.SolveDesignTime`.  The legacy
+> input-driven `DesignTimeSolver` parameters in the Golden PoC
+> contract still feed `pkg/human_design.SolveDesignTime` for the
+> file-based PoC CLI; that path is retired in Phase 12.  Exact-second
+> rounding is tracked as ambiguity *A3* in `version-pins.org`.
 
 Mapping to gates and lines (current PoC code path):
 
@@ -370,7 +384,7 @@ curl -s http://localhost:8080/version
 
 ```json
 {
-  "engine_version": "v0.1.0-phase-1",
+  "engine_version": "v0.1.0-phase-5",
   "canon_version": "trinity-v1-rev-0",
   "mapping_version": "trinity-v1-rev-0",
   "input_schema_version": "trinity-v1-rev-0",

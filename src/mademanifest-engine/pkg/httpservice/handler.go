@@ -9,6 +9,7 @@ import (
 
 	"mademanifest-engine/pkg/canon"
 	"mademanifest-engine/pkg/trinity/astro"
+	"mademanifest-engine/pkg/trinity/hd"
 	"mademanifest-engine/pkg/trinity/input"
 	"mademanifest-engine/pkg/trinity/output"
 )
@@ -133,9 +134,9 @@ func trinityProcess(bodyReader io.Reader, _ canon.Paths) ([]byte, int, error) {
 	// Validation succeeded.  Build the canonical success envelope,
 	// then replace each placeholder section with computed values
 	// as the calculation phases come online.  Phase 4 wires the
-	// astrology section; Phases 5-8 will fill the remaining
-	// placeholders (HD design time, activations, channels,
-	// centers, structural derivations, gene keys).
+	// astrology section; Phase 5 wires human_design.system.design_time_utc;
+	// Phases 6-8 will fill the remaining placeholders (activations,
+	// channels, centers, structural derivations, gene keys).
 	env := output.NewPlaceholderSuccess(payload)
 
 	astroSection, err := astro.ComputeAstrology(payload)
@@ -143,6 +144,12 @@ func trinityProcess(bodyReader io.Reader, _ canon.Paths) ([]byte, int, error) {
 		return nil, 0, fmt.Errorf("compute astrology: %w", err)
 	}
 	env.Astrology = astroSection
+
+	designTime, err := hd.ComputeDesignTime(payload)
+	if err != nil {
+		return nil, 0, fmt.Errorf("compute design time: %w", err)
+	}
+	env.HumanDesign.System.DesignTimeUTC = output.DesignTime(designTime)
 
 	body, encErr := json.Marshal(env)
 	if encErr != nil {

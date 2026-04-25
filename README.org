@@ -21,14 +21,15 @@ harness exercises it in all three runtimes.
 | Phase 2 Trinity input contract          | Done – =pkg/trinity/input= validator with full Document 04 rules; rejection matrix exercised through local/docker/k8s |
 | Phase 3 Trinity output envelope         | Done – =SuccessEnvelope= with canon-ordered fields, =Longitude= (6 dp) + =DesignTime= (RFC 3339 UTC floor, A3) typed marshalers, placeholder success path returns HTTP 200 |
 | Phase 4 Astrology calculation           | Done – =pkg/trinity/astro= computes signs, houses (A2), 13 objects (Earth = Sun + 180), and angles; Schiedam oracle frozen as the regression sentinel |
+| Phase 5 HD design-time bisection solver | Done – =pkg/hd/calc.SolveDesignTime= (canon constants, pure bisection, backward-only); =pkg/trinity/hd= wraps it with the Swiss Ephemeris Sun callback; Schiedam =design_time_utc= oracle frozen at =1990-01-12T00:38:22Z=; HTTP handler emits the canonical value |
 | Trinity Human Design structural layer   | Phase 7 – not yet started (channels, centers, definition, type, authority, profile, incarnation cross) |
 | Trinity Golden Test Pack                | Phase 11 – not yet started                                       |
 | Canon ambiguities A1..A8                | Open – see =src/doc/version-pins.org=                            |
 
-The next phase is Phase 5 (Human Design design-time bisection
-solver), then Phase 6 (HD gate/line mapping with the canonical
-277.5° anchor) and Phase 7 (HD structural layer).  The full plan is
-in [[file:src/doc/trinity-implementation-plan.org][src/doc/trinity-implementation-plan.org]]; pinned versions and the
+The next phase is Phase 6 (HD gate/line mapping with the canonical
+277.5° anchor), then Phase 7 (HD structural layer) and Phase 8 (Gene
+Keys canonical output).  The full plan is in
+[[file:src/doc/trinity-implementation-plan.org][src/doc/trinity-implementation-plan.org]]; pinned versions and the
 =A*= ambiguity register live in [[file:src/doc/version-pins.org][src/doc/version-pins.org]].
 
 * Repository Layout
@@ -61,10 +62,15 @@ in [[file:src/doc/trinity-implementation-plan.org][src/doc/trinity-implementatio
 - =engine= – orchestrator that wires inputs to calculators and emits output
 - =astronomy= – local time → UTC, UTC → Julian Day
 - =ephemeris=, =sweph= – Swiss Ephemeris (cgo) wrappers, pinned to 2.10.03
-- =astrology= – tropical-zodiac positions, Placidus ascendant / MC
-- =human_design= – personality / design snapshots, design-time bisection, gate/line mapping
-- =gene_keys= – four-position derivation from Human Design
-- =httpservice= – =/healthz= and =/manifest= HTTP handlers
+- =astrology= – tropical-zodiac positions, Placidus ascendant / MC (PoC path; Trinity uses =trinity/astro=)
+- =human_design= – PoC personality / design snapshots, design-time bisection, gate/line mapping (legacy; retired at Phase 12)
+- =hd/calc= – Phase 5+ canonical Trinity calculation primitives.  Holds =SolveDesignTime= (pure bisection, backward-only, all canon constants compiled in)
+- =trinity/input= – Phase 2 Trinity input validator with full Document 04 rules
+- =trinity/output= – Phase 3 envelope types (=SuccessEnvelope=, =ErrorEnvelope=) with canon-ordered JSON keys
+- =trinity/astro= – Phase 4 Trinity astrology pipeline (signs, houses, 13 objects, angles)
+- =trinity/hd= – Phase 5 Trinity Human Design pipeline.  Today: =ComputeDesignTime= wraps =hd/calc= with the Swiss Ephemeris Sun callback and JD ↔ time.Time conversion.
+- =gene_keys= – four-position derivation from Human Design (PoC; retired at Phase 12)
+- =httpservice= – =/healthz=, =/version=, and =/manifest= HTTP handlers
 - =geolocation=, =emit_golden= – PoC helpers (retired at Phase 12)
 
 * Build And Run

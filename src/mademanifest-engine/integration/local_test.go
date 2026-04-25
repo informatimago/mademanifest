@@ -61,3 +61,13 @@ func TestLocalHarnessSchiedamAstrologyMatchesOracle(t *testing.T) {
 
 	AssertSchiedamAstrologyMatchesOracle(t, srv.BaseURL)
 }
+
+// TestLocalHarnessSchiedamDesignTimeMatchesOracle is the Phase 5
+// regression sentinel: the canonical Schiedam payload must produce
+// the frozen human_design.system oracle (node_type + design_time_utc).
+func TestLocalHarnessSchiedamDesignTimeMatchesOracle(t *testing.T) {
+	srv := StartLocalServer(t, LocalServerOptions{})
+	t.Cleanup(srv.Shutdown)
+
+	AssertSchiedamDesignTimeMatchesOracle(t, srv.BaseURL)
+}

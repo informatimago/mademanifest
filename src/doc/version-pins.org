@@ -20,7 +20,7 @@ in a later phase.
 
 | Constant             | Value              | Canonical source                    | A-ambiguity |
 |----------------------+--------------------+-------------------------------------+-------------|
-| =EngineVersion=      | =v0.1.0-phase-1=  | this build                          | –           |
+| =EngineVersion=      | =v0.1.0-phase-5=  | this build                          | –           |
 | =CanonVersion=       | =trinity-v1-rev-0= | =trinity.org= (scope + calc + map + output) | A8 |
 | =MappingVersion=     | =trinity-v1-rev-0= | =trinity.org= §"Mapping Canon"     | A8          |
 | =InputSchemaVersion= | =trinity-v1-rev-0= | Document 04                         | A5, A6      |
@@ -30,11 +30,15 @@ in a later phase.
 
 * Numeric Constants
 
-| Constant         | Value  | Canonical source                     | A-ambiguity |
-|------------------+--------+--------------------------------------+-------------|
-| =MandalaAnchorDeg= | 277.5 | =trinity.org= lines 297-300         | A8          |
-| =GateWidthDeg=     | 5.625 | =trinity.org= §"Mandala parameters" | –           |
-| =LineWidthDeg=     | 0.9375 | =trinity.org= §"Mandala parameters" | –           |
+| Constant                                | Value   | Canonical source                                | A-ambiguity |
+|-----------------------------------------+---------+-------------------------------------------------+-------------|
+| =MandalaAnchorDeg=                      | 277.5   | =trinity.org= lines 297-300                    | A8          |
+| =GateWidthDeg=                          | 5.625   | =trinity.org= §"Mandala parameters"            | –           |
+| =LineWidthDeg=                          | 0.9375  | =trinity.org= §"Mandala parameters"            | –           |
+| =hd/calc.SunOffsetDeg=                  | 88.0    | =trinity.org= §"Design-Time Derivation" line 255 | –           |
+| =hd/calc.StopAbsSunDiffDeg=             | 0.0001  | =trinity.org= §"Design-Time Derivation" line 264 | A3          |
+| =hd/calc.StopBracketSeconds=            | 1.0     | =trinity.org= §"Design-Time Derivation" line 265 | A3          |
+| =hd/calc.initialBracketHalfWidthDays=   | 5.0     | =trinity.org= §"Design-Time Derivation" line 260 (engineer's choice within "approximately 88 days back") | – |
 
 The A8 flag on =MandalaAnchorDeg= reflects a concrete divergence
 between the compiled-in canon and the legacy JSON files under
@@ -95,7 +99,11 @@ values:
 - Working assumption: return bracket midpoint, emit =floor= to whole
   second in the =Z= suffix.
 - Affects: =design_time_utc= emission in Trinity Human Design output.
-  No constant here; enforced in Phase 5 solver and Phase 3 serializer.
+  Enforced by =pkg/hd/calc.SolveDesignTime= (returns the midpoint of
+  the final bracket; the inner stop conditions =StopAbsSunDiffDeg=
+  and =StopBracketSeconds= are pinned to the canonical 0.0001° / 1 s)
+  and by =pkg/trinity/output.DesignTime.MarshalJSON= (applies the
+  whole-second floor on the way out).
 - Question for canon owner: Which timestamp is canonical when the
   bisection stops with interval width under 1 second – lower bound,
   upper bound, midpoint, or nearest whole second?
