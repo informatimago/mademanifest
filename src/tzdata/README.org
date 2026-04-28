@@ -1,0 +1,52 @@
+#+TITLE: Pinned IANA Time Zone Database — Trinity Engine v1
+#+DATE: 2026-04-28
+
+* Purpose
+This directory pins the canonical IANA Time Zone Database release
+that Trinity Engine v1 must use for canonical UTC conversion.
+
+Canon source: Document 03 § Source Stack and Document 12 D20 (A1
+RESOLVED).  The pinned release is *2026a*; see
+=src/mademanifest-engine/pkg/canon/sources.go::TZDBVersion=.
+
+* Files
+| File | Purpose |
+|------+---------|
+| =tzdata2026a.tar.gz= | The official IANA source tarball. |
+| =tzdata2026a.tar.gz.asc= | Detached PGP signature by Paul Eggert. |
+| =SHA512SUMS= | SHA-512 of the tarball, pinned for reproducible builds. |
+| =Makefile= | Local =make= target that compiles =zoneinfo/= via =zic=. |
+
+* Origin
+Downloaded from https://data.iana.org/time-zones/releases/
+
+* Build pipeline
+The production Docker image (=src/Dockerfile=) compiles the source in
+the builder stage with =zic= (from Debian's =tzdata= package), drops
+the IANA =version= file as =/usr/local/share/zoneinfo/+VERSION=, and
+sets =ENV ZONEINFO=/usr/local/share/zoneinfo= in the runtime stage.
+
+The Go runtime consults =$ZONEINFO= before any system fallback, so
+=time.LoadLocation= inside the container always reads the canonical
+2026a database.  At startup, =pkg/canon.AssertTZDBVersion= reads the
+=+VERSION= marker and aborts the process if it does not match
+=canon.TZDBVersion=.
+
+* Local development
+For local =go test= runs the engine still falls back to Go's embedded
+=time/tzdata= (whichever release ships with the toolchain).  Set
+=ZONEINFO= manually to point at a locally compiled 2026a directory
+when reproducing canonical results outside Docker:
+
+#+begin_src sh
+make -C src/tzdata zoneinfo
+ZONEINFO=$PWD/src/tzdata/zoneinfo go test -tags=integration_local ./...
+#+end_src
+
+* Verification
+Verify the tarball with the published SHA-512 and the IANA PGP key:
+
+#+begin_src sh
+shasum -a 512 -c SHA512SUMS
+gpg --verify tzdata2026a.tar.gz.asc tzdata2026a.tar.gz
+#+end_src

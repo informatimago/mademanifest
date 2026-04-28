@@ -6,13 +6,18 @@
 // ephemeris data path from SE_EPHE_PATH; no per-request canon JSON
 // files are loaded.
 //
-// Boot-time gates (Phase 9):
+// Boot-time gates:
 //   * canon.SelfCheck()        – validates every compiled-in canon
 //                                constant (GateOrder permutation,
 //                                ChannelTable well-formedness, etc.).
+//   * canon.AssertTZDBVersion()– verifies the runtime IANA tzdata
+//                                release matches canon.TZDBVersion
+//                                via the ZONEINFO/+VERSION marker
+//                                installed by the production image
+//                                (D20 / A1 RESOLVED).
 //   * ephemeris.ValidateEphePath() – verifies the resolved Swiss
 //                                Ephemeris directory exists.
-// Either failure is fatal; the engine refuses to start.
+// Any failure is fatal; the engine refuses to start.
 //
 // Environment:
 //   PORT              HTTP listen port (default 8080)
@@ -71,6 +76,9 @@ func main() {
 	// determinism rules (trinity.org §"Determinism And Versioning").
 	if err := canon.SelfCheck(); err != nil {
 		log.Fatalf("canon self-check failed: %v", err)
+	}
+	if err := canon.AssertTZDBVersion(); err != nil {
+		log.Fatalf("tzdb version assertion failed: %v", err)
 	}
 	if err := ephemeris.ValidateEphePath(); err != nil {
 		log.Fatalf("ephemeris path validation failed: %v", err)
