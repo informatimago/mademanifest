@@ -43,11 +43,16 @@ var (
 	ianaCanonicalShapeRE = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_+\-]*(?:/[A-Za-z0-9_+\-]+)+$`)
 )
 
-// Known IANA *link* prefixes rejected per A6 (RESOLVED, Document 12
-// D24): canonical IANA Area/Location identifiers only.  Aliases and
-// link names are not accepted unless explicitly introduced by a
-// later canon revision.  This conservative prefix list will be
-// replaced with a curated zone.tab in a follow-up.
+// Legacy fallback: known IANA *link* prefixes rejected when the
+// curated zone1970.tab whitelist (loadCanonicalZones) is unavailable
+// — typically local non-Docker `go test` runs where ZONEINFO is
+// unset.  In production builds this list is unused: validateTimezone
+// compares against the parsed zone1970.tab directly, which catches
+// every alias and link, not just these prefixes.
+//
+// A6 (RESOLVED, Document 12 D24): canonical IANA Area/Location
+// identifiers only.  Aliases and link names are not accepted unless
+// explicitly introduced by a later canon revision.
 var ianaLinkPrefixes = []string{
 	"US/",       // US/Eastern, US/Pacific, ... -> link to America/*
 	"SystemV/",  // legacy compatibility links
@@ -257,10 +262,23 @@ func validateBirthTime(s string) *Rejection {
 		"must match HH:MM, 24-hour, minute precision (e.g. 18:04)")
 }
 
-// validateTimezone rejects abbreviations (no slash), known link-name
-// prefixes (A6 RESOLVED – canonical IANA Area/Location only), and
-// identifiers that time.LoadLocation cannot resolve against the
-// embedded tzdb.
+// validateTimezone enforces A6 (RESOLVED, Document 12 D24):
+// canonical IANA Area/Location identifiers only.
+//
+// Production path: when the engine boots with ZONEINFO pointing at
+// a vendored zoneinfo containing zone1970.tab, the parsed whitelist
+// is authoritative.  An identifier is accepted iff it appears
+// verbatim in that file (which by construction excludes link names
+// and aliases).  This is the canon-correct behaviour and catches
+// every alias, including obscure ones the legacy prefix list would
+// miss.
+//
+// Fallback path: when ZONEINFO is unset or zone1970.tab cannot be
+// parsed (local non-Docker dev / CI), validateTimezone falls back to
+// shape regex + a hand-curated link-name prefix list +
+// time.LoadLocation against Go's embedded tzdb.  This path is best-
+// effort only; production deployments must boot with ZONEINFO so
+// the canonical whitelist is used.
 func validateTimezone(s string) *Rejection {
 	if s == "" {
 		return rej(RejectInvalid, "timezone", "must be a non-empty IANA identifier")
@@ -269,6 +287,19 @@ func validateTimezone(s string) *Rejection {
 		return rej(RejectInvalid, "timezone",
 			"must be an IANA Area/Location identifier (abbreviations like CET are rejected)")
 	}
+
+	if zones := loadCanonicalZones(); zones != nil {
+		if _, ok := zones[s]; !ok {
+			return rej(RejectInvalid, "timezone",
+				"not a canonical IANA Area/Location identifier "+
+					"(aliases and link names such as US/Eastern are rejected; "+
+					"use the canonical form, e.g. America/New_York)")
+		}
+		// zone1970.tab guarantees the file exists in zoneinfo and
+		// LoadLocation will succeed; no further check needed.
+		return nil
+	}
+
 	for _, p := range ianaLinkPrefixes {
 		if strings.HasPrefix(s, p) {
 			return rej(RejectInvalid, "timezone",

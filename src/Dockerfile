@@ -81,7 +81,9 @@ RUN cd tzdata \
     && zic -d /usr/local/share/zoneinfo \
         africa antarctica asia australasia europe \
         northamerica southamerica etcetera backward \
-    && cp version /usr/local/share/zoneinfo/+VERSION
+    && cp version       /usr/local/share/zoneinfo/+VERSION \
+    && cp zone1970.tab  /usr/local/share/zoneinfo/zone1970.tab \
+    && cp zone.tab      /usr/local/share/zoneinfo/zone.tab
 
 # Phase 12 retired the legacy src/canon/ JSON directory.  The
 # trinity HTTP path consumes only the compiled-in canon constants

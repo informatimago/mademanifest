@@ -54,6 +54,12 @@ zoneinfo: verify
 	fi
 	cd $(SRCDIR) && $(ZIC) -d $(CURDIR)/$(ZONEINFO) $(ZIC_INPUTS)
 	cp $(SRCDIR)/version $(ZONEINFO)/+VERSION
+	# A6 / D24 enforcement: the engine reads zone1970.tab at boot to
+	# build the canonical-zone whitelist used by the timezone
+	# validator (see pkg/trinity/input/zonetab.go).  zone.tab is
+	# kept alongside it for ecosystem compatibility.
+	cp $(SRCDIR)/zone1970.tab $(ZONEINFO)/zone1970.tab
+	cp $(SRCDIR)/zone.tab     $(ZONEINFO)/zone.tab
 	@echo "compiled $(ZONEINFO)/ from IANA $(TZDATA_VER)"
 
 verify: verify-sha verify-sig
