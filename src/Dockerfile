@@ -18,6 +18,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
         ca-certificates \
+        gnupg \
         patch \
         rsync \
         tzdata \
@@ -42,15 +43,36 @@ RUN mkdir -p /usr/local/share/swisseph \
     && rsync -a ephemeris/data/REQUIRED_EPHEMERIS_FILES/ /usr/local/share/swisseph/
 
 # Compile the canon-pinned IANA Time Zone Database (Document 03 / D20
-# / A1 RESOLVED).  The source tarball + SHA-512 are tracked in
-# src/tzdata/; we verify the checksum before extraction so a corrupted
-# or substituted tarball aborts the build.  The compiled zoneinfo dir
-# is consumed by the runtime stage via ZONEINFO; the +VERSION marker
-# is read at boot by canon.AssertTZDBVersion.  We pass the standard
-# IANA primary-data files (Olson set minus backzone/factory).
+# / A1 RESOLVED).  The source tarball + SHA-512 + Paul Eggert's
+# detached PGP signature + the pinned signing key are tracked in
+# src/tzdata/.  Build-time verification chain:
+#   1. SHA-512 against SHA512SUMS — catches tarball corruption /
+#      substitution at-rest.
+#   2. Imported signing key fingerprint must match the pinned value
+#      (7E37 92A9 D8AC F7D6 33BC  1588 ED97 E90E 62AA 7E34) — catches
+#      a hostile substitution of eggert.pgp.key.
+#   3. gpg --verify against the imported key emits VALIDSIG with the
+#      pinned fingerprint — catches a tarball/signature mismatch even
+#      under valid SHA-512 (e.g. a downgrade attack).
+# All three must succeed; any failure aborts the build.  The
+# ephemeral keyring is discarded after verification so it cannot
+# contaminate later layers.  The compiled zoneinfo dir is consumed
+# by the runtime stage via ZONEINFO; the +VERSION marker is read at
+# boot by canon.AssertTZDBVersion.
 COPY tzdata ./tzdata
 RUN cd tzdata \
     && sha512sum --check SHA512SUMS \
+    && rm -f .verify.gpg \
+    && gpg --no-default-keyring --keyring ./.verify.gpg \
+           --import eggert.pgp.key \
+    && imported_fpr=$(gpg --no-default-keyring --keyring ./.verify.gpg \
+                          --with-colons --fingerprint \
+                      | awk -F: '/^fpr:/ {print $10; exit}') \
+    && test "$imported_fpr" = "7E3792A9D8ACF7D633BC1588ED97E90E62AA7E34" \
+    && gpg --no-default-keyring --keyring ./.verify.gpg \
+           --status-fd 1 --verify tzdata2026a.tar.gz.asc tzdata2026a.tar.gz \
+       | grep -q "^\[GNUPG:\] VALIDSIG 7E3792A9D8ACF7D633BC1588ED97E90E62AA7E34 " \
+    && rm -f .verify.gpg \
     && mkdir -p src \
     && tar -C src -xzf tzdata2026a.tar.gz \
     && test "$(cat src/version)" = "2026a" \

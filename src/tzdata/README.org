@@ -15,7 +15,8 @@ RESOLVED).  The pinned release is *2026a*; see
 | =tzdata2026a.tar.gz= | The official IANA source tarball. |
 | =tzdata2026a.tar.gz.asc= | Detached PGP signature by Paul Eggert. |
 | =SHA512SUMS= | SHA-512 of the tarball, pinned for reproducible builds. |
-| =Makefile= | Local =make= target that compiles =zoneinfo/= via =zic=. |
+| =eggert.pgp.key= | Pinned ASCII-armoured signing key for verification. Fingerprint =7E37 92A9 D8AC F7D6 33BC  1588 ED97 E90E 62AA 7E34=. |
+| =Makefile= | Local =make= targets (=verify=, =verify-sha=, =verify-sig=, =zoneinfo=, =clean=). |
 
 * Origin
 Downloaded from https://data.iana.org/time-zones/releases/
@@ -44,9 +45,24 @@ ZONEINFO=$PWD/src/tzdata/zoneinfo go test -tags=integration_local ./...
 #+end_src
 
 * Verification
-Verify the tarball with the published SHA-512 and the IANA PGP key:
+The =Makefile= chains three checks; any failure aborts the build:
+
+1. =shasum -a 512 -c SHA512SUMS= — catches at-rest tarball corruption
+   or substitution.
+2. =eggert.pgp.key= is imported into an *ephemeral keyring*
+   (=.verify.gpg=, gitignored, discarded after use) and the resulting
+   primary fingerprint must equal the pinned constant
+   =7E3792A9D8ACF7D633BC1588ED97E90E62AA7E34=.  Any other key,
+   including one that imports under the same key ID, fails the
+   build.
+3. =gpg --verify= on the detached signature must emit
+   =VALIDSIG <pinned fingerprint>= on the GnuPG status line.
+
+The same chain runs inside the production =Dockerfile= builder
+stage, so production images and local =make zoneinfo= share the
+exact same supply-chain posture.
 
 #+begin_src sh
-shasum -a 512 -c SHA512SUMS
-gpg --verify tzdata2026a.tar.gz.asc tzdata2026a.tar.gz
+make -C src/tzdata verify        # SHA + signature, no zic compile
+make -C src/tzdata zoneinfo      # implies verify, then zic compile
 #+end_src

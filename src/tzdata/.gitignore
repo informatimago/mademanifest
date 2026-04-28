@@ -1,6 +1,9 @@
-# Build artefacts produced by `make zoneinfo`.  The pinned source
-# (tzdata2026a.tar.gz + SHA512SUMS + .asc) is tracked; the extracted
-# IANA source tree and the compiled zoneinfo directory are not — both
-# are reproducible from the tarball.
+# Build artefacts produced by `make zoneinfo` / `make verify-sig`.
+# The pinned source (tzdata2026a.tar.gz, SHA512SUMS, .asc, eggert
+# .pgp.key) is tracked; the extracted IANA source tree, the compiled
+# zoneinfo directory, and the ephemeral GPG verification keyring are
+# not — all are reproducible from the tarball.
 src/
 zoneinfo/
+.verify.gpg
+.verify.gpg~
