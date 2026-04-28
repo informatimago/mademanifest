@@ -130,6 +130,30 @@ running.
 Flags: =--no-cors= (use existing CORS state), =--no-open= (print
 URL only), =--port=N= (forward to a different local port).
 
+** Scope: dev path, not the end-user front-end
+=dev-client.sh= is the *developer* path for poking at the live
+engine from a browser.  It is deliberately not the production
+end-user front-end.  The right answer for an actual product UI is:
+
+- An *Ingress* (with cert-manager TLS) that fronts the
+  =mademanifest= service so the engine is reachable directly at a
+  real hostname — no =kubectl port-forward= and no =TRINITY_DEV_CORS=
+  toggle.
+- An *authentication / authorization* layer in front of the
+  Ingress (oauth2-proxy, an API gateway, or app-level tokens), so
+  the engine is not openly callable.
+- A static-hosted front-end served from the *same origin* as the
+  engine (or a CORS-allow-listed peer origin), removing the wildcard-
+  CORS workaround entirely.
+
+That stack belongs to the front-end's own architecture (not yet
+pinned on the project side as of 2026-04-28, per the email exchange
+with Jaimie about phase-0 cluster scope), so this overlay leaves it
+out and exposes the engine only as a ClusterIP service plus the
+NetworkPolicy that restricts ingress to the future
+=ingress-nginx= namespace.  Add the Ingress + auth layer when the
+front-end architecture lands.
+
 * Diagnostics
 If the script fails:
 
