@@ -1,0 +1,153 @@
+#+TITLE: Cyso Managed Kubernetes — Deploy Overlay
+#+DATE: 2026-04-28
+
+* Purpose
+This directory holds the production deploy overlay for the
+*mademanifest engine* on the Cyso Managed Kubernetes cluster Jaimie
+provisioned (project ~Trinity~ / cluster ~trinityengine~ / region
+~ams2~), and a single ~deploy.sh~ entry point that performs
+build → push → apply → smoke for every release.
+
+* Files
+| File | Purpose |
+|------+---------|
+| =deploy.sh= | One-shot deploy script.  Idempotent and re-runnable. |
+| =kustomization.yaml= | Kustomize overlay over =../kubernetes/=. Sets the deploy namespace and substitutes the image reference. |
+| =namespace.yaml= | Declares the =mademanifest= namespace with the metadata label the base NetworkPolicy expects. |
+
+The committed =kustomization.yaml= contains placeholder strings
+(=REPLACE_BY_DEPLOY_SCRIPT=) for the image reference; the deploy
+script renders a real overlay in a temp directory at apply time, so
+running it never produces a dirty git tree.
+
+* One-time setup
+1. *Save Jaimie's kubeconfig.*  Cyso issues kubeconfigs that expire
+   after 24 hours.  Save it to a path of your choosing, e.g.:
+
+   #+begin_src sh
+   mv ~/Downloads/emk-cluster-*-trinityengine-limited-lifetime.yml \
+      ~/.kube/cyso-trinity.yaml
+   chmod 600 ~/.kube/cyso-trinity.yaml
+   #+end_src
+
+   When the token expires, request a new kubeconfig from Jaimie or
+   set up a permanent service-account token in the cluster.
+
+2. *Pick a registry the cluster can pull from.*  The Cyso cluster
+   does not host its own image registry, so the engine image must
+   live somewhere both your laptop and the cluster's worker nodes
+   can reach.  Two common choices:
+
+   - *Docker Hub*: =docker login= once; =REGISTRY=docker.io/<your-account>=.
+   - *GitHub Container Registry (GHCR)*: =docker login ghcr.io=
+     with a PAT scoped to =write:packages=; =REGISTRY=ghcr.io/<org>=.
+
+   Public repos require no extra cluster config.  Private repos
+   need an =imagePullSecret= referenced from the deployment — add
+   one to this overlay before the first private push.
+
+* Deploy a new version
+With the kubeconfig in place and registry credentials loaded into
+the local Docker keychain:
+
+#+begin_src sh
+KUBECONFIG=~/.kube/cyso-trinity.yaml \
+REGISTRY=docker.io/<your-account> \
+    ./deploy.sh
+#+end_src
+
+The script:
+
+1. *Validates preconditions* (docker, kubectl, KUBECONFIG, REGISTRY).
+2. *Computes a unique tag* from =canon.EngineVersion= +
+   =git rev-parse --short HEAD= (+ =-dirty= if =src/= has uncommitted
+   changes), so every deploy is identifiable in the cluster history.
+3. *Builds the Docker image* — exercises the full Dockerfile path,
+   including the SHA-512 / PGP / =zic= verification chain for IANA
+   tzdata 2026a and the =canon.AssertTZDBVersion= boot gate.
+4. *Tags + pushes* the image to =${REGISTRY}/mademanifest-engine:${TAG}=.
+5. *Renders kustomize* in a temp directory with the resolved image
+   reference, applies via =kubectl apply -k=, and waits for the
+   deployment rollout to complete.
+6. *Smoke-tests* the freshly deployed pod through =kubectl
+   port-forward= — checks =/healthz= responds and that =/version=
+   reports the expected =engine_version= (catches stale-image
+   pulls).
+
+* Re-deploys (rolling updates)
+Re-running =./deploy.sh= after any code change pushes a new tag and
+applies it.  Kubernetes performs a rolling update (one pod at a
+time, capped by the HPA) with no downtime.
+
+* Common flags
+| Flag | Use case |
+|------+----------|
+| =--no-build= | Re-tag/push/apply an already-built local image. |
+| =--no-push=  | Build + apply only (e.g. when the cluster pulls from a local mirror). |
+| =--no-apply= | Build + push only — pre-warms the registry without touching the cluster. |
+| =--no-smoke= | Skip the post-rollout port-forward smoke (use when the cluster is unreachable from your network). |
+
+* Diagnostics
+If the script fails:
+
+- =ERROR: kubectl cannot reach the cluster= → kubeconfig token
+  expired (Cyso 24-hour cap) or the network blocks the API
+  endpoint.  Request a fresh kubeconfig.
+- =docker push failed= → not logged into the registry.  Run
+  =docker login <registry>= and re-run the script with =--no-build=.
+- =rollout did not complete in 5m= → check pod status:
+  =kubectl --kubeconfig=$KUBECONFIG -n mademanifest describe pods=
+  and =kubectl ... logs deployment/mademanifest=.
+- =smoke /healthz did not respond= → the pod is up but the engine
+  failed a boot gate.  Check the logs for one of:
+  =canon self-check failed=, =tzdb version assertion failed=,
+  =ephemeris path validation failed=.
+
+* Permanent kubeconfig (follow-up)
+The Cyso 24-hour kubeconfig is fine for development but unsuitable
+for any automated CI deploy.  Once the workflow stabilises, switch
+to a service-account token bound to a least-privilege Role:
+
+#+begin_src yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: deployer
+  namespace: mademanifest
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: mademanifest
+  name: deployer
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get","list","patch","update","create"]
+  - apiGroups: [""]
+    resources: ["services","configmaps","namespaces"]
+    verbs: ["get","list","patch","update","create"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get","list","patch","update","create"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["get","list","patch","update","create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  namespace: mademanifest
+  name: deployer
+subjects:
+  - kind: ServiceAccount
+    name: deployer
+    namespace: mademanifest
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: deployer
+#+end_src
+
+Generate a long-lived token from that ServiceAccount and bake it
+into the kubeconfig used by the deploy script (or the CI runner).

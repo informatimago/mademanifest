@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mademanifest
+  labels:
+    # Phase 13 NetworkPolicy in the base targets pods labelled
+    # `app: mademanifest` and allows ingress from a namespace
+    # labelled with kubernetes.io/metadata.name: ingress-nginx.
+    # The label below is the namespace's own canonical metadata
+    # name (Kubernetes >= 1.22 sets this automatically; we declare
+    # it explicitly so kubectl apply works on older clusters too).
+    kubernetes.io/metadata.name: mademanifest

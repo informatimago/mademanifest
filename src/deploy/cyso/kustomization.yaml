@@ -1,0 +1,29 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Cyso Managed Kubernetes overlay for the mademanifest engine.
+#
+# Lives at src/deploy/cyso/.  Drives the production deploy via
+# ./deploy.sh, which substitutes the image tag from a fresh build
+# and runs `kubectl apply -k`.  The base manifests are unchanged;
+# everything cluster-specific is folded in here.
+
+namespace: mademanifest
+
+resources:
+  - namespace.yaml
+  - ../kubernetes
+
+# The deploy script rewrites this `newTag` field with the current
+# build's tag (engine_version + git short SHA) before invoking
+# `kubectl apply -k`.  The `newName` is the image reference the
+# Cyso cluster pulls; default below targets Docker Hub under the
+# REGISTRY env var the script enforces.
+#
+# Editing this file by hand is supported but discouraged: prefer
+# `REGISTRY=docker.io/yourname ./deploy.sh` so the rewrite is
+# scoped to a single deploy invocation and not committed.
+images:
+  - name: registry.example.com/mademanifest
+    newName: REPLACE_BY_DEPLOY_SCRIPT/mademanifest-engine
+    newTag: REPLACE_BY_DEPLOY_SCRIPT
