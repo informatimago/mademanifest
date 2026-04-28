@@ -6,9 +6,10 @@ package canon
 // deterministic Trinity response metadata so reproducibility can be
 // verified across environments and time.
 //
-// Canon ambiguities (A1..A8) that affect pins here are noted inline;
-// the companion src/doc/version-pins.org catalogs the full set and
-// tracks their resolution state.
+// Canon ambiguities A1..A7 are now RESOLVED (Document 12 decisions
+// D20..D26, folded back into Documents 03/04/05/07/08/09/10).  The
+// pins below reflect those rulings; comments keep the A-tag for
+// traceability with prior commits.
 
 const (
 	// CanonVersion is the revision of the Trinity canon implemented
@@ -25,13 +26,14 @@ const (
 
 	// InputSchemaVersion is the revision of the canonical input
 	// contract: field names, types, formats, ranges, validation.
-	// Tracks ambiguities A5 (unsupported_input boundary) and A6
-	// (IANA link names) that still gate final acceptance.
+	// A5 (invalid vs unsupported boundary) and A6 (IANA canonical
+	// names only) are now folded back into Document 04 / D24.
 	InputSchemaVersion = "trinity-v1-rev-0"
 
 	// SourceStackVersion is the combined revision of the
 	// authoritative external sources (Swiss Ephemeris + IANA tzdb).
-	// Tracks ambiguity A1 (tzdb release not yet pinned in canon).
+	// A1 (tzdb release pin) is now RESOLVED – Document 03 pins
+	// IANA tzdb 2026a; see TZDBVersion below.
 	SourceStackVersion = "trinity-v1-rev-0"
 
 	// EngineVersion is this build's own implementation revision.
@@ -41,19 +43,34 @@ const (
 
 const (
 	// SwissEphVersion is the pinned Swiss Ephemeris release.  Canon:
-	// trinity.org line 61 ("Swiss Ephemeris version pin: 2.10.03").
+	// Document 03 / D14 ("Swiss Ephemeris version pin: 2.10.03").
 	// Cross-checked at runtime by pkg/ephemeris at first ephemeris
 	// call; a mismatch there aborts the process.
 	SwissEphVersion = "2.10.03"
 
-	// TZDBVersion is the working-assumption IANA tzdb release.
+	// TZDBVersion is the canon-pinned IANA Time Zone Database
+	// release for Trinity Engine v1.
 	//
-	// A1 (UNRESOLVED) – trinity.org pins the IANA Time Zone Database
-	// as authoritative but does not name an exact tzdb release.  We
-	// inherit whatever tzdata the Go toolchain embeds via
-	// time/tzdata; Go 1.22.x ships tzdata 2023c.  The canon owner
-	// must confirm or override this choice before final acceptance.
-	TZDBVersion = "2023c"
+	// A1 (RESOLVED, Document 03 / D20): the authoritative IANA tzdb
+	// release is 2026a.  Per Document 12's ruling on A1, the runtime
+	// must not rely on whatever tzdata the Go runtime or host OS
+	// happens to ship unless that release is confirmed to match.
+	//
+	// The production Docker image vendors IANA 2026a explicitly:
+	// src/tzdata/ holds the IANA source tarball and pinned SHA-512;
+	// the Dockerfile builder stage compiles it with `zic` into
+	// /usr/local/share/zoneinfo, drops the upstream `version` file as
+	// `+VERSION`, and the runtime stage exports
+	// ZONEINFO=/usr/local/share/zoneinfo.  At boot,
+	// AssertTZDBVersion (tzdata.go) reads `<ZONEINFO>/+VERSION` and
+	// aborts the process if it does not equal TZDBVersion.
+	//
+	// Local non-Docker `go test` runs leave ZONEINFO unset and fall
+	// back to Go's embedded `time/tzdata`; AssertTZDBVersion is then
+	// a no-op so dev / CI still boots.  Reproducing canonical results
+	// outside the container requires `make -C src/tzdata zoneinfo`
+	// and `ZONEINFO=$PWD/src/tzdata/zoneinfo` in the test command.
+	TZDBVersion = "2026a"
 )
 
 // VersionInfo is the JSON shape returned by GET /version.  It is

@@ -289,7 +289,7 @@ func TestCompareSuccessCatchesOrderingDrift(t *testing.T) {
 }
 
 // TestCompareErrorAssertsErrorTypeOnly proves that error_type is
-// the only contractual field per ambiguity A4: identical error
+// the only contractual field (A4 RESOLVED, D23): identical error
 // types pass even when the message text differs wildly.
 func TestCompareErrorAssertsErrorTypeOnly(t *testing.T) {
 	current := output.CurrentMetadata()
@@ -333,8 +333,8 @@ func TestCompareErrorRejectsTypeMismatch(t *testing.T) {
 }
 
 // TestCompareErrorRejectsEmptyMessage covers the canon rule that
-// error.message must be non-empty (A4 makes the text informational
-// but does not allow it to be elided).
+// error.message must be non-empty (A4 RESOLVED, D23: text is
+// informational but cannot be elided).
 func TestCompareErrorRejectsEmptyMessage(t *testing.T) {
 	current := output.CurrentMetadata()
 	got := output.ErrorEnvelope{

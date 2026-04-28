@@ -31,9 +31,10 @@ var (
 	// (trinity.org line 161).  HH=00..23, MM=00..59.
 	timeMinuteRE = regexp.MustCompile(`^([01]\d|2[0-3]):[0-5]\d$`)
 
-	// timeWithSecondsRE catches HH:MM:SS or HH:MM:SS.fraction – per
-	// the A5 working assumption these classify as unsupported_input
-	// (sub-minute precision is outside v1 scope).
+	// timeWithSecondsRE catches HH:MM:SS or HH:MM:SS.fraction.
+	// A5 (RESOLVED, Document 12 D24 + Document 04): structurally
+	// well-formed but outside v1 supported scope ⇒ unsupported_input.
+	// Sub-minute precision falls in this bucket.
 	timeWithSecondsRE = regexp.MustCompile(`^[0-2]\d:[0-5]\d:\d`)
 
 	// ianaCanonicalShapeRE is a coarse shape check requiring at
@@ -42,9 +43,11 @@ var (
 	ianaCanonicalShapeRE = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_+\-]*(?:/[A-Za-z0-9_+\-]+)+$`)
 )
 
-// Known IANA *link* prefixes that the working A6 assumption rejects.
-// This is intentionally conservative – Phase 9+ may replace this
-// list with a curated zone.tab when the canon owner pins A6.
+// Known IANA *link* prefixes rejected per A6 (RESOLVED, Document 12
+// D24): canonical IANA Area/Location identifiers only.  Aliases and
+// link names are not accepted unless explicitly introduced by a
+// later canon revision.  This conservative prefix list will be
+// replaced with a curated zone.tab in a follow-up.
 var ianaLinkPrefixes = []string{
 	"US/",       // US/Eastern, US/Pacific, ... -> link to America/*
 	"SystemV/",  // legacy compatibility links
@@ -52,8 +55,8 @@ var ianaLinkPrefixes = []string{
 	"Canada/",   // link to America/Toronto / Vancouver / etc.
 	"Chile/",    // link to America/Santiago / Punta_Arenas
 	"Mexico/",   // link to America/Mexico_City etc.
-	"Etc/GMT+",  // numbered GMT offsets per A6 example
-	"Etc/GMT-",  // numbered GMT offsets per A6 example
+	"Etc/GMT+",  // numbered GMT offsets
+	"Etc/GMT-",  // numbered GMT offsets
 }
 
 // Validate parses raw JSON, applies every Trinity v1 input rule
@@ -240,8 +243,8 @@ func validateBirthDate(s string) *Rejection {
 }
 
 // validateBirthTime distinguishes HH:MM (accept), HH:MM:SS or
-// finer-grained values (unsupported_input – A5), and everything else
-// (invalid_input).
+// finer-grained values (unsupported_input – A5 RESOLVED), and
+// everything else (invalid_input).
 func validateBirthTime(s string) *Rejection {
 	if timeMinuteRE.MatchString(s) {
 		return nil
@@ -255,8 +258,9 @@ func validateBirthTime(s string) *Rejection {
 }
 
 // validateTimezone rejects abbreviations (no slash), known link-name
-// prefixes (per the A6 working assumption), and identifiers that
-// time.LoadLocation cannot resolve against the embedded tzdb.
+// prefixes (A6 RESOLVED – canonical IANA Area/Location only), and
+// identifiers that time.LoadLocation cannot resolve against the
+// embedded tzdb.
 func validateTimezone(s string) *Rejection {
 	if s == "" {
 		return rej(RejectInvalid, "timezone", "must be a non-empty IANA identifier")

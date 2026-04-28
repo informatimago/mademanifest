@@ -28,11 +28,11 @@ import (
 // which is *not* the canonical astrology Earth – we ignore that
 // value and recompute from the Sun longitude.
 //
-// House placement: the A2 working assumption (start-inclusive /
-// end-exclusive, wrap between cusp 12 and cusp 1) is implemented by
-// HouseFor.  All longitudes are normalised to [0, 360) before sign
-// and house lookup so SignFor and HouseFor never see boundary
-// inputs they would reject.
+// House placement: A2 (RESOLVED, Document 12 D21) – start-inclusive
+// / end-exclusive, with explicit wrap between cusp 12 and cusp 1 –
+// is implemented by HouseFor.  All longitudes are normalised to
+// [0, 360) before sign and house lookup so SignFor and HouseFor
+// never see boundary inputs they would reject.
 func ComputeAstrology(p input.Payload) (output.Astrology, error) {
 	utcTime, err := localToUTC(p)
 	if err != nil {

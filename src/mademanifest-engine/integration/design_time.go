@@ -17,19 +17,20 @@ import (
 // frozen oracle captures human_design.system, which after Phase 5
 // carries:
 //
-//   * node_type           "true"      (canon-pinned, A1-independent)
-//   * design_time_utc     RFC 3339 UTC, whole seconds (A3 floor)
+//   * node_type           "true"      (canon-pinned)
+//   * design_time_utc     RFC 3339 UTC, whole-second truncation of
+//                         the solver's lower-bound timestamp
+//                         (A3 RESOLVED, Document 12 D22)
 //
-// Per A7 the design_time_utc was captured once from the live engine
-// at the Phase 5 commit and then compared for plausibility:
-// approximately 88 days earlier than birth (the canonical 88° Sun
-// offset traverses ~88-90 days of real time, varying with the Sun's
-// instantaneous angular velocity).  Birth UTC is 1990-04-09 16:04Z;
-// the oracle puts design at 1990-01-12 00:38Z, i.e. ~87.65 days
-// before birth — consistent with peri-helion-accelerated Sun motion
-// (~1.004°/day around early January).  The canon owner must approve
-// this fixture before final acceptance; Phase 14 will re-validate
-// against an external reference if A7 becomes RESOLVED before then.
+// A7 (RESOLVED, Document 12 D26): design_time_utc was captured from
+// the live engine and cross-checked for plausibility (approximately
+// 88 days earlier than birth, ~1.004°/day Sun rate around perihelion).
+// Birth UTC is 1990-04-09 16:04Z; the oracle puts design at
+// 1990-01-12 00:38Z, ~87.65 days before birth — consistent with the
+// canonical 88° backward Sun offset.  The canon owner must explicitly
+// approve this fixture per D26 (engine generation is necessary but
+// not sufficient); the cross-check above is a sanity check, not the
+// oracle itself.
 //
 // The helper checks the entire HDSystem block via reflect.DeepEqual.
 // Drift in either node_type (engine-level mistake) or

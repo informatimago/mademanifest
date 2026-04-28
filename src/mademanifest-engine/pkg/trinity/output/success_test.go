@@ -190,8 +190,8 @@ func TestLongitudeMarshalSixDecimalPlaces(t *testing.T) {
 	}
 }
 
-// TestDesignTimeMarshalRFC3339WholeSecondFloor pins the A3
-// rounding rule: any sub-second component is dropped (floor),
+// TestDesignTimeMarshalRFC3339WholeSecondFloor pins the A3 / D22
+// emission rule: any sub-second component is dropped (truncation),
 // the timezone is forced to UTC, and the suffix is "Z".
 func TestDesignTimeMarshalRFC3339WholeSecondFloor(t *testing.T) {
 	cases := []struct {

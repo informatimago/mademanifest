@@ -21,12 +21,12 @@ import (
 //   * activations.radiance   = design_sun       = 61.3
 //   * activations.purpose    = design_earth     = 62.3
 //
-// Per A7 the oracle is a freeze of the live Phase 8 engine output,
-// cross-checked against the Phase 6 activation oracle: the four
-// Gene Keys activations are pure copies of the four HD pillar
-// activations, so any drift here is necessarily a drift in the
-// upstream HD pipeline (Phase 5/6) rather than a Gene Keys-specific
-// regression.  The canon owner must approve before final acceptance.
+// A7 (RESOLVED, Document 12 D26): the oracle is a freeze of live
+// Phase 8 engine output, cross-checked against the Phase 6 activation
+// oracle (Gene Keys activations are pure copies of the four HD pillar
+// activations, so any drift here is necessarily upstream).  Per D26,
+// engine generation is necessary but not sufficient; the canon owner
+// must explicitly approve before the freeze is authoritative.
 //
 // The test asserts the entire gene_keys subtree via reflect.DeepEqual
 // so a drift in any of the seven leaf values surfaces with a clean

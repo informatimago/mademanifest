@@ -23,10 +23,14 @@ import (
 // in the astrology pipeline (Swiss Ephemeris pin, time conversion,
 // house algorithm, sign mapping, Earth derivation) is caught here.
 //
-// Per A7 the oracle is *not* a first-principles truth; it is a
-// freeze of the engine's own output once it cross-matched a
-// published reference.  The canon owner must approve a frozen
-// fixture before final acceptance.
+// A7 (RESOLVED, Document 12 D26): the oracle is not self-validating.
+// Generation by the implementation is necessary but not sufficient;
+// before approval, fixtures must be reviewed against the governing
+// canon (timezone-sensitive cases, sign / house / gate / line
+// boundaries, Design-time sub-second stop behaviour, error
+// classification).  External tools (e.g. the published PoC Schiedam
+// chart used here) are sanity checks, not the golden oracle.  The
+// canon owner must explicitly approve the frozen fixture.
 func AssertSchiedamAstrologyMatchesOracle(t *testing.T, baseURL string) {
 	t.Helper()
 

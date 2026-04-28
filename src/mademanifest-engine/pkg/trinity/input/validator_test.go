@@ -45,8 +45,9 @@ func TestValidateAcceptsCanonicalBaseline(t *testing.T) {
 
 // TestValidateRejections drives the validator with one row per rule
 // in trinity.org §"Validation Rules" + §"Rejection Rules".  Every
-// row pins the rejection Type and the offending Field; per A4 the
-// Message text is informational and not asserted.
+// row pins the rejection Type and the offending Field; A4
+// (RESOLVED, D23) makes the Message text informational only — it
+// is not asserted.
 func TestValidateRejections(t *testing.T) {
 	cases := []struct {
 		name      string
@@ -154,7 +155,7 @@ func TestValidateRejections(t *testing.T) {
 			wantType: RejectInvalid, wantField: "birth_time",
 		},
 
-		// --- unsupported_input: A5 working assumption.
+		// --- unsupported_input: A5 RESOLVED, D24.
 		{
 			name: "seconds present 18:04:00",
 			payload: `{

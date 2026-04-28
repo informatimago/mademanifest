@@ -20,9 +20,12 @@
 //   * stop conditions    = |sun(t) - target| < 0.0001 degrees
 //                          OR remaining interval width < 1 second
 //
-// The solver returns a Julian Day; the Phase 3 envelope serializer
-// (output.DesignTime.MarshalJSON) handles the A3 floor-to-second
-// emission rule.
+// A3 (RESOLVED, Document 12 D22): when the bisection stops because the
+// remaining interval width is < 1 second, the canonical Design time is
+// the *lower bound* of the final search interval – not the midpoint,
+// not the upper bound, not nearest-second rounding.  The solver returns
+// that lower bound as a Julian Day; output.DesignTime.MarshalJSON then
+// truncates to whole-second precision when serialising.
 package calc
 
 import (
@@ -131,8 +134,10 @@ type Diagnostics struct {
 
 // SolveDesignTime returns the Julian Day at which the Sun longitude
 // is exactly SunOffsetDeg earlier than at birthJD, searching backward
-// in time using pure bisection.  The returned value is the bracket
-// midpoint at the moment a canonical stop condition fires.
+// in time using pure bisection.  When the abs-diff stop fires, the
+// returned value is the converged midpoint at that step.  When the
+// bracket-width stop fires (interval < 1 second), the returned value
+// is the *lower bound* of the final interval per canon A3 / D22.
 //
 // SolveDesignTime is the production entry point used by the engine
 // to populate human_design.system.design_time_utc.  Tests that need
@@ -257,22 +262,30 @@ func solveDesignTime(birthJD float64, sun SunLongitudeFunc) (float64, Diagnostic
 			diffLower = diff
 		}
 		if (upper - lower) < stopBracketDays {
-			finalMid := (lower + upper) / 2.0
-			finalDiff := signedDiffDeg(sun(finalMid), target)
+			// A3 / Document 12 D22: canonical Design time is the
+			// lower bound of the final search interval (not midpoint).
+			// We re-evaluate sun(lower) so FinalAbsDiffDeg in the
+			// diagnostics reflects the returned point, not the
+			// last-visited midpoint.
+			finalDiff := signedDiffDeg(sun(lower), target)
 			diag.SunFuncCalls++
 			diag.FinalBracketDays = upper - lower
 			diag.FinalAbsDiffDeg = math.Abs(finalDiff)
 			diag.ExitReason = "bracket_width_threshold"
-			return finalMid, diag, nil
+			return lower, diag, nil
 		}
 	}
-	finalMid := (lower + upper) / 2.0
-	finalDiff := signedDiffDeg(sun(finalMid), target)
+	// Pathological exhaustion path.  Canon does not address this
+	// case (the width-threshold should always fire first within
+	// maxBisectionIterations), so we return the lower bound for
+	// consistency with the canonical width-stop rule rather than
+	// inventing a midpoint convention here.
+	finalDiff := signedDiffDeg(sun(lower), target)
 	diag.SunFuncCalls++
 	diag.FinalBracketDays = upper - lower
 	diag.FinalAbsDiffDeg = math.Abs(finalDiff)
 	diag.ExitReason = "max_iterations"
-	return finalMid, diag, nil
+	return lower, diag, nil
 }
 
 // normalizeDeg folds an arbitrary angular value into [0, 360).

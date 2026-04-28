@@ -5,12 +5,12 @@ package astro
 // canonical order: cusps[0] is the cusp of house 1, cusps[1] is
 // the cusp of house 2, ..., cusps[11] is the cusp of house 12.
 //
-// A2 working assumption (canon owner has not yet pinned house
-// interval ownership): every cusp is start-inclusive and the next
-// cusp is end-exclusive; the cusp-12-to-cusp-1 boundary is the
-// chart wrap-around case and is handled explicitly so wraparound
-// charts (where the chart spans the 0/360° boundary) place
-// longitudes in the correct house.
+// A2 (RESOLVED, Document 12 D21): every cusp is start-inclusive
+// and the next cusp is end-exclusive; the cusp-12-to-cusp-1
+// boundary is the chart wrap-around case and is handled explicitly
+// so wraparound charts (where the chart spans the 0/360° boundary)
+// place longitudes in the correct house.  No epsilon, midpoint, or
+// dual-inclusive variant is permitted.
 //
 // Returns 0 if the longitude does not fall in any house, which
 // indicates a degenerate cusp table (callers should treat this as

@@ -7,7 +7,7 @@
 //   invalid_input      – a present field has the wrong type, format,
 //                        range, or shape (numeric-as-string included).
 //   unsupported_input  – the input is structurally valid but outside
-//                        Trinity v1 supported scope (per A5).
+//                        Trinity v1 supported scope (A5 RESOLVED).
 //
 // Canon source: specifications/trinity/trinity.org §"Input Contract"
 // lines 155-220, plus Documents 04 and 09.  The "no silent repair"

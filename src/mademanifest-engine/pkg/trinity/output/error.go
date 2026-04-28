@@ -21,9 +21,11 @@ const (
 
 // Error is the nested object inside an ErrorEnvelope.  Type is one
 // of the canonical error_type constants; Message is a developer-
-// facing string.  A4 (error-message canon not yet pinned) means
-// fixtures compare Type only, not Message, until the canon owner
-// decides otherwise.
+// facing string.  A4 (RESOLVED, Document 12 D23): fixtures compare
+// error_type (and, when pinned, error_code) only – the Message
+// field must be present where required but its wording is not
+// authoritative for fixture exactness unless a future canon
+// revision introduces a formal message catalogue.
 type Error struct {
 	Type    string `json:"error_type"`
 	Message string `json:"message"`

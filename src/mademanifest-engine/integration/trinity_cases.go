@@ -138,8 +138,8 @@ func TrinityRejectionCases() []TrinityCase {
 // Trinity error envelope with the matching error_type plus a
 // non-empty message and the canonical metadata block.
 //
-// Per A4 (canonical error messages not yet pinned), only error_type
-// is asserted – Message text is checked for non-emptiness only.
+// A4 (RESOLVED, Document 12 D23): only error_type is asserted –
+// Message text is checked for non-emptiness only.
 //
 // The signature takes *testing.T (rather than testing.TB) because
 // each case is wrapped in t.Run for sub-test isolation, which is

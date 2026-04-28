@@ -30,14 +30,14 @@ type activationsOracle struct {
 //   * design Julian Day = the Phase 5 bisection result for the same
 //     payload
 //
-// Per A7 the oracle was captured once from the Phase 6 engine and
-// cross-checked against the Schiedam PoC golden case via algebraic
-// re-anchoring: the PoC used anchor 313.25° with a different
-// GateOrder, so the two emit different gate numbers, but they must
-// agree on the underlying ecliptic longitude.  Spot check at Sun:
-// PoC personality_sun = 51.5 (anchor 313.25°) corresponds to
-// Trinity personality_sun = 42.1 (anchor 277.5°) for the same Sun
-// longitude ≈ 19.540°.
+// A7 (RESOLVED, D26): the oracle was captured from the Phase 6
+// engine and cross-checked against the Schiedam PoC golden case via
+// algebraic re-anchoring (PoC anchor 313.25° vs canon anchor 277.5°
+// — different gate numbers, same underlying ecliptic longitude).
+// Spot check at Sun: PoC personality_sun = 51.5 corresponds to
+// Trinity personality_sun = 42.1 for the same Sun longitude ≈ 19.540°.
+// Per D26, this cross-check is a sanity check, not the oracle; canon
+// owner approval is required before the freeze is authoritative.
 func AssertSchiedamActivationsMatchOracle(t *testing.T, baseURL string) {
 	t.Helper()
 

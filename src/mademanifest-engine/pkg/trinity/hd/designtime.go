@@ -72,10 +72,10 @@ func localToUTC(p input.Payload) (time.Time, error) {
 
 // julianDayToUTC inverts astronomy.ConvertUTCToJulianDay.  The
 // astronomy package only ships the forward direction, so we
-// implement the reverse here at nanosecond precision.  The Phase 3
-// DesignTime.MarshalJSON applies the canonical floor-to-second cut
-// (A3) on the way out, so any sub-second remainder here is dropped
-// at serialization time.
+// implement the reverse here at nanosecond precision.
+// DesignTime.MarshalJSON applies the canonical truncation to whole
+// seconds (A3 RESOLVED, D22) on the way out, so any sub-second
+// remainder here is dropped at serialisation time.
 func julianDayToUTC(jd float64) time.Time {
 	const unixEpochJD = 2440587.5
 	secondsSinceEpoch := (jd - unixEpochJD) * 86400.0

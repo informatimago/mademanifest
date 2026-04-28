@@ -18,9 +18,9 @@
 //     metadata block (which depends on the build's EngineVersion).
 //     metadata is asserted separately to equal output.CurrentMetadata().
 //   * Error cases compare error_type plus envelope shape (status,
-//     metadata, non-empty message) per ambiguity A4: until the
-//     canon owner pins error message text, only error_type is a
-//     hard contract.
+//     metadata, non-empty message).  A4 (RESOLVED, Document 12 D23):
+//     fixtures assert error_type only; the message field must be
+//     present and non-empty but its wording is not authoritative.
 package golden
 
 import (
@@ -177,9 +177,9 @@ type ExpectedSuccess struct {
 }
 
 // ExpectedError is the JSON shape of an error-case expected.json.
-// Per ambiguity A4 the runner asserts only error_type and the
-// envelope shape (status field, metadata block, non-empty message);
-// message text is informational prose and is not pinned.
+// A4 (RESOLVED, Document 12 D23): the runner asserts only error_type
+// and the envelope shape (status field, metadata block, non-empty
+// message); message wording is informational and not authoritative.
 type ExpectedError struct {
 	Status string `json:"status"`
 	Error  struct {
@@ -261,10 +261,10 @@ func CompareSuccess(got output.SuccessEnvelope, want ExpectedSuccess) error {
 }
 
 // CompareError asserts that got is a well-formed Trinity error
-// envelope whose error_type matches want.Error.ErrorType.  Per
-// ambiguity A4, message text is *not* compared; only error_type and
-// the structural shape (status field, non-empty message, canonical
-// metadata block) are pinned.
+// envelope whose error_type matches want.Error.ErrorType.  A4
+// (RESOLVED, Document 12 D23): message text is *not* compared; only
+// error_type and the structural shape (status field, non-empty
+// message, canonical metadata block) are authoritative.
 //
 // CurrentMetadata is taken as the canonical metadata block and
 // passed in by the caller so this function does not depend on the

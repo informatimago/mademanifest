@@ -19,7 +19,7 @@ import (
 // category fails the test before any HTTP request fires.
 //
 // Each fixture runs as a t.Run sub-test so a single drift surfaces
-// with a precise category/name path.  Per ambiguity A4, error
+// with a precise category/name path.  A4 (RESOLVED, D23): error
 // fixtures compare error_type only; per the Phase 11 plan, success
 // fixtures compare the entire envelope minus the metadata block
 // (which is asserted separately to equal output.CurrentMetadata(),

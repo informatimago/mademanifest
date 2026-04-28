@@ -38,11 +38,12 @@ type structureOracle struct {
 //   * profile    = "1/3" (personality sun line / design sun line)
 //   * incarnation_cross 42.1 / 32.1 | 61.3 / 62.3
 //
-// Per A7 the structural oracle is a freeze of the live Phase 7
-// engine output, cross-checked against the canon decision tree
-// (trinity.org §"Type derivation" lines 318-325) and the Phase 6
-// activation oracle.  The canon owner must approve before final
-// acceptance.
+// A7 (RESOLVED, D26): the structural oracle is a freeze of live
+// Phase 7 engine output, cross-checked against the canon decision
+// tree (trinity.org §"Type derivation" lines 318-325) and the
+// Phase 6 activation oracle.  Per D26, engine generation is
+// necessary but not sufficient — canon owner approval is required
+// before the freeze is authoritative.
 func AssertSchiedamStructureMatchesOracle(t *testing.T, baseURL string) {
 	t.Helper()
 

@@ -20,9 +20,8 @@ const (
 // rejection applies to the payload as a whole, e.g. malformed JSON
 // or non-object root).  Message is a developer-facing diagnostic
 // string; callers may pass it through to the response envelope's
-// "message" field.  Per A4 (canonical error messages not pinned),
-// the Message text is informational only – fixtures match Type and
-// Field.
+// "message" field.  A4 (RESOLVED, Document 12 D23): the Message
+// text is informational – fixtures match Type (and Field) only.
 type Rejection struct {
 	Type    RejectionType
 	Field   string
