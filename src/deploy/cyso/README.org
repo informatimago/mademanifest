@@ -91,6 +91,19 @@ time, capped by the HPA) with no downtime.
 | =--no-apply= | Build + push only — pre-warms the registry without touching the cluster. |
 | =--no-smoke= | Skip the post-rollout port-forward smoke (use when the cluster is unreachable from your network). |
 
+* Cross-architecture builds (Apple Silicon → x86_64 cluster)
+The Cyso worker nodes are =linux/amd64=.  Apple-Silicon laptops
+build =linux/arm64= images by default, which produce =exec format
+error= when the cluster tries to run them.  =deploy.sh= pins
+=PLATFORM=linux/amd64= via =docker buildx build --platform=…= so
+the image always matches the cluster, regardless of where the build
+runs.  Override only when targeting an arm64 cluster
+(=PLATFORM=linux/arm64 ./deploy.sh=).
+
+The first cross-arch build downloads qemu emulation layers; later
+builds reuse the cache and run at near-native speed for the
+no-cgo Go portions.
+
 * Diagnostics
 If the script fails:
 
@@ -101,7 +114,10 @@ If the script fails:
   =docker login <registry>= and re-run the script with =--no-build=.
 - =rollout did not complete in 5m= → check pod status:
   =kubectl --kubeconfig=$KUBECONFIG -n mademanifest describe pods=
-  and =kubectl ... logs deployment/mademanifest=.
+  and =kubectl ... logs deployment/mademanifest=.  An
+  =exec format error= in the logs means the image was built for the
+  wrong architecture; re-run the script (PLATFORM=linux/amd64 is
+  the built-in default).
 - =smoke /healthz did not respond= → the pod is up but the engine
   failed a boot gate.  Check the logs for one of:
   =canon self-check failed=, =tzdb version assertion failed=,

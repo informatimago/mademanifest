@@ -32,6 +32,12 @@
 #               from canon.EngineVersion + git short SHA + dirty
 #               marker).
 #   NAMESPACE   Override the deploy namespace (default: mademanifest).
+#   PLATFORM    Target image platform (default: linux/amd64).  The
+#               Cyso worker nodes are x86_64, so building on an
+#               Apple-Silicon laptop without this pin produces an
+#               arm64 binary that fails with "exec format error" on
+#               the cluster.  Override with linux/arm64 only when
+#               targeting an arm64 cluster.
 #   ROLLOUT_TIMEOUT  kubectl rollout status timeout (default: 5m).
 #   SMOKE_TIMEOUT    Port-forward smoke deadline (default: 60s).
 #
@@ -124,6 +130,7 @@ image_name="${IMAGE_NAME:-mademanifest-engine}"
 local_ref="${image_name}:${tag}"
 remote_ref="${REGISTRY}/${image_name}:${tag}"
 namespace="${NAMESPACE:-mademanifest}"
+platform="${PLATFORM:-linux/amd64}"
 rollout_timeout="${ROLLOUT_TIMEOUT:-5m}"
 smoke_timeout="${SMOKE_TIMEOUT:-60s}"
 
@@ -133,14 +140,22 @@ printf '    %-20s %s\n' \
     "tag:"            "$tag" \
     "local image:"    "$local_ref" \
     "remote image:"   "$remote_ref" \
+    "platform:"       "$platform" \
     "namespace:"      "$namespace" \
     "kubeconfig:"     "$KUBECONFIG"
 
 # ---- 3. Build --------------------------------------------------------------
 
 if [[ "$build" -eq 1 ]]; then
-    note "Building image $local_ref"
-    docker build \
+    note "Building image $local_ref ($platform)"
+    # buildx --load supports a single platform at a time but produces
+    # an image runnable both locally (via qemu emulation when host !=
+    # target) and on the target architecture in the cluster.  The
+    # default linux/amd64 pin avoids the silent arm64-on-Apple-Silicon
+    # trap that yields "exec format error" on x86_64 nodes.
+    docker buildx build \
+        --platform "$platform" \
+        --load \
         -f "$DOCKERFILE" \
         -t "$local_ref" \
         -t "${image_name}:latest" \
