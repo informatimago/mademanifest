@@ -180,6 +180,99 @@ kubectl rollout status deployment/mademanifest
 kubectl port-forward service/mademanifest 8080:80
 #+end_src
 
+*** Production Cluster (Cyso Managed Kubernetes)
+
+The =src/deploy/cyso/= overlay drives deploys to the Cyso cluster
+that hosts production (project =Trinity= / cluster =trinityengine=
+/ region =ams2=).  It is a thin overlay over =src/deploy/kubernetes=
+that sets the deploy namespace and substitutes the image
+reference; everything cluster-specific lives there so the base
+manifests stay reusable.
+
+[[file:src/deploy/cyso/README.org][src/deploy/cyso/README.org]] is the operator manual for the
+overlay; the section below is the abridged version.
+
+**** One-time setup
+
+1. *Save the Cyso kubeconfig.*  Cyso issues kubeconfigs that
+   expire after 24 hours.  Save the latest one from the cluster
+   owner to a path of your choosing, e.g.:
+
+   #+begin_src bash
+   mv ~/Downloads/emk-cluster-*-trinityengine-limited-lifetime.yml \
+      ~/.kube/cyso-trinity.yaml
+   chmod 600 ~/.kube/cyso-trinity.yaml
+   #+end_src
+
+   When the token expires the deploy script fails on the first
+   =kubectl= call; request a fresh kubeconfig (or set up the
+   permanent service-account token sketched at the end of the
+   overlay's README).
+
+2. *Log in to the image registry.*  Default registry is
+   =docker.io/informatimago=; one =docker login= populates the
+   local Docker keychain so subsequent pushes do not prompt:
+
+   #+begin_src bash
+   docker login docker.io
+   #+end_src
+
+   Override with =REGISTRY=ghcr.io/<org>= (after a matching
+   =docker login=) when pushing somewhere else.
+
+**** Deploy a new version
+
+Single command — every invocation builds, pushes a uniquely-tagged
+image, applies the overlay, and smoke-tests the rollout:
+
+#+begin_src bash
+KUBECONFIG=~/.kube/cyso-trinity.yaml src/deploy/cyso/deploy.sh
+#+end_src
+
+The script:
+
+1. Validates preconditions (=docker=, =kubectl=, =KUBECONFIG=,
+   registry credentials).
+2. Computes a unique tag from =canon.EngineVersion= +
+   =git rev-parse --short HEAD= (+ =-dirty= if =src/= has
+   uncommitted changes).
+3. Builds the image with =docker buildx build --platform
+   linux/amd64= (cross-compiles transparently from Apple Silicon).
+   The build runs the canon-pinned IANA tzdata 2026a chain
+   (SHA-512 + PGP verification + =zic= compile) and the
+   =canon.AssertTZDBVersion= boot gate.
+4. Tags + pushes to =${REGISTRY}/mademanifest-engine:${TAG}=.
+5. Renders kustomize in a temp directory (committed YAML stays
+   clean), runs =kubectl apply -k=, waits for the rollout
+   (default 5-minute timeout).
+6. Smoke-tests via =kubectl port-forward= against =/healthz= +
+   =/version=, cross-checking =engine_version= against the local
+   tag so a stale image cache surfaces immediately.
+
+Common flags: =--no-build= (re-tag/push/apply only), =--no-push=
+(local mirror), =--no-apply= (pre-warm the registry), =--no-smoke=
+(skip the post-rollout smoke).
+
+**** Browser test client against Cyso
+
+A second helper opens =src/scripts/client.html= against the
+already-running Cyso engine — useful for ad-hoc browser testing
+without a local cluster:
+
+#+begin_src bash
+KUBECONFIG=~/.kube/cyso-trinity.yaml src/deploy/cyso/dev-client.sh
+#+end_src
+
+The helper sets =TRINITY_DEV_CORS=1= on the live deployment and
+waits for the rollout, opens =kubectl port-forward svc/mademanifest
+8080:80=, launches the browser at =client.html= (which already
+defaults to =http://127.0.0.1:8080=), and on =Ctrl-C= tears down
+the port-forward AND re-disables CORS so the deployment returns
+to its production posture.  This is the developer path; an actual
+end-user front-end requires an Ingress + cert-manager + auth in
+front of the cluster (out of scope for this overlay until the
+front-end architecture is pinned).
+
 *** Interactive local-k8s dev loop (scripted)
 
 Three helper scripts wrap the manual steps so you can spin a
