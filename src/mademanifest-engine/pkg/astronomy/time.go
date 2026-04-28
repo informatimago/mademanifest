@@ -14,8 +14,23 @@ package astronomy
 import (
     "fmt"
     "time"
-    _ "time/tzdata" // embed TZ database
 )
+
+// time/tzdata is intentionally NOT imported here.  The production
+// build embeds nothing about timezones into the binary; instead the
+// Docker image ships an explicitly compiled IANA tzdata 2026a tree
+// at /usr/local/share/zoneinfo and exports ZONEINFO so
+// time.LoadLocation reads the canon-pinned release directly.
+//
+// Removing the embed eliminates a silent fallback risk: if ZONEINFO
+// ever became unset at runtime, the engine would fail to
+// LoadLocation cleanly instead of quietly resolving against a
+// release that may not match canon.TZDBVersion.
+//
+// Test code that needs LoadLocation outside Docker imports
+// time/tzdata in a *_test.go file (see
+// pkg/trinity/input/validator_test.go) so the side effect never
+// leaks into the production binary.
 
 // ConvertLocalTimeToUTC converts a local time in a given IANA timezone
 // to UTC. The input localTime should have the date and time in the local zone.

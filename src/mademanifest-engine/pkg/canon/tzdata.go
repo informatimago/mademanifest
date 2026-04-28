@@ -22,11 +22,13 @@ import (
 //     error.  This is the canonical production path.
 //
 //   * If ZONEINFO is unset, AssertTZDBVersion returns nil.  Local
-//     development and CI runs that fall back to Go's embedded
-//     time/tzdata or the host system zoneinfo skip the assertion;
-//     they remain responsible for matching 2026a out of band.  The
-//     production Dockerfile sets ZONEINFO so the assertion always
-//     fires inside the container.
+//     development and CI runs that fall back to the host's system
+//     zoneinfo skip the assertion; they remain responsible for
+//     matching 2026a out of band.  The production binary no longer
+//     embeds time/tzdata (the import was removed in the same series
+//     of commits that vendored 2026a), so production deployments
+//     must set ZONEINFO — the Dockerfile does that, and the
+//     assertion then always fires inside the container.
 //
 //   * If ZONEINFO is set but the +VERSION marker is missing, the
 //     assertion fails fast.  Operating against an unmarked custom

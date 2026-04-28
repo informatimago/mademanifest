@@ -8,8 +8,9 @@ import (
 )
 
 // TestAssertTZDBVersionUnsetIsSkip pins the documented behaviour:
-// when ZONEINFO is not set the assertion is a no-op so local dev and
-// CI runs that fall back to Go's embedded time/tzdata still boot.
+// when ZONEINFO is not set the assertion is a no-op so local dev
+// and CI runs that fall back to the host's system zoneinfo still
+// boot.
 func TestAssertTZDBVersionUnsetIsSkip(t *testing.T) {
 	t.Setenv("ZONEINFO", "")
 	if err := AssertTZDBVersion(); err != nil {

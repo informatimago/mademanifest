@@ -66,10 +66,16 @@ const (
 	// aborts the process if it does not equal TZDBVersion.
 	//
 	// Local non-Docker `go test` runs leave ZONEINFO unset and fall
-	// back to Go's embedded `time/tzdata`; AssertTZDBVersion is then
-	// a no-op so dev / CI still boots.  Reproducing canonical results
-	// outside the container requires `make -C src/tzdata zoneinfo`
-	// and `ZONEINFO=$PWD/src/tzdata/zoneinfo` in the test command.
+	// back to the host's system zoneinfo (Go consults
+	// /usr/share/zoneinfo, etc.).  The production binary no longer
+	// embeds `time/tzdata` (see pkg/astronomy/time.go for the
+	// rationale), so an unset ZONEINFO at production runtime would
+	// fail LoadLocation cleanly rather than silently resolving
+	// against an unverified release.  AssertTZDBVersion is a no-op
+	// in the unset-ZONEINFO case so dev / CI still boots.
+	// Reproducing canonical results outside the container requires
+	// `make -C src/tzdata zoneinfo` and
+	// `ZONEINFO=$PWD/src/tzdata/zoneinfo` in the test command.
 	TZDBVersion = "2026a"
 )
 
