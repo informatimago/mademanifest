@@ -9,7 +9,6 @@
 #
 # Usage:
 #   KUBECONFIG=~/.kube/cyso-trinity.yaml \
-#   REGISTRY=docker.io/<your-account> \
 #     ./deploy.sh [--no-build] [--no-push] [--no-apply] [--no-smoke]
 #
 # Required environment:
@@ -18,9 +17,13 @@
 #               fails on the first kubectl call with an auth error,
 #               request a fresh kubeconfig from the cluster owner
 #               (or set up a permanent service-account token).
-#   REGISTRY    Image registry the cluster can pull from
-#               (e.g. docker.io/madeMANIFEST, ghcr.io/<org>).
-#               The script pushes <REGISTRY>/mademanifest-engine:<tag>.
+#
+# Optional environment:
+#   REGISTRY    Image registry the cluster can pull from.  Default:
+#               docker.io/informatimago (the project owner's Docker
+#               Hub account).  Override for a different registry,
+#               e.g. REGISTRY=ghcr.io/<org>.  The script pushes
+#               <REGISTRY>/mademanifest-engine:<tag>.
 #
 # Optional environment:
 #   IMAGE_NAME  Override the image name component (default:
@@ -82,7 +85,11 @@ done
 
 [[ -n "${KUBECONFIG:-}" ]] || die "KUBECONFIG env var is not set; point it at the Cyso kubeconfig"
 [[ -r "$KUBECONFIG" ]]     || die "KUBECONFIG=$KUBECONFIG is not readable"
-[[ -n "${REGISTRY:-}" ]]   || die "REGISTRY env var is not set (e.g. docker.io/<account>)"
+
+# Default REGISTRY to the project owner's Docker Hub account; the
+# operator can override for a different registry (GHCR, private,
+# etc.) by exporting REGISTRY before invocation.
+REGISTRY="${REGISTRY:-docker.io/informatimago}"
 
 # Resolve repo paths relative to the script location so the script
 # works no matter where it is invoked from.

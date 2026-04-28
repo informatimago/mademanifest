@@ -33,28 +33,32 @@ running it never produces a dirty git tree.
    When the token expires, request a new kubeconfig from Jaimie or
    set up a permanent service-account token in the cluster.
 
-2. *Pick a registry the cluster can pull from.*  The Cyso cluster
-   does not host its own image registry, so the engine image must
-   live somewhere both your laptop and the cluster's worker nodes
-   can reach.  Two common choices:
+2. *Log in to the image registry.*  The deploy defaults to Docker
+   Hub under =docker.io/informatimago= (the project owner's
+   account); a one-time =docker login= populates the local Docker
+   keychain so the script's =docker push= step does not prompt:
 
-   - *Docker Hub*: =docker login= once; =REGISTRY=docker.io/<your-account>=.
-   - *GitHub Container Registry (GHCR)*: =docker login ghcr.io=
-     with a PAT scoped to =write:packages=; =REGISTRY=ghcr.io/<org>=.
+   #+begin_src sh
+   docker login docker.io
+   #+end_src
 
-   Public repos require no extra cluster config.  Private repos
-   need an =imagePullSecret= referenced from the deployment — add
-   one to this overlay before the first private push.
+   Override with the =REGISTRY= env var if you want to push
+   somewhere else (e.g. =REGISTRY=ghcr.io/<org>= after a
+   =docker login ghcr.io= with a PAT scoped to =write:packages=).
+   Public repos need no extra cluster configuration; private repos
+   require an =imagePullSecret= referenced from the deployment —
+   add one to this overlay before the first private push.
 
 * Deploy a new version
 With the kubeconfig in place and registry credentials loaded into
 the local Docker keychain:
 
 #+begin_src sh
-KUBECONFIG=~/.kube/cyso-trinity.yaml \
-REGISTRY=docker.io/<your-account> \
-    ./deploy.sh
+KUBECONFIG=~/.kube/cyso-trinity.yaml ./deploy.sh
 #+end_src
+
+(=REGISTRY= defaults to =docker.io/informatimago=; pass
+=REGISTRY=…= explicitly only when you want to push elsewhere.)
 
 The script:
 
