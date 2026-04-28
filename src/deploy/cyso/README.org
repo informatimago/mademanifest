@@ -104,6 +104,32 @@ The first cross-arch build downloads qemu emulation layers; later
 builds reuse the cache and run at near-native speed for the
 no-cgo Go portions.
 
+* Browser test client against Cyso
+=src/scripts/client.html= drives the engine over HTTP and was
+designed for the local kind workflow.  To point it at the live
+Cyso engine, use the =dev-client.sh= helper alongside =deploy.sh=:
+
+#+begin_src sh
+KUBECONFIG=~/.kube/cyso-trinity.yaml ./dev-client.sh
+#+end_src
+
+The helper:
+
+1. Sets =TRINITY_DEV_CORS=1= on the deployment and waits for the
+   pod to roll over (the production manifest leaves CORS off).
+2. Starts =kubectl port-forward svc/mademanifest 8080:80= so the
+   engine answers on http://127.0.0.1:8080.
+3. Opens =client.html= in the system default browser.
+4. On Ctrl-C, tears down the port-forward and disables CORS again
+   so the deployment returns to its production posture.
+
+The =client.html= "Base URL" field is pre-filled with
+=http://127.0.0.1:8080= so it Just Works once the helper is
+running.
+
+Flags: =--no-cors= (use existing CORS state), =--no-open= (print
+URL only), =--port=N= (forward to a different local port).
+
 * Diagnostics
 If the script fails:
 
