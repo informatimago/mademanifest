@@ -1,0 +1,363 @@
+#+TITLE: Plan QA — MadeManifest / Trinity Engine v1
+#+OPTIONS: toc:2 num:nil
+#+DATE: 2026-04-30
+#+AUTHOR: Plan QA préparé pour traitement le 2026-05-01
+
+* Objectif
+
+Définir un plan de QA exécutable pour le moteur =mademanifest-engine=
+(=v1.0.0-trinity=) couvrant : revue de code, tests unitaires, fuzzing,
+tests d'intégration, cas limites, et couverture.  Le plan cible la
+surface trinity-only restante après la Phase 12 (un seul binaire
+runtime : =cmd/httpserver=) et les 71 fichiers Go (~24 fichiers de
+test) du module.
+
+Le plan est organisé en lots indépendants pour pouvoir être traité en
+parallèle ou séquentiellement.  Chaque lot indique :
+- la portée (paquets / fichiers concernés) ;
+- les sorties attendues (rapport, patch, fixture, métrique) ;
+- les critères d'acceptation (=GO=/=NO-GO=).
+
+* Périmètre
+
+** Surface couverte
+
+| Paquet                                | Type                | Priorité QA |
+|---------------------------------------+---------------------+-------------|
+| =pkg/canon=                           | constantes / canon  | P0          |
+| =pkg/astronomy=                       | calc temps          | P0          |
+| =pkg/ephemeris=, =pkg/sweph=          | wrapper cgo         | P0          |
+| =pkg/hd/calc=                         | bisection + mandala | P0          |
+| =pkg/hd/structure=                    | dérivations         | P0          |
+| =pkg/trinity/input=                   | validateur          | P0          |
+| =pkg/trinity/output=                  | enveloppes JSON     | P0          |
+| =pkg/trinity/astro=                   | pipeline astro      | P0          |
+| =pkg/trinity/hd=                      | pipeline HD         | P0          |
+| =pkg/trinity/genekeys=                | dérivation GK       | P1          |
+| =pkg/golden=                          | runner fixtures     | P1          |
+| =pkg/httpservice=                     | handlers HTTP       | P0          |
+| =cmd/httpserver=                      | entry point         | P1          |
+| =integration/=                        | harnais             | P0          |
+
+** Hors périmètre
+
+- Le PoC retiré en Phase 12 (paquets =pkg/emit_golden=, =pkg/engine=,
+  =pkg/human_design=, =pkg/gene_keys=, =pkg/astrology=,
+  =pkg/geolocation=, =cmd/main.go=) — couvert par
+  =pkg/canon/retirement_test.go=, à vérifier mais pas à étendre.
+- Swiss Ephemeris 2.10.03 lui-même (binaire externe pinné).
+
+* Lot 1 — Revue de code
+
+** Objectifs
+
+1. Vérifier l'alignement entre le code et les Documents 00..12 du
+   canon Trinity (=specifications/trinity/=).
+2. Détecter les écarts par rapport aux invariants canoniques :
+   - ancrage mandala 277.5°, intervalle start-inclusive / end-exclusive ;
+   - ordre canonique des signes / portes / centres ;
+   - bisection backward-only et purement déterministe ;
+   - JSON canon-fence (clés whitelistées en sortie).
+3. Auditer la sécurité Phase 13 (non-root, =readOnlyRootFilesystem=,
+   capacités, =NetworkPolicy=, HPA) sur les manifests
+   =deploy/kubernetes/=.
+
+** Méthode
+
+- Revue par paquet, top-down : =canon= → =astronomy= → =ephemeris/sweph=
+  → =hd/calc= → =hd/structure= → =trinity/{input,astro,hd,genekeys,output}=
+  → =httpservice= → =cmd/httpserver=.
+- Pour chaque paquet : grille de relecture (cf. annexe A) cochée.
+- Croiser les commentaires de code avec les ambiguïtés A1..A8 du
+  registre — toute hypothèse de travail doit pointer vers
+  =version-pins.org=.
+
+** Livrables
+
+- =src/doc/qa-review-2026-05.org= : un point par finding
+  (sévérité × paquet × ligne × référence canon).
+- Patches de remédiation soumis sur la branche QA.
+
+** Critères d'acceptation
+
+- 0 finding =Critical= ouvert.
+- Tous les findings =Major= ont un ticket ou un patch.
+- Chaque finding référence un Document 0X ou un A* du registre.
+
+* Lot 2 — Tests unitaires
+
+** État courant
+
+| Paquet                            | Test file présent              |
+|-----------------------------------+--------------------------------|
+| =pkg/canon=                       | =constants_test.go=, =selfcheck_test.go=, =sources_test.go=, =tzdata_test.go=, =retirement_test.go= |
+| =pkg/astronomy=                   | =astronomy_test.go=            |
+| =pkg/ephemeris=                   | =ephemeris_test.go=            |
+| =pkg/sweph=                       | (absent)                       |
+| =pkg/hd/calc=                     | =designtime_test.go=, =mandala_test.go= |
+| =pkg/hd/structure=                | =structure_test.go=            |
+| =pkg/trinity/input=               | =validator_test.go=, =zonetab_test.go= |
+| =pkg/trinity/output=              | =success_test.go=, =error_test.go= |
+| =pkg/trinity/astro=               | =compute_test.go=, =sign_test.go=, =house_test.go= |
+| =pkg/trinity/hd=                  | (absent — à compléter)         |
+| =pkg/trinity/genekeys=            | =genekeys_test.go=             |
+| =pkg/golden=                      | =runner_test.go=               |
+| =pkg/httpservice=                 | =handler_test.go=              |
+
+** Lacunes identifiées (à combler)
+
+1. =pkg/sweph= : ajouter un test de chargement / déchargement, et un
+   test de rpath sur Linux et macOS (cgo).
+2. =pkg/trinity/hd= : tests dédiés pour =ComputeDesignTime= et
+   =ComputeActivations= (séparés du harnais d'intégration).
+3. =pkg/trinity/output= : table de cas pour le marshaling
+   =Longitude= (6 dp) et =DesignTime= (RFC 3339 UTC floor) — rounding,
+   troncature, fuseaux exotiques.
+4. =pkg/canon= : test négatif explicite pour =SelfCheck()= sur chaque
+   table (mutation locale + restauration via t.Cleanup).
+5. =pkg/hd/calc= : tests de propriétés (cf. Lot 3) sur l'ancrage 277.5°
+   et la règle d'intervalle.
+
+** Pratiques imposées
+
+- Tables de cas (=struct { name string; in ...; want ... }=) plutôt
+  que tests unitaires inline — uniformiser les paquets restants.
+- =t.Parallel()= partout où il n'y a pas de globale (pas dans
+  =pkg/sweph=).
+- =go test -race ./pkg/...= en CI (à ajouter au Makefile).
+
+** Critères d'acceptation
+
+- =go test ./pkg/...= vert.
+- =go test -race ./pkg/...= vert.
+- Couverture par paquet ≥ 85 % (cf. Lot 6).
+
+* Lot 3 — Fuzzing / Property-based testing
+
+** Cibles prioritaires
+
+1. =pkg/trinity/input.Validate= : entrée JSON adverse, dérivée des
+   règles Document 04.
+   - Corpus seed : tous les fichiers =input.json= dans
+     =src/golden/trinity/{invalid_input,unsupported_input,incomplete_input,valid_*}/=.
+   - Fuzz function =FuzzValidate(f *testing.F)= utilisant
+     =testing/F.Fuzz= (Go 1.18+).
+   - Invariants : (a) jamais de panic ; (b) =error_type ∈
+     {invalid_input, unsupported_input}= sur cas rejet ; (c)
+     =ContentType= JSON imposé.
+
+2. =pkg/hd/calc.MapToGateLine= : fuzz sur =longitude ∈ [0,360)=,
+   propriétés :
+   - jamais de panic ;
+   - =gate ∈ [1,64]=, =line ∈ [1,6]= ;
+   - monotonicité par segments : =MapToGateLine(λ)= ne change pas dans
+     un intervalle ouvert canonique ;
+   - bord : =MapToGateLine(start) != MapToGateLine(end)= sur chaque
+     frontière canonique (start-inclusive / end-exclusive).
+
+3. =pkg/hd/calc.SolveDesignTime= : property-based avec entrées
+   =personalityTime= aléatoires sur 1900..2100, propriété
+   =SunLongitude(SolveDesignTime(t)) ≈ SunLongitude(t) − 88°= modulo 360°
+   à ε près.
+
+4. =pkg/astronomy= : fuzz =LocalToUTC= avec fuseaux IANA aléatoires
+   (subset de =zonetab=).
+   - Propriété : aller-retour =UTCToLocal(LocalToUTC(t,zone),zone)=
+     idempotent hors transitions DST.
+
+5. =pkg/httpservice= : fuzz sur le corps de =POST /manifest= ;
+   propriété : pas de 5xx, seulement 200 / 4xx, et schéma d'enveloppe
+   d'erreur respecté (Document 04, A4).
+
+** Outils
+
+- =go test -fuzz= natif, budget 10 min/cible en CI nightly,
+  60 min/cible en pre-release.
+- =gopter= pour les propriétés algébriques (SolveDesignTime).
+- Corpus persistant sous =src/mademanifest-engine/testdata/fuzz/=.
+
+** Critères d'acceptation
+
+- 0 panic, 0 5xx découvert.
+- Corpus de régression élargi avec chaque crash découvert.
+- Rapport =qa-fuzz-2026-05.org= : durée, exécutions/s, crashs uniques.
+
+* Lot 4 — Tests d'intégration
+
+** Périmètre
+
+Le harnais =integration/= existe en trois saveurs (build tags) :
+=integration_local=, =integration_docker=, =integration_k8s=.  Il
+exécute :
+- Trinity Golden Pack (=pkg/golden= sur =src/golden/trinity/=) ;
+- contrats HTTP (=AssertHTTPContract=) ;
+- baseline Schiedam (Phase 4..8) ;
+- =SE_NODE_POLICY= env immunity ;
+- forme du déploiement durci (=AssertHardenedDeploymentShape=) ;
+- =AssertNetworkPolicyEnforced=, =AssertHPAScalesUnderLoad= (gated).
+
+** Plan d'exécution
+
+1. =make test-integration-local= sur Go 1.22 + Swiss Ephemeris 2.10.03
+   pinné (timeout 120 s).
+2. =make test-integration-docker= sur image
+   =mademanifest-engine-dev= (timeout 600 s).
+3. =make test-integration-k8s= sur kind, kustomize overlay incluant
+   =SE_NODE_POLICY=true= (timeout 900 s).
+4. Activation des deux gates :
+   =TRINITY_NETWORK_POLICY_ENFORCED=1= et =TRINITY_LOAD_TEST=1=.
+5. Vérification de la sortie =GET /version= : présence de
+   =ephe_path_resolved=, absence de toute fuite dans =/healthz=.
+
+** Extensions à ajouter
+
+- Cas =GET /healthz= sous charge : 100 RPS pendant 60 s, taux d'erreur
+  < 0.1 %.
+- =POST /manifest= avec =Content-Type= manquant ou erroné → 415,
+  =error_type=invalid_input= (Phase 10).
+- Corps > =MaxRequestBodyBytes= (1 MiB) → 413,
+  =error_type=unsupported_input=.
+- JSON malformé → 400, =error_type=invalid_input= (Phase 2).
+- Trois exécutions consécutives du Pack Golden : sortie
+  bit-identique (déterminisme Phase 9).
+
+** Critères d'acceptation
+
+- Les trois harnais (local, docker, k8s) verts en CI.
+- Rapport déterministe sur 3 exécutions consécutives.
+- =trinity-nightly.yml= vert sur les 7 derniers jours.
+
+* Lot 5 — Cas limites
+
+** Catalogue (à mettre à jour dans =src/golden/trinity/valid_edge/= si lacune)
+
+| Cas                                       | Présent ? | Action                          |
+|-------------------------------------------+-----------+---------------------------------|
+| Minuit 00:00 local                        | oui       | =midnight_zero_zero=            |
+| 23:59 local                               | oui       | =one_minute_to_midnight=        |
+| 29 février année bissextile               | oui       | =leap_year_feb_29=              |
+| Latitude arctique extrême (Placidus)      | oui       | =arctic_high_latitude=          |
+| Équateur, océan Pacifique                 | oui       | =equator_pacific=               |
+| Transition DST « heure manquante » (mars) | manquant  | à ajouter                       |
+| Transition DST « heure doublée » (oct.)   | manquant  | à ajouter                       |
+| Naissance exactement sur frontière de porte (277.5° pile) | oui | =schiedam_anchor_277_5_deg= |
+| Latitude 89.999° (Placidus dégénéré)      | manquant  | à ajouter / fail-fast           |
+| Longitude exactement 180°                 | manquant  | à ajouter                       |
+| Date pré-1583 (calendrier grégorien)      | manquant  | à clarifier (Document 04)       |
+| Date post-2399                            | manquant  | borne supérieure éphémérides    |
+| Fuseau IANA = Etc/UTC vs UTC vs Z         | partiel   | unifier dans =valid_baseline=   |
+
+** Cas limites côté HTTP
+
+- Corps vide ; corps = =null= ; corps = =[]=.
+- Encodage =Content-Encoding: gzip= non supporté (rejet propre).
+- =OPTIONS /manifest= et =HEAD /healthz=.
+- En-tête =Content-Type: application/json; charset=utf-8= (doit passer).
+
+** Cas limites HD / Gene Keys
+
+- =authority= dégénérée : 0 centre défini → fallback documenté.
+- =profile 6/2= et =6/3= : transitions de pression (vie 1 / vie 2).
+- Croix d'incarnation avec =earth = sun + 180=° pile sur frontière.
+
+** Critères d'acceptation
+
+- Chaque cas listé a soit une fixture =input.json/expected.json=, soit
+  une décision documentée dans =version-pins.org= (rejet par
+  l'input validator avec =error_type= explicite).
+
+* Lot 6 — Couverture de tests
+
+** Stratégie
+
+- =make test-coverage= produit =coverage.txt= ; pousser en CI un
+  =coverage-report.html= comme artefact.
+- Seuils par paquet :
+  | Paquet                          | Seuil min |
+  |---------------------------------+-----------|
+  | =pkg/canon=                     | 95 %      |
+  | =pkg/hd/calc=                   | 95 %      |
+  | =pkg/hd/structure=              | 95 %      |
+  | =pkg/trinity/input=             | 95 %      |
+  | =pkg/trinity/output=            | 90 %      |
+  | =pkg/trinity/{astro,hd,genekeys}= | 90 %    |
+  | =pkg/httpservice=               | 90 %      |
+  | =pkg/golden=                    | 85 %      |
+  | =pkg/astronomy=                 | 90 %      |
+  | =pkg/ephemeris=, =pkg/sweph=    | 70 % (cgo)|
+  | =cmd/httpserver=                | n/a (couvert par intégration) |
+
+- Couverture combinée (unit + intégration) via =-coverpkg=./pkg/...=
+  injecté dans le binaire d'intégration.
+
+** Anti-objectifs
+
+- Ne pas viser 100 % : les chemins =log.Fatalf= au boot
+  (=SelfCheck= panic, =ValidateEphePath=) sont volontairement
+  non-couverts par les unit tests, mais doivent l'être par un test
+  d'intégration =refuses to start=.
+
+** Critères d'acceptation
+
+- Seuils respectés au global et par paquet.
+- Aucun fichier sous 60 % sans dérogation documentée.
+- Diff de couverture sur la PR : pas de régression > 1 pp.
+
+* Lot 7 — Métriques de qualité statiques
+
+- =go vet ./...= : 0 warning.
+- =staticcheck ./...= : 0 finding non-justifié.
+- =golangci-lint run= avec config minimale =govet=, =staticcheck=,
+  =errcheck=, =gosec=, =gocritic=, =bodyclose=, =unparam=, =unused=.
+- =govulncheck ./...= : 0 vulnérabilité critique ouverte.
+- =gosec= sur =pkg/httpservice= et =cmd/httpserver=.
+- =gofumpt= sur tout le module.
+
+* Lot 8 — Reproductibilité du build
+
+- Vérifier que =Dockerfile= produit une image bit-identique sur deux
+  runs successifs (digest stable).
+- Vérifier que les digests d'image et de manifestes mentionnés dans
+  =trinity-acceptance-2026-04-25.org= sont toujours résolvables.
+- =go mod verify= en CI.
+
+* Annexe A — Grille de revue de code (par paquet)
+
+1. Tous les chemins d'erreur exposent un =error_type= compatible A4 ?
+2. Aucune comparaison de flottants par ==== dans les chemins canoniques
+   (utiliser =math.Abs(a-b) < ε=) ?
+3. Aucune dépendance à l'ordre d'itération des =map= dans la sortie ?
+4. Pas de =time.Now()= ou =rand= dans le chemin de calcul (Phase 9) ?
+5. Pas de variable d'environnement lue en dehors du boot ? (=SE_*= en
+   particulier, doit être inerte après Phase 9)
+6. JSON marshaling : seuls les champs whitelistés sont émis ?
+7. Tests : présence d'un cas =error_type= explicite par mode d'échec ?
+8. Goroutines : aucune goroutine non-jointe dans le chemin
+   =POST /manifest= ?
+
+* Annexe B — Calendrier indicatif (J = 2026-05-01)
+
+| Jour    | Lot                                               |
+|---------+---------------------------------------------------|
+| J       | Lot 1 (revue) + Lot 7 (statique)                  |
+| J+1     | Lot 2 (unitaires) — combler =sweph=, =trinity/hd= |
+| J+2     | Lot 3 (fuzzing) — 5 cibles, budget 10 min chacune |
+| J+3     | Lot 4 (intégration local + docker + k8s)          |
+| J+4     | Lot 5 (cas limites manquants ajoutés en fixtures) |
+| J+5     | Lot 6 (couverture, seuils CI) + Lot 8 (build)     |
+| J+6     | Consolidation, rapport, =GO/NO-GO=                |
+
+* Annexe C — Sortie attendue
+
+À l'issue du plan :
+
+- =src/doc/qa-review-2026-05.org= (findings revue).
+- =src/doc/qa-fuzz-2026-05.org= (rapport fuzzing).
+- =src/doc/qa-coverage-2026-05.org= (rapport couverture).
+- Nouvelles fixtures sous =src/golden/trinity/valid_edge/= et
+  =src/golden/trinity/invalid_input/=.
+- Nouveaux tests unitaires =pkg/sweph/*_test.go= et
+  =pkg/trinity/hd/*_test.go=.
+- Mises à jour CI : ajout d'un job =qa= (vet + staticcheck +
+  govulncheck + race + coverage gate).
+- Verdict =GO/NO-GO= signé pour =v1.0.1-trinity=.
