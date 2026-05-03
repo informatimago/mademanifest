@@ -26,8 +26,9 @@ const (
 
 	// InputSchemaVersion is the revision of the canonical input
 	// contract: field names, types, formats, ranges, validation.
-	// A5 (invalid vs unsupported boundary) and A6 (IANA canonical
-	// names only) are now folded back into Document 04 / D24.
+	// A5 (invalid vs unsupported boundary) is governed by the
+	// Document 04 strict input contract + D08 (minute precision
+	// boundary).  A6 (IANA canonical names only) is governed by D24.
 	InputSchemaVersion = "trinity-v1-rev-0"
 
 	// SourceStackVersion is the combined revision of the

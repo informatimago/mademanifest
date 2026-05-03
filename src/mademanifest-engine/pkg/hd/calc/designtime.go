@@ -126,6 +126,14 @@ type Diagnostics struct {
 	// fired first.
 	FinalAbsDiffDeg float64
 
+	// FinalLowerJD and FinalUpperJD are the lower and upper bounds
+	// of the final search interval at the moment the loop exited.
+	// Exposed so canon-A3/D22 regression sentinels can assert that
+	// the returned JD equals FinalLowerJD exactly (any midpoint or
+	// upper-bound regression would emit a different value).
+	FinalLowerJD float64
+	FinalUpperJD float64
+
 	// ExitReason is the human-readable name of the stop condition
 	// that terminated the loop: "abs_diff_threshold",
 	// "bracket_width_threshold", or "max_iterations".
@@ -187,12 +195,16 @@ func solveDesignTime(birthJD float64, sun SunLongitudeFunc) (float64, Diagnostic
 	if diffLower == 0 {
 		diag.FinalBracketDays = upper - lower
 		diag.FinalAbsDiffDeg = 0
+		diag.FinalLowerJD = lower
+		diag.FinalUpperJD = upper
 		diag.ExitReason = "abs_diff_threshold"
 		return lower, diag, nil
 	}
 	if diffUpper == 0 {
 		diag.FinalBracketDays = upper - lower
 		diag.FinalAbsDiffDeg = 0
+		diag.FinalLowerJD = lower
+		diag.FinalUpperJD = upper
 		diag.ExitReason = "abs_diff_threshold"
 		return upper, diag, nil
 	}
@@ -251,6 +263,8 @@ func solveDesignTime(birthJD float64, sun SunLongitudeFunc) (float64, Diagnostic
 		if math.Abs(diff) < StopAbsSunDiffDeg {
 			diag.FinalBracketDays = upper - lower
 			diag.FinalAbsDiffDeg = math.Abs(diff)
+			diag.FinalLowerJD = lower
+			diag.FinalUpperJD = upper
 			diag.ExitReason = "abs_diff_threshold"
 			return mid, diag, nil
 		}
@@ -271,6 +285,8 @@ func solveDesignTime(birthJD float64, sun SunLongitudeFunc) (float64, Diagnostic
 			diag.SunFuncCalls++
 			diag.FinalBracketDays = upper - lower
 			diag.FinalAbsDiffDeg = math.Abs(finalDiff)
+			diag.FinalLowerJD = lower
+			diag.FinalUpperJD = upper
 			diag.ExitReason = "bracket_width_threshold"
 			return lower, diag, nil
 		}
@@ -284,6 +300,8 @@ func solveDesignTime(birthJD float64, sun SunLongitudeFunc) (float64, Diagnostic
 	diag.SunFuncCalls++
 	diag.FinalBracketDays = upper - lower
 	diag.FinalAbsDiffDeg = math.Abs(finalDiff)
+	diag.FinalLowerJD = lower
+	diag.FinalUpperJD = upper
 	diag.ExitReason = "max_iterations"
 	return lower, diag, nil
 }

@@ -140,6 +140,91 @@ func TestSolveDesignTimeMonotonicBracketShrinks(t *testing.T) {
 	}
 }
 
+// TestSolveDesignTimeSubSecondStopReturnsLowerBound is the
+// canonical regression sentinel for A3 / Document 12 D22.  It
+// constructs a synthetic Sun-rate that forces the solver out via
+// the *bracket-width* stop (interval < 1 s), then asserts the
+// canon-required structural property of the returned JD.
+//
+// Why a steep slope.  The abs-diff stop fires when
+// |sun(mid) - target| < 0.0001°.  Under a synthetic linear Sun
+// `sun(t) = base + slope * (t - birthJD)`, at the bisection's mid
+// the diff is roughly `slope × (mid - root)`, so the abs-diff
+// stop translates to a bracket width of roughly
+// `2 × 0.0001 / slope` days.  For the *width* stop (1 s = 1/86400
+// day) to fire *before* the abs-diff stop we need
+//     1/86400 > 2 × 0.0001 / slope
+//   ⇔ slope > 17.28 °/day.
+// The 50 °/day slope used here is well above that threshold so
+// the width stop fires first by construction.  At 50 °/day the
+// canonical 88° offset traverses 1.76 days, so the analytic root
+// of the synthetic Sun is at `birthJD - 1.76`, well inside the
+// initial 10-day bracket — no expansions are required.
+//
+// Structural property asserted (canon-correct, midpoint-rejecting):
+// at the width stop, the canon emits the *lower bound* of the
+// final search interval.  After the bisection, the final interval
+// brackets the root: the lower endpoint sits at or below the root
+// (signedDiffDeg(sun(lower), target) ≤ 0) and the upper endpoint
+// at or above (signedDiffDeg(sun(upper), target) ≥ 0).  A correct
+// lower-bound emission therefore satisfies
+// signedDiffDeg(sun(got), target) ≤ 0 by construction.  A
+// regression that reverts to the midpoint emission would split
+// the bracket and the sun(got) value would land on either side of
+// the root with no canonical preference — `got` could end up at
+// the upper end, violating the inequality.  Combined with the
+// width assertion (got ≤ root + 1 s), the test pins lower-bound
+// emission tightly without needing an analytically known root.
+//
+// This exists alongside the Schiedam regression sentinel (which
+// pins the truncated whole-second value indirectly) so that the
+// sub-second stop behaviour is protected explicitly even if the
+// Schiedam fixture ever shifts to a payload whose convergence
+// path lands on the abs-diff stop instead.  Per Jaimie's note in
+// the canon-fold-back review, this regression sentinel must
+// exercise the sub-second Design-time stop directly, not only
+// transitively through the baseline.
+func TestSolveDesignTimeSubSecondStopReturnsLowerBound(t *testing.T) {
+	const (
+		birthJD = 2447991.0
+		baseDeg = 100.0
+		slope   = 50.0
+	)
+	sun := linearSun(birthJD, baseDeg, slope)
+	got, diag, err := SolveDesignTimeWithDiagnostics(birthJD, sun)
+	if err != nil {
+		t.Fatalf("SolveDesignTime: %v", err)
+	}
+	if diag.ExitReason != "bracket_width_threshold" {
+		t.Fatalf("ExitReason = %q, want bracket_width_threshold "+
+			"(test scenario must exercise the sub-second exit; if the "+
+			"abs-diff stop fired first the test no longer protects A3/D22)",
+			diag.ExitReason)
+	}
+	subSecondCap := StopBracketSeconds / secondsPerDay
+	if diag.FinalBracketDays >= subSecondCap {
+		t.Errorf("final bracket width %.6e days >= %.6e days; "+
+			"sub-second precondition not met", diag.FinalBracketDays, subSecondCap)
+	}
+
+	// Canon property: D22 emits exactly FinalLowerJD.  Any midpoint
+	// regression would return (FinalLowerJD + FinalUpperJD) / 2 —
+	// strictly different unless the bracket has zero width, which
+	// the FinalBracketDays assertion above already excludes.  Any
+	// upper-bound regression would return FinalUpperJD — again
+	// strictly different.  Bit-exact equality with FinalLowerJD is
+	// therefore the surgical canon-correctness assertion.
+	if got != diag.FinalLowerJD {
+		t.Errorf("returned JD %.20f != FinalLowerJD %.20f "+
+			"(delta = %+.3f s, FinalBracketDays = %.6e days = %.3f s); "+
+			"canon D22 requires bit-exact return of the lower bound — "+
+			"midpoint or upper-bound regression?",
+			got, diag.FinalLowerJD,
+			(got-diag.FinalLowerJD)*secondsPerDay,
+			diag.FinalBracketDays, diag.FinalBracketDays*secondsPerDay)
+	}
+}
+
 // TestSolveDesignTimeRequiresManyIterations is the forbidden-shortcut
 // sentinel.  A solver that subtracted 88 days, used a 3-month
 // approximation, performed a single secant step, or pulled the result

@@ -155,7 +155,7 @@ func TestValidateRejections(t *testing.T) {
 			wantType: RejectInvalid, wantField: "birth_time",
 		},
 
-		// --- unsupported_input: A5 RESOLVED, D24.
+		// --- unsupported_input: A5 RESOLVED (Doc 04 strict input + D08).
 		{
 			name: "seconds present 18:04:00",
 			payload: `{

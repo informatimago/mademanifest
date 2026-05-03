@@ -32,9 +32,10 @@ var (
 	timeMinuteRE = regexp.MustCompile(`^([01]\d|2[0-3]):[0-5]\d$`)
 
 	// timeWithSecondsRE catches HH:MM:SS or HH:MM:SS.fraction.
-	// A5 (RESOLVED, Document 12 D24 + Document 04): structurally
-	// well-formed but outside v1 supported scope ⇒ unsupported_input.
-	// Sub-minute precision falls in this bucket.
+	// A5 (RESOLVED — Document 04 strict input contract + Document 12
+	// D08 minute-precision boundary): structurally well-formed but
+	// outside v1 supported scope ⇒ unsupported_input.  Sub-minute
+	// precision falls in this bucket.
 	timeWithSecondsRE = regexp.MustCompile(`^[0-2]\d:[0-5]\d:\d`)
 
 	// ianaCanonicalShapeRE is a coarse shape check requiring at

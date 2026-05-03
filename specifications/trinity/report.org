@@ -81,12 +81,12 @@
   - The validator, error envelope, and golden runner already implement type-only comparison with non-empty message. Comments updated to RESOLVED.
 
 * Significant Ambiguities (RESOLVED 2026-04-28)
-** A5. =invalid_input= vs =unsupported_input= Boundary — RESOLVED (D24)
+** A5. =invalid_input= vs =unsupported_input= Boundary — RESOLVED (Document 04 strict input contract + D08)
 - Documents (folded back):
-  - Document 04 §6.2 and §11
-  - Document 07 §9.4
-  - Document 10 §9.3
-  - Document 12 D24
+  - Document 04 §6.2 and §11 — strict input contract
+  - Document 07 §9.4 — error envelope shape
+  - Document 10 §9.3 — fixture coverage
+  - Document 12 D08 — minute precision only at the engine boundary
 - Ruling:
   - Malformed payloads or values that violate the canonical input contract are =invalid_input=.
   - Structurally valid payloads that fall outside v1 supported scope are =unsupported_input=.
@@ -174,7 +174,7 @@
 | A2  | RESOLVED 2026-04-28 | D21 — cusp-inclusive / next-cusp-exclusive | =astro.HouseFor=, comments updated |
 | A3  | RESOLVED 2026-04-28 | D22 — lower-bound + truncation | =hd/calc.SolveDesignTime= corrected; =output.DesignTime.MarshalJSON= unchanged |
 | A4  | RESOLVED 2026-04-28 | D23 — error_type / error_code authoritative; message informational | golden runner + integration matrix already type-only |
-| A5  | RESOLVED 2026-04-28 | D24 — strict invalid vs unsupported boundary | =input.Validate= already on this boundary |
+| A5  | RESOLVED 2026-04-28 | Document 04 strict input contract + D08 (minute precision boundary) | =input.Validate= already on this boundary |
 | A6  | RESOLVED 2026-04-28 | D24 — canonical IANA Area/Location only | =input.validateTimezone= already rejects aliases |
 | A7  | RESOLVED 2026-04-28 | D26 — generation necessary, approval required | sentinel comments updated; canon-owner approval pending |
 | A8  | RESOLVED 2026-03-31 | Document 00 closure list | identifier hygiene pass complete |
