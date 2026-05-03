@@ -1,0 +1,34 @@
+BOUNDARY-AREA REVIEW — Schiedam 1990-04-09 18:04 Europe/Amsterdam
+Distance from each astrology object to the nearest sign / house /
+gate / line cusp, in degrees.  Per Document 12 D26 the D-26 review
+must verify that no body sits on a cusp where the canonical
+interval-ownership rule would itself decide placement.
+
+object               longitude       Δsign      Δhouse       Δgate       Δline   notes
+---------------------------------------------------------------------------------------------------------
+sun                  19.540415   10.459585    1.244651    0.790415    0.147085   safe
+moon                194.340345   14.340345    3.955419    1.215345    0.277845   safe
+mercury              38.277226    8.277226    9.501045    2.652226    0.160274   safe
+venus               333.397401    3.397401    2.650431    0.352599    0.352599   safe
+mars                321.584668    8.415332    9.162302    0.915332    0.022168   safe
+jupiter              93.769635    3.769635   10.163058    1.894635    0.019635   near line cusp
+saturn              294.818124    5.181876    5.322957    0.443124    0.443124   safe
+uranus              279.581470    9.581470   15.974893    2.081470    0.206470   safe
+neptune             284.561528   14.561528   15.579553    1.436528    0.438472   safe
+pluto               227.134239   12.865761    0.644032    0.259239    0.259239   safe
+chiron              101.053346   11.053346   17.446769    2.071654    0.196654   safe
+north_node_mean     313.236501   13.236501   13.095420    1.986501    0.111501   safe
+earth               199.540415   10.459585    1.244651    0.790415    0.147085   safe
+
+Cusp widths: sign 30°  |  gate 5.625000°  |  line 0.937500°
+Thresholds reported as 'near …': sign < 0.5°, house < 0.5°,
+gate < 0.1°, line < 0.02°.  These are the canon-stress windows
+where the start-inclusive / next-cusp-exclusive ownership rule
+(D21 for houses, equivalent for gates and lines) is the only
+thing standing between two valid answers.
+
+Tightest margin per cusp class across all 13 objects:
+  sign   3.397401°
+  gate   0.259239°
+  line   0.019635°
+  house  0.644032°

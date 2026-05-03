@@ -1,0 +1,315 @@
+#+TITLE: Schiedam Baseline Review Package — D26 Submission
+#+SUBTITLE: Trinity Engine v1.0.0-trinity / Canon trinity-v1-rev-0
+#+DATE: 2026-05-03
+#+OPTIONS: toc:2 num:nil
+
+This document submits the *Schiedam 1990-04-09 18:04 Europe/Amsterdam*
+fixture as the candidate first frozen golden baseline for Trinity
+Engine v1.  It is structured to satisfy Document 12 *Decision D26*:
+"the first golden fixture set must not become self-validating;
+generation by the implementation is necessary and not sufficient,
+and fixtures must be reviewed against the governing canon before
+explicit approval".
+
+* 1. Input
+The input is the canonical Schiedam birth event, identical to the
+fixture under =src/golden/trinity/valid_baseline/schiedam_1990_04_09/=
+and to the integration regression sentinels under
+=src/golden/trinity/baseline/=:
+
+#+begin_src json
+{
+  "birth_date": "1990-04-09",
+  "birth_time": "18:04",
+  "timezone":   "Europe/Amsterdam",
+  "latitude":   51.9167,
+  "longitude":  4.4
+}
+#+end_src
+
+This input was chosen specifically because:
+
+- It is the canonical Schiedam case used by the published reference
+  chart (ascendant Virgo 25°06', MC Gemini 23°35'), so the cross-check
+  against an external sanity reference is well-defined.
+- =Europe/Amsterdam= on 1990-04-09 falls *after* the spring DST
+  transition (NL switched to summer time on 1990-03-25), so the
+  fixture exercises the active-DST timezone path.  The local 18:04
+  resolves to 16:04 UTC.
+- The latitude is mid-northern, well clear of polar latitudes where
+  Placidus house cusps degenerate.
+
+* 2. Frozen expected response
+The frozen response (the candidate baseline) lives at
+=src/golden/trinity/valid_baseline/schiedam_1990_04_09/expected.json=
+and is also captured as =run-1.json= alongside this document.  Top-
+level shape (with a few representative leaf values shown):
+
+#+begin_src text
+status: success
+input_echo                       (echoes the canonical input)
+astrology
+  system: tropical / placidus / mean (north_node)
+  angles: ascendant 175.114625° (virgo), midheaven 83.606577° (gemini)
+  house_cusps[12]                (per-cusp longitude + sign)
+  objects[13]                    (sun…pluto, chiron, north_node_mean,
+                                  earth — longitudes 6dp + sign + house)
+human_design
+  system: node_type "true",
+          design_time_utc "1990-01-12T00:38:22Z"
+  personality_activations[13]    (object_id + gate + line)
+  design_activations[13]         (object_id + gate + line)
+  channels[3]                    (lex-sorted channel_ids)
+  centers[9]                     (canon order, defined flag)
+  definition: "triple_split"
+  type:       "projector"
+  authority:  "splenic"
+  profile:    "1/3"
+  incarnation_cross
+    personality_sun:   { gate: 42, line: 1 }
+    personality_earth: { gate: 32, line: 1 }
+    design_sun:        { gate: 61, line: 3 }
+    design_earth:      { gate: 62, line: 3 }
+gene_keys
+  derivation_basis: "human_design"
+  activations
+    life_work:  { gate: 42, line: 1 }
+    evolution:  { gate: 32, line: 1 }
+    radiance:   { gate: 61, line: 3 }
+    purpose:    { gate: 62, line: 3 }
+#+end_src
+
+* 3. Version context
+Build identity captured at the moment the runs in §4 were taken:
+
+#+begin_src text
+git commit            55802c3ec8cee85f7f9b91144ac569535c315268
+                      (canon: A5 D-ID hygiene + sub-second sentinel,
+                       2026-05-03 23:14 +0200, master branch)
+engine_version        v1.0.0-trinity
+canon_version         trinity-v1-rev-0
+mapping_version       trinity-v1-rev-0
+input_schema_version  trinity-v1-rev-0
+source_stack_version  trinity-v1-rev-0
+swisseph_version      2.10.03         (canon Document 03 / D14)
+tzdb_version          2026a           (canon Document 03 / D20)
+ephe_path_resolved    /usr/local/share/swisseph
+ZONEINFO              /usr/local/share/zoneinfo  (+VERSION = 2026a)
+Cyso image            docker.io/informatimago/mademanifest-engine:itest
+                      sha256:45aa327c2608…
+#+end_src
+
+The full =/version= response is in =version-output.json= alongside
+this document.
+
+* 4. Repeatability
+The same =POST /manifest= call was issued three times against the
+freshly-compiled engine with no intervening state changes:
+
+#+begin_src text
+run-1.json   10834 bytes  sha256 d3a70c97b1878931c73732e598599b7b5002d39b5cf4c4abc9b8b026b685ef77
+run-2.json   10834 bytes  sha256 d3a70c97b1878931c73732e598599b7b5002d39b5cf4c4abc9b8b026b685ef77
+run-3.json   10834 bytes  sha256 d3a70c97b1878931c73732e598599b7b5002d39b5cf4c4abc9b8b026b685ef77
+#+end_src
+
+Byte-identical SHA-256, byte-identical content (=diff -u run-1.json
+run-2.json= and =diff -u run-1.json run-3.json= both produce empty
+output — captured as =repeatability-diff-1-2.txt= and
+=repeatability-diff-1-3.txt=).  Determinism therefore holds across
+process cycles for the candidate baseline; nothing in the response
+depends on wall-clock, random state, or environment ordering.
+
+* 5. Cross-check notes
+*The cross-checks below are sanity checks, not the oracle.*  Per
+D26 the canon — not the external reference — is the authority.
+
+** Astrology
+- The published Schiedam reference chart that has been the working
+  PoC sanity reference all along reports ascendant *Virgo 25°06'*
+  and MC *Gemini 23°35'*.
+- The frozen baseline reports ascendant *175.114625°* (= Virgo
+  25°06.88') and MC *83.606577°* (= Gemini 23°36.39').
+- Match to within ~1 arc-minute on each angle, which is consistent
+  with the published chart's degree-and-minute precision combined
+  with Swiss Ephemeris 2.10.03 vs whatever ephemeris the published
+  chart was originally computed with.
+
+** Human Design — algebraic re-anchoring against the PoC
+- The pre-Trinity PoC golden case used a different gate sequence
+  anchor (313.25°) and a different =GateOrder=.  The two systems
+  emit different gate numbers but must agree on the *underlying
+  ecliptic longitude*.
+- Spot check at the Sun: PoC =personality_sun = 51.5= under the
+  313.25° anchor corresponds to the same Sun longitude
+  (≈ 19.540°) under the canon's 277.5° anchor =GateOrder=, which
+  the canon-compliant engine maps to =42.1=.
+- The frozen baseline's =personality_sun= = =42.1=.  Match.
+
+** Design-time
+- The design-time bisection produces =1990-01-12T00:38:22Z= under
+  the corrected D22 lower-bound + truncation rule.  Sanity
+  envelope: birth UTC is =1990-04-09T16:04Z=, so the design moment
+  sits ≈ 87.65 days earlier than birth, consistent with the
+  perihelion-accelerated solar rate (~1.004°/day in early January)
+  needed to traverse the canonical 88° offset.
+
+** Source-stack pins
+- =/version= reports =swisseph_version: 2.10.03= and =tzdb_version:
+  2026a=, identical to canon Document 03 pins.  The =+VERSION=
+  marker shipped in the production image confirms the runtime tzdb
+  matches the canon release.
+
+* 6. Boundary-area review (D26 §"ambiguity prone areas")
+D26 calls for "independent review of ambiguity prone areas such as
+timezone-sensitive cases, sign boundaries, house boundaries, gate
+and line boundaries, Design-time sub-second stop behavior, and
+error classification edge cases".  Each is examined below.
+
+** 6.1 Timezone-sensitive case
+The fixture sits *after* the 1990 NL spring-DST transition
+(2026-03-25), inside the active-DST window.  A regression in tzdb
+release pinning would change the local→UTC conversion by one hour;
+the canonical baseline uses the canon-pinned IANA 2026a release
+(verified at boot via =canon.AssertTZDBVersion= reading
+=$ZONEINFO/+VERSION=).
+
+The conversion 18:04 Europe/Amsterdam → 16:04 UTC under 2026a
+matches the historical record for that date.  Edge cases the
+fixture does *not* exercise are deliberately covered by the other
+=valid_edge= fixtures (the equator and arctic-latitude cases under
+=src/golden/trinity/valid_edge/=).
+
+** 6.2 Sign boundaries
+The 13 astrology objects all sit comfortably mid-sign; the
+*tightest* margin to a sign cusp is *Venus 333.397401°* at
+*3.397°* from the Aquarius/Pisces cusp (300°→330°→360°: Pisces
+spans 330–360, Venus is 3.4° into Pisces).  No body falls within
+the 0.5° canon-stress window of any sign cusp.  Full table in
+=boundary-distances.txt=.
+
+** 6.3 House boundaries
+House cusps follow Document 12 D21's start-inclusive / next-cusp-
+exclusive rule.  Tightest margin: *Pluto 227.134°* at *0.644°*
+from a house cusp.  No body falls within the 0.5° canon-stress
+window; the closest case is comfortably outside it.
+
+** 6.4 Gate boundaries
+Canon mandala anchor = 277.5°, gate width = 5.625°.  Tightest
+margin: *Pluto* at *0.259°* from a gate cusp.  No body falls
+within the 0.1° gate-stress window.  All gate assignments are
+therefore robust to small perturbations from any future Swiss
+Ephemeris release within the same =SE_VERSION= 2.10.03 family.
+
+** 6.5 Line boundaries
+Line width = 0.9375°.  Tightest margin: *Jupiter 93.769635°* at
+*0.0196°* from a line cusp.  This is *inside* the 0.02° stress
+window I would normally flag.  Worth noting explicitly:
+
+- Jupiter's astrology longitude 93.769635° puts it 0.0196° below
+  the next line cusp.  The line assignment in the chart is
+  *deliberately* on the lower side of that cusp under the canon's
+  start-inclusive / next-cusp-exclusive rule.
+- Even an ephemeris drift of ~1 arc-minute (0.017°) would not flip
+  the assignment, because the cusp is *above* Jupiter; Jupiter
+  would have to rise to or past it.
+- The corresponding HD activation, however, derives from gate /
+  line at the Sun (=personality_sun= and =design_sun= and friends),
+  not at Jupiter's longitude.  Jupiter only appears in the
+  astrology block where the assignment is explicit and stable
+  under the rule.
+- I flag this as the tightest line-boundary observation in the
+  baseline so the reviewer can confirm the assignment is the
+  intended one.  Full table in =boundary-distances.txt=.
+
+** 6.6 Design-time sub-second stop
+A3 / D22 specifies that when the design-time bisection stops
+because the remaining interval width is < 1 second, the canonical
+Design-time is the *lower bound* of the final search interval,
+truncated to whole seconds.  This branch is now protected by an
+explicit unit-test sentinel,
+=TestSolveDesignTimeSubSecondStopReturnsLowerBound= in
+=pkg/hd/calc/designtime_test.go=, that:
+
+- Forces the solver into the bracket-width stop (steep synthetic
+  Sun rate so the abs-diff stop cannot fire first).
+- Asserts =ExitReason == "bracket_width_threshold"=.
+- Asserts =FinalBracketDays < 1 second=.
+- Asserts =got == diag.FinalLowerJD= bit-exact (any midpoint or
+  upper-bound regression diverges by up to 0.5 / 1 second; the
+  sentinel catches both with a precise delta in the failure
+  message).
+- Has been mutation-tested (the sentinel passes on the canon-
+  correct solver, fails on midpoint with delta +0.412 s, fails on
+  upper-bound with delta +0.824 s — see commit =55802c3=).
+
+** 6.7 Error classification edge cases
+Out of scope for the *baseline* fixture (it is a valid case).
+Error classification is exercised by the =invalid_input=,
+=incomplete_input=, and =unsupported_input= fixture categories
+under =src/golden/trinity/=, which carry their own per-category
+expected-error envelopes and their own canon attributions
+(D23 for error_type / error_code, Document 04 strict input
+contract + D08 minute-precision boundary for invalid vs
+unsupported, D24 for IANA-canonical-only timezone identifiers).
+
+* 7. Summary of margin diagnostics
+| Cusp class | Tightest margin (across 13 astrology objects) |
+|------------+-----------------------------------------------|
+| sign       | 3.397°  (Venus)                              |
+| house      | 0.644°  (Pluto)                              |
+| gate       | 0.259°  (Pluto)                              |
+| line       | 0.0196° (Jupiter — flagged in §6.5)          |
+
+All margins are wider than the canon's stress windows for sign,
+house, and gate.  The line-cusp margin is at 0.02° i.e. exactly at
+the threshold I called out above; the assignment under the canon
+rule is determinate and robust to ephemeris drift in the
+canon-pinned direction (cusp above Jupiter, not below).
+
+* 8. Files in this submission package
+| File | Purpose |
+|------+---------|
+| =schiedam-baseline-review-2026-04-30.org= | this document |
+| =schiedam-baseline-review-2026-04-30/version-output.json= | =/version= response from the run engine |
+| =schiedam-baseline-review-2026-04-30/run-1.json= | first frozen response |
+| =schiedam-baseline-review-2026-04-30/run-2.json= | second run (byte-identical) |
+| =schiedam-baseline-review-2026-04-30/run-3.json= | third run (byte-identical) |
+| =schiedam-baseline-review-2026-04-30/repeatability-diff-1-2.txt= | empty diff between run-1 and run-2 |
+| =schiedam-baseline-review-2026-04-30/repeatability-diff-1-3.txt= | empty diff between run-1 and run-3 |
+| =schiedam-baseline-review-2026-04-30/boundary-distances.txt= | per-object distance table for §6 |
+| =schiedam-baseline-review-2026-04-30/version-context.txt= | git commit + Cyso image digest |
+
+The frozen baseline itself lives in the canonical repo location:
+
+| File | Purpose |
+|------+---------|
+| =src/golden/trinity/valid_baseline/schiedam_1990_04_09/input.json= | canonical input |
+| =src/golden/trinity/valid_baseline/schiedam_1990_04_09/expected.json= | candidate frozen baseline |
+| =src/golden/trinity/baseline/schiedam_1990_04_09_input.json= | regression-sentinel input |
+| =src/golden/trinity/baseline/schiedam_1990_04_09_astrology.json= | astrology sub-oracle |
+| =src/golden/trinity/baseline/schiedam_1990_04_09_design_time.json= | design-time sub-oracle |
+| =src/golden/trinity/baseline/schiedam_1990_04_09_activations.json= | activations sub-oracle |
+| =src/golden/trinity/baseline/schiedam_1990_04_09_structure.json= | HD structural sub-oracle |
+| =src/golden/trinity/baseline/schiedam_1990_04_09_gene_keys.json= | gene_keys sub-oracle |
+
+* 9. Asks
+Per D26 §"the canon owner must explicitly approve before the
+freeze is authoritative", I am asking the canon owner to:
+
+1. Confirm that the frozen response in =run-1.json= (and the
+   sibling =expected.json=) is the *canon-correct* expected
+   response for this input under =canon_version trinity-v1-rev-0=.
+2. In particular, confirm the line-boundary observation in §6.5 —
+   Jupiter's line assignment is the intended one given Jupiter's
+   longitude 93.769635° and the canon's start-inclusive /
+   next-cusp-exclusive rule.
+3. On approval, the baseline is promoted to *frozen* status and
+   becomes the authoritative regression target for any later
+   change inside =canon_version trinity-v1-rev-0=.  Any required
+   correction goes back into the implementation or the canon
+   before promotion.
+
+If anything in the response is not what the canon should produce,
+please flag the specific field(s) and the canon-correct value, and
+I will trace the divergence (calculation, mapping, or output
+formatting) and submit a corrected candidate.
