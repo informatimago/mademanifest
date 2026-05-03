@@ -1,0 +1,260 @@
+#+TITLE: Protected Staging Access — Architecture Proposal
+#+SUBTITLE: trinity-staging.mademanifest.me on Cyso Managed Kubernetes
+#+DATE: 2026-05-03
+#+OPTIONS: toc:2 num:nil
+
+This document proposes the architecture for the protected staging
+access endpoint =trinity-staging.mademanifest.me=, per Jaimie's
+2026-04-30 reply.  Goals:
+
+- Reachable enough for controlled integration testing from a
+  browser and from automated batch scripts.
+- *Not* a public unauthenticated API.  Anyone who can hit
+  =POST /manifest= without authenticating is forbidden.
+- CORS off by default; enabled per-origin only for explicit
+  development clients.
+- Evolves cleanly to either a real production endpoint or to a
+  same-origin product front-end without a forklift rewrite.
+
+* 1. Recommended stack
+
+#+begin_src text
+                    ┌──────────────────────────────────┐
+   Internet ─HTTPS──┤  Cyso LoadBalancer (public IP)  │
+                    └────────────────┬─────────────────┘
+                                     │
+                    ┌────────────────▼─────────────────┐
+                    │  ingress-nginx Service            │
+                    │  (LoadBalancer / NodePort)        │
+                    └────────────────┬─────────────────┘
+                                     │
+                    ┌────────────────▼─────────────────┐
+                    │  Ingress: trinity-staging.        │
+                    │  mademanifest.me                  │
+                    │   tls: cert-manager / Let's Encrypt
+                    │   auth: HTTP Basic via            │
+                    │   ingress-nginx auth-basic        │
+                    │   annotation                      │
+                    └────────────────┬─────────────────┘
+                                     │
+                    ┌────────────────▼─────────────────┐
+                    │  Service mademanifest:80          │
+                    │  (ClusterIP, unchanged)           │
+                    │  NetworkPolicy: ingress-nginx ns  │
+                    │  on port 8080 only                │
+                    └────────────────┬─────────────────┘
+                                     │
+                    ┌────────────────▼─────────────────┐
+                    │  Pod mademanifest                 │
+                    │  /healthz   (liveness, no auth)   │
+                    │  /version   (no PII; auth-gated)  │
+                    │  /manifest  (auth-gated)          │
+                    │  CORS off by default              │
+                    └──────────────────────────────────┘
+#+end_src
+
+Each layer has a specific job:
+
+** 1.1 Cyso LoadBalancer
+Allocates a public IP that Cyso routes from outside the cluster
+into the ingress-nginx Service.  Whether this is a managed
+=Service.Type=LoadBalancer= or a manual NodePort + external load
+balancer depends on Cyso's EMK feature set — see §3.
+
+** 1.2 ingress-nginx
+The ingress controller terminates TLS, applies path-based routing,
+and enforces the auth annotation.  Recommended over Traefik because
+its =auth-basic= and =auth-url= annotations are the cleanest path
+to a quick-yet-real auth boundary at this stage; later we can add
+=oauth2-proxy= without changing the Ingress contract for the
+engine.
+
+The base NetworkPolicy in =src/deploy/kubernetes/networkpolicy.yaml=
+already restricts ingress to pods labelled
+=app.kubernetes.io/name: ingress-nginx= in a namespace labelled
+=kubernetes.io/metadata.name: ingress-nginx=, which is the
+ingress-nginx default install posture.
+
+** 1.3 cert-manager + Let's Encrypt
+cert-manager runs as a separate deployment, watches the Ingress's
+=cert-manager.io/cluster-issuer= annotation, drives the
+HTTP-01 ACME challenge against the ingress controller, and writes
+the issued certificate to a Secret the Ingress consumes.  Once
+configured, certificate renewal is fully automatic.
+
+** 1.4 Auth layer
+For *staging*, HTTP Basic via ingress-nginx is the right call:
+
+- One annotation (=nginx.ingress.kubernetes.io/auth-type: basic=).
+- Credentials live in a Kubernetes Secret (=htpasswd= format),
+  kubectl-managed, kubectl-rotatable.
+- All four Trinity HTTP paths (=/healthz=, =/version=, =/manifest=)
+  receive the same treatment.  =/healthz= is the only path that
+  arguably should bypass auth (load balancers probe it); we keep
+  it auth-gated so the staging endpoint is uniformly protected.
+  Cyso-side health probes can use the in-cluster ClusterIP path,
+  which bypasses the ingress entirely.
+- No browser test client breaks: =client.html= already has a
+  "Base URL" field; the user types
+  =https://trinity-staging.mademanifest.me= and Chrome's basic-
+  auth dialog handles the credential prompt.
+- Easy upgrade path to oauth2-proxy when the front-end / product
+  layer arrives — see §6.
+
+For *production*, oauth2-proxy in front of an OIDC IdP (Google
+Workspace, Auth0, etc.) is the right call.  It is not the right
+call for staging because the IdP-trust relationship is overhead
+that buys nothing while the consumer is "Pascal + Jaimie + Kees
+poking at the engine from a browser".
+
+** 1.5 CORS posture
+The deployment ConfigMap already does *not* set =TRINITY_DEV_CORS=,
+so the engine refuses cross-origin browser requests by default.
+For ad-hoc browser testing against staging, the developer flips
+=TRINITY_DEV_CORS=1= on the deployment for the duration of the
+session and turns it off again — same recipe as
+=src/deploy/cyso/dev-client.sh=, just pointed at the ingress
+hostname instead of a port-forward.  CORS is therefore *opt-in,
+per session*, not standing.
+
+* 2. DNS record
+One record, on the =mademanifest.me= zone:
+
+#+begin_src text
+trinity-staging.mademanifest.me   A      <Cyso LoadBalancer IPv4>    TTL 300
+trinity-staging.mademanifest.me   AAAA   <Cyso LoadBalancer IPv6>    TTL 300   (if available)
+#+end_src
+
+The TTL of 300 seconds keeps the door open to redirecting the
+hostname later (e.g. moving to a different ingress controller
+or LB) without a 24-hour cache headache.  Once the LB IP
+allocation stabilises, the TTL can be raised.
+
+* 3. What I need from Cyso before implementing
+A short list, in priority order:
+
+1. *Is ingress-nginx already installed on =trinityengine=?*  If
+   yes: which namespace, and what is the controller's
+   =controllerValue= (cluster default vs explicit class)?  If no:
+   confirmation that Cyso permits us to install it via Helm into
+   a namespace we manage.
+
+2. *Does Cyso EMK support =Service.Type=LoadBalancer= with an
+   externally-routable IP?*  Two possibilities:
+
+   a. Yes (the typical EMK / cloud-controller path).  We install
+      ingress-nginx with =service.type=LoadBalancer= and Cyso
+      assigns the IP.
+
+   b. No (NodePort-only).  We need either Cyso's external load
+      balancer in front of a NodePort, or MetalLB-equivalent in
+      the cluster.  Either way Cyso has to commit to an
+      externally-routable target so the DNS A record can point
+      somewhere stable.
+
+3. *Pre-allocated IPv4 (and IPv6 if available)*, sized to one
+   ingress controller (one Service IP) for now; a second one
+   later for production.
+
+4. *cert-manager + Let's Encrypt*: confirmation that the cluster
+   can reach =acme-v02.api.letsencrypt.org= for the ACME challenge
+   and that DNS-01 is supported in their environment if HTTP-01
+   is blocked (HTTP-01 is the cheaper path; DNS-01 is the
+   fallback if egress is restricted).
+
+5. *Persistent restricted kubectl access* (already in flight per
+   Jaimie's email): the deploy script + the batch test script
+   both rely on a non-expiring kubeconfig.  No new ask here, just
+   the same one waiting on Cyso's recommended setup.
+
+* 4. Implementation plan (once Cyso has answered)
+Three commits, each independently revertible:
+
+** Commit 1: Install the ingress + cert-manager prerequisites
+- helm install ingress-nginx into namespace =ingress-nginx=
+  (or document the existing install).
+- helm install cert-manager into namespace =cert-manager=.
+- Apply a =ClusterIssuer= for Let's Encrypt production with
+  HTTP-01 solver.
+- Apply a =ClusterIssuer= for Let's Encrypt staging (rate-limit-
+  generous environment) used during initial provisioning to avoid
+  burning the production rate limit on iteration.
+
+These are cluster-level resources and live under
+=src/deploy/cluster/= (a new sibling to =src/deploy/kubernetes/=
+and =src/deploy/cyso/=).  Pinned chart versions; once-applied,
+not part of the engine deploy script.
+
+** Commit 2: Add Ingress + auth Secret to the Cyso overlay
+- =src/deploy/cyso/ingress.yaml= — Ingress resource with the
+  hostname, the cert-manager annotation, the auth annotations,
+  and the path-based route to svc/mademanifest.
+- =src/deploy/cyso/basic-auth-secret.yaml= — placeholder Secret
+  with documented kubectl recipe for populating the htpasswd
+  blob (the actual file stays out of git; we use SOPS or
+  Bitwarden + a one-shot kubectl create).
+- =src/deploy/cyso/kustomization.yaml= — add both resources.
+
+** Commit 3: Refresh dev-client.sh + README for the staging path
+- =src/deploy/cyso/dev-client.sh= grows a =--mode=staging= flag
+  that hits =https://trinity-staging.mademanifest.me= directly
+  via the browser instead of port-forwarding.
+- README documents the staging-credential prompt.
+
+* 5. Auth credential management
+htpasswd entries live in a Kubernetes Secret of type
+=Opaque= with key =auth=:
+
+#+begin_src sh
+htpasswd -nbB pascal '<random password>' \
+  | kubectl --kubeconfig=$KUBECONFIG -n mademanifest \
+      create secret generic mademanifest-staging-auth \
+      --from-file=auth=/dev/stdin
+#+end_src
+
+The Ingress references it:
+
+#+begin_src yaml
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: mademanifest-staging-auth
+    nginx.ingress.kubernetes.io/auth-realm: "Trinity staging — restricted"
+#+end_src
+
+Rotation: re-run =htpasswd -nbB= and =kubectl apply= the new
+Secret; ingress-nginx reloads within seconds.
+
+* 6. Evolution path
+When the front-end / product layer lands, the staging stack
+evolves cleanly:
+
+- Replace =auth-basic= with =auth-url= pointing at oauth2-proxy.
+- Add a second Ingress for the front-end's hostname, pointing at
+  the front-end Service.
+- The engine's /manifest endpoint either stays auth-gated by the
+  same oauth2-proxy (and the front-end receives the proxied
+  identity), or moves behind a same-origin reverse-proxy in the
+  front-end so browsers never call /manifest cross-origin and
+  CORS stays off forever.
+
+The Ingress is a re-attachable layer; the engine pod, the
+NetworkPolicy, and the engine Service do not change as the
+front-end is added or as the auth layer is upgraded.
+
+* 7. Out of scope for staging
+- Multi-region / HA ingress.
+- WAF rules.
+- Per-tenant rate limiting.
+- Audit-grade access logging.
+
+These are production concerns and belong to the same milestone
+as the front-end / product layer.
+
+* 8. Summary
+Recommendation: ingress-nginx + cert-manager Let's Encrypt + HTTP
+Basic auth via the ingress-nginx annotation.  One DNS A (and
+optionally AAAA) record on =mademanifest.me=.  No engine code
+changes; CORS stays opt-in per session via the existing dev
+helper.  Three additive commits land the change once Cyso has
+confirmed the LB / ingress posture.
